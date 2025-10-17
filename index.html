@@ -20,14 +20,43 @@
 
   <body>
     <script>
+      // GitHub Pages SPA redirect handler - prevents infinite loops
       (function (l) {
-        if (l.search[1] === "/") {
-          const decoded = l.search
+        const search = l.search;
+        // Only process if there's a search string starting with "/?/" and not already processed
+        if (search && search.length > 2 && search.indexOf("/?/") === 0) {
+          // Check if we've already tried to process this (prevent infinite loop)
+          const alreadyProcessed = sessionStorage.getItem('spa-redirect-processed');
+          const currentUrl = l.href;
+          
+          if (alreadyProcessed === currentUrl) {
+            // Already processed this URL, clear and navigate to root
+            sessionStorage.removeItem('spa-redirect-processed');
+            window.location.replace(l.origin + l.pathname.replace(/\/[^/]*$/, '/'));
+            return;
+          }
+          
+          // Mark as being processed
+          sessionStorage.setItem('spa-redirect-processed', currentUrl);
+          
+          // Decode the redirect
+          const decoded = search
             .slice(1)
             .split("&")
             .map((s) => s.replace(/~and~/g, "&"))
             .join("?");
-          window.history.replaceState(null, null, decoded + l.hash);
+          
+          // Replace the URL without reloading
+          window.history.replaceState(
+            null,
+            null,
+            l.pathname.replace(/\/$/, "") + decoded + l.hash
+          );
+          
+          // Clear the processed flag after successful redirect
+          setTimeout(() => {
+            sessionStorage.removeItem('spa-redirect-processed');
+          }, 100);
         }
       })(window.location);
     </script>

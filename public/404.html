@@ -1,29 +1,63 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
     <title>Redirecionando…</title>
     <script>
-      const l = window.location;
-      const basePathSegments = l.pathname
-        .replace(/\/404\.html$/i, "")
-        .split("/")
-        .filter(Boolean);
-      const pathSegmentsToKeep = basePathSegments.length;
-      const baseUrl = `${l.protocol}//${l.hostname}${l.port ? `:${l.port}` : ""}`;
-      const basePath = l.pathname
-        .split("/")
-        .slice(0, 1 + pathSegmentsToKeep)
-        .join("/");
-      const remainingPath = l.pathname
-        .split("/")
-        .slice(1 + pathSegmentsToKeep)
-        .join("/")
-        .replace(/&/g, "~and~");
-      const search = l.search ? `&${l.search.slice(1).replace(/&/g, "~and~")}` : "";
-      const newUrl = `${baseUrl}${basePath}/?/${remainingPath}${search}${l.hash}`;
-      window.location.replace(newUrl);
+      // GitHub Pages 404 handler with loop prevention
+      (function() {
+        const l = window.location;
+        
+        // Check if we're in a redirect loop
+        const redirectCount = parseInt(sessionStorage.getItem('redirect-count') || '0');
+        if (redirectCount > 3) {
+          // Too many redirects, go to root
+          sessionStorage.removeItem('redirect-count');
+          window.location.replace(l.origin + '/televendas-pro-suite/');
+          return;
+        }
+        
+        // Increment redirect counter
+        sessionStorage.setItem('redirect-count', (redirectCount + 1).toString());
+        
+        // Clear counter after successful navigation
+        setTimeout(() => {
+          sessionStorage.removeItem('redirect-count');
+        }, 2000);
+        
+        const basePathSegments = l.pathname
+          .replace(/\/404\.html$/i, "")
+          .split("/")
+          .filter(Boolean);
+        const pathSegmentsToKeep = basePathSegments.length;
+        const baseUrl = `${l.protocol}//${l.hostname}${l.port ? `:${l.port}` : ""}`;
+        const basePath = l.pathname
+          .split("/")
+          .slice(0, 1 + pathSegmentsToKeep)
+          .join("/");
+        
+        // Get the path after base path
+        const remainingPath = l.pathname
+          .split("/")
+          .slice(1 + pathSegmentsToKeep)
+          .filter(Boolean)
+          .join("/")
+          .replace(/&/g, "~and~");
+        
+        // Only add search params if they exist and aren't already encoded
+        const search = l.search && !l.search.includes('~and~') 
+          ? `&${l.search.slice(1).replace(/&/g, "~and~")}` 
+          : "";
+        
+        // Build new URL
+        const pathPart = remainingPath ? `/${remainingPath}` : "";
+        const newUrl = `${baseUrl}${basePath}/?${pathPart}${search}${l.hash}`;
+        
+        window.location.replace(newUrl);
+      })();
     </script>
   </head>
-  <body></body>
+  <body>
+    <p>Redirecionando...</p>
+  </body>
 </html>
