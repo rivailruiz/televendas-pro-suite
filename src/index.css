@@ -141,8 +141,12 @@ All colors MUST be HSL.
 
 /* Touch-friendly tap targets for mobile */
 @media (max-width: 640px) {
-  button, a, [role="button"] {
+  button:not([role="checkbox"]), a, [role="button"] {
     min-height: 40px;
+  }
+  
+  button[role="checkbox"] {
+    min-height: unset;
   }
   
   /* Prevent text size adjustment on orientation change in iOS */
@@ -155,4 +159,3 @@ All colors MUST be HSL.
     -webkit-tap-highlight-color: transparent;
   }
 }
-
