@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '@/services/authService';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 
 const Televendas = () => {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('pesquisa');
 
   useEffect(() => {
     if (!authService.isAuthenticated()) {
@@ -47,7 +48,7 @@ const Televendas = () => {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
-        <Tabs defaultValue="pesquisa" className="w-full">
+        <Tabs defaultValue="pesquisa" className="w-full" value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 mb-6">
             <TabsTrigger value="pesquisa" className="flex items-center gap-2">
               <Search className="h-4 w-4" />
@@ -76,7 +77,7 @@ const Televendas = () => {
           </TabsList>
 
           <TabsContent value="pesquisa" className="space-y-4">
-            <PesquisaTab />
+            <PesquisaTab onNavigateToDigitacao={() => setActiveTab('digitacao')} />
           </TabsContent>
 
           <TabsContent value="dados" className="space-y-4">

@@ -12,7 +12,11 @@ import { useStore } from '@/store/useStore';
 import { situacoes } from '@/mocks/data';
 import { formatCurrency } from '@/utils/format';
 
-export const PesquisaTab = () => {
+interface PesquisaTabProps {
+  onNavigateToDigitacao?: () => void;
+}
+
+export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   const { orders, selectedOrders, setOrders, toggleOrderSelection, clearSelection } = useStore();
   const [filters, setFilters] = useState({
     dataInicio: '2022-01-01',
@@ -254,7 +258,7 @@ export const PesquisaTab = () => {
       {/* Rodapé com ações */}
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between p-4 bg-card rounded-lg border">
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline">
+          <Button variant="outline" onClick={onNavigateToDigitacao}>
             <FileEdit className="h-4 w-4 mr-2" />
             Digitar Pedido
           </Button>
