@@ -16,13 +16,15 @@ export const ClientesTab = () => {
   const [selectedClients, setSelectedClients] = useState<number[]>([]);
   const [filters, setFilters] = useState({
     search: '',
-    uf: '',
-    cidade: '',
+    uf: 'all',
+    cidade: 'all',
     bairro: '',
     todos: false
   });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedOperacao, setSelectedOperacao] = useState('');
+
+  console.log('ClientesTab rendering', { clients });
 
   useEffect(() => {
     loadClients();
@@ -30,8 +32,8 @@ export const ClientesTab = () => {
 
   const loadClients = async () => {
     const data = await clientsService.search(filters.search, {
-      uf: filters.uf,
-      cidade: filters.cidade,
+      uf: filters.uf !== 'all' ? filters.uf : undefined,
+      cidade: filters.cidade !== 'all' ? filters.cidade : undefined,
       bairro: filters.bairro
     });
     setClients(data);
@@ -97,7 +99,7 @@ export const ClientesTab = () => {
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="all">Todos</SelectItem>
                   {ufs.map(uf => (
                     <SelectItem key={uf} value={uf}>{uf}</SelectItem>
                   ))}
@@ -111,7 +113,7 @@ export const ClientesTab = () => {
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas</SelectItem>
+                  <SelectItem value="all">Todas</SelectItem>
                   {cidades.map(cidade => (
                     <SelectItem key={cidade} value={cidade}>{cidade}</SelectItem>
                   ))}

@@ -18,8 +18,10 @@ export const VisitasTab = () => {
   const [filters, setFilters] = useState({
     data: '',
     cidade: '',
-    representante: ''
+    representante: 'all'
   });
+
+  console.log('VisitasTab rendering', { visitasMock });
 
   const handleRegistrarVisita = () => {
     toast.info('Abrindo formulário de registro de visita');
@@ -60,7 +62,7 @@ export const VisitasTab = () => {
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="all">Todos</SelectItem>
                   {representantes.map(r => (
                     <SelectItem key={r.id} value={r.nome}>{r.nome}</SelectItem>
                   ))}

@@ -11,16 +11,18 @@ import { itinerarios, representantes } from '@/mocks/data';
 export const ItinerariosTab = () => {
   const [filteredData, setFilteredData] = useState(itinerarios);
   const [filters, setFilters] = useState({
-    representante: '',
+    representante: 'all',
     cidade: '',
     clienteId: '',
     visita: ''
   });
 
+  console.log('ItinerariosTab rendering', { itinerarios, filteredData });
+
   useEffect(() => {
     let filtered = [...itinerarios];
 
-    if (filters.representante) {
+    if (filters.representante && filters.representante !== 'all') {
       const rep = representantes.find(r => r.nome === filters.representante);
       if (rep) {
         filtered = filtered.filter(i => i.representanteId === rep.id);
@@ -62,7 +64,7 @@ export const ItinerariosTab = () => {
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="all">Todos</SelectItem>
                   {representantes.map(r => (
                     <SelectItem key={r.id} value={r.nome}>{r.nome}</SelectItem>
                   ))}

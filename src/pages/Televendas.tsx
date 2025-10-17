@@ -10,6 +10,7 @@ import { ItinerariosTab } from '@/components/televendas/ItinerariosTab';
 import { VisitasTab } from '@/components/televendas/VisitasTab';
 import { ClientesTab } from '@/components/televendas/ClientesTab';
 import { DigitacaoTab } from '@/components/televendas/DigitacaoTab';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { toast } from 'sonner';
 
 const Televendas = () => {
@@ -79,27 +80,39 @@ const Televendas = () => {
           </div>
 
           <TabsContent value="pesquisa" className="space-y-4">
-            <PesquisaTab onNavigateToDigitacao={() => setActiveTab('digitacao')} />
+            <ErrorBoundary>
+              <PesquisaTab onNavigateToDigitacao={() => setActiveTab('digitacao')} />
+            </ErrorBoundary>
           </TabsContent>
 
           <TabsContent value="dados" className="space-y-4">
-            <DadosTab />
+            <ErrorBoundary>
+              <DadosTab />
+            </ErrorBoundary>
           </TabsContent>
 
           <TabsContent value="itinerarios" className="space-y-4">
-            <ItinerariosTab />
+            <ErrorBoundary>
+              <ItinerariosTab />
+            </ErrorBoundary>
           </TabsContent>
 
           <TabsContent value="visitas" className="space-y-4">
-            <VisitasTab />
+            <ErrorBoundary>
+              <VisitasTab />
+            </ErrorBoundary>
           </TabsContent>
 
           <TabsContent value="clientes" className="space-y-4">
-            <ClientesTab />
+            <ErrorBoundary>
+              <ClientesTab />
+            </ErrorBoundary>
           </TabsContent>
 
           <TabsContent value="digitacao" className="space-y-4">
-            <DigitacaoTab />
+            <ErrorBoundary>
+              <DigitacaoTab />
+            </ErrorBoundary>
           </TabsContent>
         </Tabs>
       </main>
