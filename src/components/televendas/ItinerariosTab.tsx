@@ -54,7 +54,7 @@ export const ItinerariosTab = () => {
           <CardTitle>Filtros</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <div>
               <label className="text-sm font-medium mb-2 block">Representante</label>
               <Select value={filters.representante} onValueChange={(v) => setFilters({...filters, representante: v})}>
@@ -102,7 +102,8 @@ export const ItinerariosTab = () => {
           <CardTitle>Itinerários ({filteredData.length} clientes)</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
+          <div className="overflow-x-auto scrollbar-thin">
+            <Table className="min-w-[900px]">
             <TableHeader>
               <TableRow>
                 <TableHead>ID</TableHead>
@@ -141,6 +142,7 @@ export const ItinerariosTab = () => {
               ))}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 

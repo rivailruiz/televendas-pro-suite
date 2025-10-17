@@ -195,7 +195,7 @@ export const DigitacaoTab = () => {
           <CardTitle>Dados do Pedido</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             <div>
               <label className="text-sm font-medium mb-2 block">Operação *</label>
               <Select value={formData.operacao} onValueChange={(v) => setFormData({...formData, operacao: v})}>
@@ -321,8 +321,8 @@ export const DigitacaoTab = () => {
           <CardTitle>Itens do Pedido</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
-            <div className="md:col-span-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4 items-end">
+            <div className="sm:col-span-2 lg:col-span-2">
               <label className="text-sm font-medium mb-2 block">Produto (F3)</label>
               <Dialog open={productSearchOpen} onOpenChange={setProductSearchOpen}>
                 <DialogTrigger asChild>
@@ -400,7 +400,8 @@ export const DigitacaoTab = () => {
             </div>
           </div>
 
-          <Table>
+          <div className="overflow-x-auto scrollbar-thin">
+            <Table className="min-w-[800px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Produto</TableHead>
@@ -432,6 +433,7 @@ export const DigitacaoTab = () => {
               ))}
             </TableBody>
           </Table>
+          </div>
 
           <div className="border-t pt-4 space-y-2">
             <div className="flex justify-between text-sm">
@@ -482,14 +484,14 @@ export const DigitacaoTab = () => {
         </CardContent>
       </Card>
 
-      <div className="flex gap-2 justify-end">
-        <Button variant="outline" onClick={() => toast.info('Desfazer não implementado')}>
-          <Undo className="h-4 w-4 mr-2" />
-          Desfazer
+      <div className="flex flex-col sm:flex-row gap-2 justify-end">
+        <Button variant="outline" onClick={() => toast.info('Desfazer não implementado')} size="sm" className="w-full sm:w-auto">
+          <Undo className="h-4 w-4 sm:mr-2" />
+          <span>Desfazer</span>
         </Button>
-        <Button onClick={handleSave}>
-          <Save className="h-4 w-4 mr-2" />
-          Salvar Pedido
+        <Button onClick={handleSave} size="sm" className="w-full sm:w-auto">
+          <Save className="h-4 w-4 sm:mr-2" />
+          <span>Salvar Pedido</span>
         </Button>
       </div>
     </div>

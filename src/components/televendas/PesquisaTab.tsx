@@ -102,7 +102,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   return (
     <div className="space-y-4">
       {/* Filtros */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4 bg-card rounded-lg border">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 p-3 sm:p-4 bg-card rounded-lg border">
         <div className="space-y-2">
           <Label>Período</Label>
           <div className="flex gap-2">
@@ -191,12 +191,12 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
       </div>
 
       {/* Botões de ação - filtros */}
-      <div className="flex gap-2">
-        <Button onClick={handlePesquisar}>
+      <div className="flex flex-col sm:flex-row gap-2">
+        <Button onClick={handlePesquisar} className="w-full sm:w-auto">
           <Search className="h-4 w-4 mr-2" />
           Pesquisar
         </Button>
-        <Button variant="outline" onClick={handleLimparFiltros}>
+        <Button variant="outline" onClick={handleLimparFiltros} className="w-full sm:w-auto">
           <X className="h-4 w-4 mr-2" />
           Limpa filtros
         </Button>
@@ -204,7 +204,8 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
 
       {/* Tabela */}
       <div className="border rounded-lg overflow-hidden">
-        <Table>
+        <div className="overflow-x-auto scrollbar-thin">
+          <Table className="min-w-[800px]">
           <TableHeader>
             <TableRow className="bg-table-header">
               <TableHead className="w-10">
@@ -253,34 +254,66 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
             ))}
           </TableBody>
         </Table>
+        </div>
       </div>
 
       {/* Rodapé com ações */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between p-4 bg-card rounded-lg border">
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={onNavigateToDigitacao}>
-            <FileEdit className="h-4 w-4 mr-2" />
-            Digitar Pedido
+      <div className="flex flex-col gap-3 sm:gap-4 p-3 sm:p-4 bg-card rounded-lg border">
+        {/* Total - Primeira linha em mobile */}
+        <div className="flex justify-between items-center sm:hidden border-b pb-3">
+          <div>
+            <div className="text-xl font-bold text-primary">{formatCurrency(totalSelecionado)}</div>
+            <div className="text-xs text-muted-foreground">{selectedOrders.length} selecionado(s)</div>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant={outputMode === 'video' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setOutputMode('video')}
+            >
+              <Video className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={outputMode === 'impressora' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setOutputMode('impressora')}
+            >
+              <Printer className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Botões de ação */}
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
+          <Button variant="outline" onClick={onNavigateToDigitacao} size="sm" className="w-full sm:w-auto">
+            <FileEdit className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Digitar Pedido</span>
+            <span className="sm:hidden">Digitar</span>
           </Button>
-          <Button variant="outline">
-            <FileEdit className="h-4 w-4 mr-2" />
-            Alterar
+          <Button variant="outline" size="sm" className="w-full sm:w-auto">
+            <FileEdit className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Alterar</span>
+            <span className="sm:hidden">Alterar</span>
           </Button>
-          <Button variant="outline" onClick={handleExcluir}>
-            <Trash2 className="h-4 w-4 mr-2" />
-            Excluir
+          <Button variant="outline" onClick={handleExcluir} size="sm" className="w-full sm:w-auto">
+            <Trash2 className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Excluir</span>
+            <span className="sm:hidden">Excluir</span>
           </Button>
-          <Button variant="outline">
-            <Mail className="h-4 w-4 mr-2" />
-            Enviar por e-mail
+          <Button variant="outline" size="sm" className="w-full sm:w-auto">
+            <Mail className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">E-mail</span>
+            <span className="sm:hidden">E-mail</span>
           </Button>
-          <Button variant="outline" onClick={handleExportar}>
-            <Download className="h-4 w-4 mr-2" />
-            Exportar p/ faturamento
+          <Button variant="outline" onClick={handleExportar} size="sm" className="col-span-2 sm:col-span-1 sm:w-auto">
+            <Download className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Exportar p/ faturamento</span>
+            <span className="sm:hidden">Exportar</span>
           </Button>
         </div>
 
-        <div className="flex items-center gap-4">
+        {/* Total e modo de saída - Desktop */}
+        <div className="hidden sm:flex items-center justify-end gap-4 border-t pt-3">
           <div className="flex gap-2">
             <Button
               variant={outputMode === 'video' ? 'default' : 'outline'}

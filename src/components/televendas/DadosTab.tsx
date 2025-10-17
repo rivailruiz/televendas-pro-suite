@@ -43,7 +43,7 @@ export const DadosTab = () => {
           <CardTitle>Dados do Pedido #{selectedOrder.id}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             <div>
               <span className="text-sm font-medium text-muted-foreground">Pedido:</span>
               <p className="text-sm font-semibold">{selectedOrder.id}</p>
@@ -89,7 +89,8 @@ export const DadosTab = () => {
           <CardTitle>Itens do Pedido</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
+          <div className="overflow-x-auto scrollbar-thin">
+            <Table className="min-w-[800px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Produto</TableHead>
@@ -121,6 +122,7 @@ export const DadosTab = () => {
               ))}
             </TableBody>
           </Table>
+          </div>
 
           <div className="mt-6 space-y-2 border-t pt-4">
             <div className="flex justify-between">
@@ -143,18 +145,21 @@ export const DadosTab = () => {
         </CardContent>
       </Card>
 
-      <div className="flex gap-2 justify-end">
-        <Button variant="outline" onClick={() => toast.info('Verificação de inconsistências em desenvolvimento')}>
-          <AlertTriangle className="h-4 w-4 mr-2" />
-          Inconsistência
+      <div className="flex flex-col sm:flex-row gap-2 justify-end">
+        <Button variant="outline" onClick={() => toast.info('Verificação de inconsistências em desenvolvimento')} size="sm" className="w-full sm:w-auto">
+          <AlertTriangle className="h-4 w-4 sm:mr-2" />
+          <span className="hidden sm:inline">Inconsistência</span>
+          <span className="sm:hidden">Verificar</span>
         </Button>
-        <Button variant="outline" onClick={handleDuplicate}>
-          <Copy className="h-4 w-4 mr-2" />
-          Duplicar Pedido
+        <Button variant="outline" onClick={handleDuplicate} size="sm" className="w-full sm:w-auto">
+          <Copy className="h-4 w-4 sm:mr-2" />
+          <span className="hidden sm:inline">Duplicar Pedido</span>
+          <span className="sm:hidden">Duplicar</span>
         </Button>
-        <Button variant="outline" onClick={handleReopen}>
-          <FolderOpen className="h-4 w-4 mr-2" />
-          Reabrir Pedido
+        <Button variant="outline" onClick={handleReopen} size="sm" className="w-full sm:w-auto">
+          <FolderOpen className="h-4 w-4 sm:mr-2" />
+          <span className="hidden sm:inline">Reabrir Pedido</span>
+          <span className="sm:hidden">Reabrir</span>
         </Button>
       </div>
     </div>

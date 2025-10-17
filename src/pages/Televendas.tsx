@@ -33,48 +33,50 @@ const Televendas = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b bg-card">
+      <header className="border-b bg-card sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-primary">Módulo Televendas</h1>
-            <p className="text-sm text-muted-foreground">Usuário: {session?.nome}</p>
+            <h1 className="text-lg sm:text-2xl font-bold text-primary">Módulo Televendas</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground">Usuário: {session?.nome}</p>
           </div>
-          <Button variant="outline" onClick={handleLogout}>
-            <LogOut className="h-4 w-4 mr-2" />
-            Sair
+          <Button variant="outline" size="sm" onClick={handleLogout}>
+            <LogOut className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Sair</span>
           </Button>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-6">
+      <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
         <Tabs defaultValue="pesquisa" className="w-full" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 mb-6">
-            <TabsTrigger value="pesquisa" className="flex items-center gap-2">
-              <Search className="h-4 w-4" />
-              <span className="hidden sm:inline">Pesquisa</span>
-            </TabsTrigger>
-            <TabsTrigger value="dados" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">Dados do pedido</span>
-            </TabsTrigger>
-            <TabsTrigger value="itinerarios" className="flex items-center gap-2">
-              <Route className="h-4 w-4" />
-              <span className="hidden sm:inline">Itinerários</span>
-            </TabsTrigger>
-            <TabsTrigger value="visitas" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Visitas</span>
-            </TabsTrigger>
-            <TabsTrigger value="clientes" className="flex items-center gap-2">
-              <UserPlus className="h-4 w-4" />
-              <span className="hidden sm:inline">Cadastro de clientes</span>
-            </TabsTrigger>
-            <TabsTrigger value="digitacao" className="flex items-center gap-2">
-              <FileEdit className="h-4 w-4" />
-              <span className="hidden sm:inline">Digitação</span>
-            </TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto mb-4 sm:mb-6 -mx-2 px-2">
+            <TabsList className="inline-flex w-auto min-w-full sm:grid sm:w-full grid-cols-3 sm:grid-cols-6 gap-1">{/* Changed to allow horizontal scroll on mobile */}
+              <TabsTrigger value="pesquisa" className="flex items-center gap-1 sm:gap-2 whitespace-nowrap px-3">
+                <Search className="h-4 w-4" />
+                <span className="text-xs sm:text-sm">Pesquisa</span>
+              </TabsTrigger>
+              <TabsTrigger value="dados" className="flex items-center gap-1 sm:gap-2 whitespace-nowrap px-3">
+                <FileText className="h-4 w-4" />
+                <span className="text-xs sm:text-sm">Dados</span>
+              </TabsTrigger>
+              <TabsTrigger value="itinerarios" className="flex items-center gap-1 sm:gap-2 whitespace-nowrap px-3">
+                <Route className="h-4 w-4" />
+                <span className="text-xs sm:text-sm">Itinerários</span>
+              </TabsTrigger>
+              <TabsTrigger value="visitas" className="flex items-center gap-1 sm:gap-2 whitespace-nowrap px-3">
+                <Users className="h-4 w-4" />
+                <span className="text-xs sm:text-sm">Visitas</span>
+              </TabsTrigger>
+              <TabsTrigger value="clientes" className="flex items-center gap-1 sm:gap-2 whitespace-nowrap px-3">
+                <UserPlus className="h-4 w-4" />
+                <span className="text-xs sm:text-sm">Clientes</span>
+              </TabsTrigger>
+              <TabsTrigger value="digitacao" className="flex items-center gap-1 sm:gap-2 whitespace-nowrap px-3">
+                <FileEdit className="h-4 w-4" />
+                <span className="text-xs sm:text-sm">Digitação</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="pesquisa" className="space-y-4">
             <PesquisaTab onNavigateToDigitacao={() => setActiveTab('digitacao')} />

@@ -41,20 +41,20 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-primary/5 p-4">
-      <Card className="w-full max-w-md shadow-xl">
-        <CardHeader className="space-y-1 text-center">
-          <div className="flex justify-center mb-4">
-            <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-              <LogIn className="h-8 w-8 text-primary" />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-primary/5 p-3 sm:p-4">
+      <Card className="w-full max-w-md mx-auto shadow-xl">
+        <CardHeader className="space-y-1 text-center px-4 sm:px-6">
+          <div className="flex justify-center mb-3 sm:mb-4">
+            <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-full bg-primary/10 flex items-center justify-center">
+              <LogIn className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Sistema de Televendas</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-xl sm:text-2xl font-bold">Sistema de Televendas</CardTitle>
+          <CardDescription className="text-sm">
             Entre com suas credenciais para acessar o sistema
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 sm:px-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="usuario">Usuário</Label>
