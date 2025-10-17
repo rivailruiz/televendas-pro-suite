@@ -5,6 +5,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { LogOut, Search, FileText, Route, Users, UserPlus, FileEdit } from 'lucide-react';
 import { PesquisaTab } from '@/components/televendas/PesquisaTab';
+import { DadosTab } from '@/components/televendas/DadosTab';
+import { ItinerariosTab } from '@/components/televendas/ItinerariosTab';
+import { VisitasTab } from '@/components/televendas/VisitasTab';
+import { ClientesTab } from '@/components/televendas/ClientesTab';
+import { DigitacaoTab } from '@/components/televendas/DigitacaoTab';
 import { toast } from 'sonner';
 
 const Televendas = () => {
@@ -75,43 +80,23 @@ const Televendas = () => {
           </TabsContent>
 
           <TabsContent value="dados" className="space-y-4">
-            <div className="p-8 text-center border rounded-lg bg-card">
-              <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold mb-2">Dados do Pedido</h3>
-              <p className="text-muted-foreground">Selecione um pedido na aba Pesquisa para visualizar os detalhes</p>
-            </div>
+            <DadosTab />
           </TabsContent>
 
           <TabsContent value="itinerarios" className="space-y-4">
-            <div className="p-8 text-center border rounded-lg bg-card">
-              <Route className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold mb-2">Itinerários</h3>
-              <p className="text-muted-foreground">Funcionalidade em desenvolvimento</p>
-            </div>
+            <ItinerariosTab />
           </TabsContent>
 
           <TabsContent value="visitas" className="space-y-4">
-            <div className="p-8 text-center border rounded-lg bg-card">
-              <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold mb-2">Visitas</h3>
-              <p className="text-muted-foreground">Funcionalidade em desenvolvimento</p>
-            </div>
+            <VisitasTab />
           </TabsContent>
 
           <TabsContent value="clientes" className="space-y-4">
-            <div className="p-8 text-center border rounded-lg bg-card">
-              <UserPlus className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold mb-2">Cadastro de Clientes</h3>
-              <p className="text-muted-foreground">Funcionalidade em desenvolvimento</p>
-            </div>
+            <ClientesTab />
           </TabsContent>
 
           <TabsContent value="digitacao" className="space-y-4">
-            <div className="p-8 text-center border rounded-lg bg-card">
-              <FileEdit className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold mb-2">Digitação de Pedidos</h3>
-              <p className="text-muted-foreground">Funcionalidade em desenvolvimento</p>
-            </div>
+            <DigitacaoTab />
           </TabsContent>
         </Tabs>
       </main>

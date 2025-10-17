@@ -98,7 +98,8 @@ export const pedidos = [
 ];
 
 export const itinerarios = [
-  { id: 8850, razaoSocial: '3 F COM DE PROD DE LIMP. HIG E DESCARTAVEIS EI', contato: '', fone: '67984064798', horario: '', dtBase: '01/01/2025', representanteId: '017', cidade: 'CAMPO GRANDE', visita: 'SEMANAL' },
-  { id: 16231, razaoSocial: '50.127.127 VALMIR FLORES AFONSO BEZERRA', contato: '', fone: '67984064798', horario: '', dtBase: '', representanteId: '017', cidade: 'PONTA PORA', visita: 'MENSAL' },
-  { id: 1032, razaoSocial: 'A. A. GODOI DROGARIA', contato: 'ALINE', fone: '67984064798', horario: '09:00', dtBase: '01/01/2025', representanteId: '017', cidade: 'AGUA BOA', visita: 'QUINZENAL' }
+  { id: 8850, razaoSocial: '3 F COM DE PROD DE LIMP. HIG E DESCARTAVEIS EI', contato: '', fone: '67984064798', horario: '08:00', dtBase: '2025-10-17', representanteId: '017', cidade: 'CAMPO GRANDE', visita: 'SEMANAL' },
+  { id: 16231, razaoSocial: '50.127.127 VALMIR FLORES AFONSO BEZERRA', contato: '', fone: '67984064798', horario: '14:00', dtBase: '2025-10-17', representanteId: '017', cidade: 'PONTA PORA', visita: 'MENSAL' },
+  { id: 1032, razaoSocial: 'A. A. GODOI DROGARIA', contato: 'ALINE', fone: '67984064798', horario: '09:00', dtBase: '2025-10-18', representanteId: '017', cidade: 'AGUA BOA', visita: 'QUINZENAL' },
+  { id: 889, razaoSocial: '10 REGIMENTO DE CAVALARIA MECANIZADO', contato: 'Cap. Silva', fone: '67984064798', horario: '10:30', dtBase: '2025-10-18', representanteId: '002', cidade: 'BELA VISTA', visita: 'MENSAL' }
 ];
