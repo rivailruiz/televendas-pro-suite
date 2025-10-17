@@ -64,10 +64,16 @@ This project is built with:
 
 Simply open [Lovable](https://lovable.dev/projects/159aeba2-d647-40b0-a4b1-36ae5d05148c) and click on Share -> Publish.
 
-## Can I connect a custom domain to my Lovable project?
+## Deploying to GitHub Pages
 
-Yes, you can!
+This repository is pre-configured for GitHub Pages. Follow these steps to publish it:
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+1. Push your changes to the `main` branch.
+2. In GitHub, go to **Settings → Pages** and ensure **Build and deployment** is set to **GitHub Actions** (the default when using the provided workflow).
+3. A workflow named **Deploy to GitHub Pages** (`.github/workflows/deploy.yml`) will build the Vite app and publish the `dist` folder to Pages.
+4. The workflow automatically sets the correct base path for both classic project pages (`https://github.io/<repo>/`) and user/organization pages (`https://<user>.github.io/`).
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+### Customization tips
+
+- If you use a custom domain, set `VITE_BASE_PATH=/` as a repository secret or in the Pages workflow to match your root path.
+- For deployments outside GitHub Pages, you can override the base path locally by exporting `VITE_BASE_PATH` before running `npm run build`.
