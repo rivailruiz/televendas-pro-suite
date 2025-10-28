@@ -42,7 +42,7 @@ const Televendas = () => {
       <header className="border-b bg-card sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div>
-            <h1 className="text-lg sm:text-2xl font-bold text-primary">Módulo Televendas</h1>
+            <h1 className="text-lg sm:text-2xl font-bold text-primary">Ads Vendas</h1>
             <p className="text-xs sm:text-sm text-muted-foreground">Usuário: {session?.nome}</p>
             {empresa && (
               <p className="text-xs sm:text-sm text-muted-foreground">Empresa: {empresa.fantasia?.trim() || empresa.razao_social?.trim()}</p>
