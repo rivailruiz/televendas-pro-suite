@@ -20,6 +20,10 @@ const Televendas = () => {
   useEffect(() => {
     if (!authService.isAuthenticated()) {
       navigate('/login');
+      return;
+    }
+    if (!authService.getEmpresa()) {
+      navigate('/empresa');
     }
   }, [navigate]);
 
@@ -30,6 +34,7 @@ const Televendas = () => {
   };
 
   const session = authService.getSession();
+  const empresa = authService.getEmpresa();
 
   return (
     <div className="min-h-screen bg-background">
@@ -39,6 +44,9 @@ const Televendas = () => {
           <div>
             <h1 className="text-lg sm:text-2xl font-bold text-primary">Módulo Televendas</h1>
             <p className="text-xs sm:text-sm text-muted-foreground">Usuário: {session?.nome}</p>
+            {empresa && (
+              <p className="text-xs sm:text-sm text-muted-foreground">Empresa: {empresa.fantasia?.trim() || empresa.razao_social?.trim()}</p>
+            )}
           </div>
           <Button variant="outline" size="sm" onClick={handleLogout}>
             <LogOut className="h-4 w-4 sm:mr-2" />

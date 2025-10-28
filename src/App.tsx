@@ -7,6 +7,7 @@ import { useEffect } from "react";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Televendas from "./pages/Televendas";
+import EmpresaSelect from "./pages/EmpresaSelect";
 import NotFound from "./pages/NotFound";
 import { initNavigation } from "./utils/navigation";
 
@@ -27,6 +28,7 @@ const App = () => {
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/empresa" element={<EmpresaSelect />} />
             <Route path="/televendas" element={<Televendas />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

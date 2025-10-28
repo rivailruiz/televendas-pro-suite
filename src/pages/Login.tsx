@@ -25,16 +25,28 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const result = authService.login(usuario, senha);
-      
+      const result = await authService.login(usuario, senha);
+
       if (result.success) {
         toast.success('Login realizado com sucesso!');
-        navigate('/televendas');
+        try {
+          const empresas = await authService.getEmpresas();
+          if (empresas.length === 1) {
+            authService.setEmpresa(empresas[0]);
+            navigate('/televendas');
+          } else {
+            navigate('/empresa');
+          }
+        } catch (err) {
+          toast.error('Não foi possível carregar as empresas');
+        }
       } else {
-        toast.error(result.error);
+        // Exibir no mesmo toast de sucesso, porém com a mensagem de erro
+        toast.success(String(result.error));
       }
     } catch (error) {
-      toast.error('Erro ao realizar login');
+      // Exibir no mesmo toast de sucesso, porém com a mensagem de erro
+      toast.success('Erro ao realizar login');
     } finally {
       setLoading(false);
     }
@@ -83,7 +95,7 @@ const Login = () => {
               {loading ? 'Entrando...' : 'Entrar'}
             </Button>
             <div className="text-xs text-center text-muted-foreground mt-4">
-              Demo: usuário <strong>alex</strong> / senha <strong>1234</strong>
+              Exemplo: usuário <strong>vend1@tecdisa.com</strong> / senha <strong>admin123</strong>
             </div>
           </form>
         </CardContent>

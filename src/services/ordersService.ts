@@ -1,25 +1,77 @@
 import { pedidos } from '@/mocks/data';
+import { authService } from '@/services/authService';
 
 export type Order = typeof pedidos[0];
 
+const API_BASE = 'http://localhost:3000';
+
 export const ordersService = {
-  list: (filters?: any) => {
-    // Mock filtering logic
-    let filtered = [...pedidos];
-    
-    if (filters?.situacao && filters.situacao !== 'Todos') {
-      filtered = filtered.filter(p => p.situacao === filters.situacao);
+  list: async (_filters?: any) => {
+    const empresa = authService.getEmpresa();
+    const token = authService.getToken();
+    if (!empresa) return Promise.reject('Empresa não selecionada');
+    if (!token) return Promise.reject('Token ausente');
+
+    try {
+      const url = `${API_BASE}/api/pedidos?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: {
+          accept: 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        let message = 'Falha ao buscar pedidos';
+        try {
+          const err = await res.json();
+          message = err?.message || err?.error || message;
+        } catch {}
+        return Promise.reject(message);
+      }
+
+      const data = await res.json();
+      const arr = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.data)
+          ? data.data
+          : [];
+
+      // Normalize API payload to UI Order type used across app
+      const normalized: Order[] = arr.map((p: any) => ({
+        id: p?.id ?? p?.pedido_id ?? p?.numero ?? 0,
+        data: p?.data ?? p?.createdAt ?? new Date().toISOString().split('T')[0],
+        operacao: p?.operacao ?? p?.operacaoNome ?? 'VENDA DE MERCADORIA',
+        clienteId: p?.clienteId ?? p?.cliente_id ?? p?.cliente ?? 0,
+        clienteNome: p?.clienteNome ?? p?.cliente_nome ?? p?.clienteRazao ?? '',
+        representanteId: p?.representanteId ?? p?.representante_id ?? '017',
+        representanteNome: p?.representanteNome ?? p?.representante_nome ?? 'REPRESENTANTE',
+        tabela: p?.tabela ?? p?.tabela_preco ?? 'TABELA 01',
+        formaPagamento: p?.formaPagamento ?? p?.forma_pagamento ?? 'BOLETO BANCARIO',
+        prazo: p?.prazo ?? p?.prazo_pagamento ?? '30 DIAS',
+        boleto: Boolean(p?.boleto ?? true),
+        rede: p?.rede ?? '',
+        especial: Boolean(p?.especial ?? false),
+        situacao: p?.situacao ?? p?.status ?? 'Pendentes',
+        valor: typeof p?.valor === 'number' ? p.valor : Number(p?.valor ?? p?.total ?? 0) || 0,
+        itens: Array.isArray(p?.itens) ? p.itens : [],
+        totais: p?.totais ?? {
+          bruto: Number(p?.bruto ?? 0) || 0,
+          descontos: Number(p?.descontos ?? 0) || 0,
+          descontosPerc: Number(p?.descontosPerc ?? 0) || 0,
+          icmsRepasse: Number(p?.icmsRepasse ?? 0) || 0,
+          liquido: typeof p?.valor === 'number' ? p.valor : Number(p?.valor ?? p?.total ?? 0) || 0,
+        },
+        observacaoCliente: p?.observacaoCliente ?? '',
+        observacaoPedido: p?.observacaoPedido ?? '',
+        observacaoNF: p?.observacaoNF ?? '',
+      }));
+
+      return normalized;
+    } catch (e) {
+      return Promise.reject('Erro de conexão com o servidor');
     }
-    
-    if (filters?.clienteId) {
-      filtered = filtered.filter(p => p.clienteId === filters.clienteId);
-    }
-    
-    if (filters?.especial !== undefined) {
-      filtered = filtered.filter(p => p.especial === filters.especial);
-    }
-    
-    return Promise.resolve(filtered);
   },
 
   getById: (id: number) => {
