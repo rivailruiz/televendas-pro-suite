@@ -93,4 +93,144 @@ export const clientsService = {
     const list = await fetchFromApi({ q: String(id), page: 1, limit: 1 });
     return list.find((c) => c.id === id);
   },
+
+  // Detailed GET by id (raw object from API)
+  getDetail: async (id: number): Promise<any> => {
+    const empresa = authService.getEmpresa();
+    const token = authService.getToken();
+    if (!empresa) return Promise.reject('Empresa não selecionada');
+    if (!token) return Promise.reject('Token ausente');
+
+    try {
+      const url = `${API_BASE}/api/clientes/${encodeURIComponent(id)}?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: {
+          accept: 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) {
+        let message = 'Falha ao buscar cliente';
+        try { const err = await res.json(); message = err?.message || err?.error || message; } catch {}
+        return Promise.reject(message);
+      }
+      return res.json();
+    } catch (e) {
+      return Promise.reject('Erro de conexão com o servidor');
+    }
+  },
+
+  // Create new client
+  create: async (data: {
+    codigoCliente: string;
+    cnpjCpf: string;
+    nome: string;
+    cep: string;
+    cidadeId: number;
+    uf: string;
+    endereco: string;
+    bairro: string;
+    segmentoId: number;
+    rotaId: number;
+    formaPagtoId: number;
+    prazoPagtoId: number;
+  }): Promise<any> => {
+    const empresa = authService.getEmpresa();
+    const token = authService.getToken();
+    if (!empresa) return Promise.reject('Empresa não selecionada');
+    if (!token) return Promise.reject('Token ausente');
+
+    try {
+      const url = `${API_BASE}/api/clientes`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ empresaId: empresa.empresa_id, data }),
+      });
+      if (!res.ok) {
+        let message = 'Falha ao criar cliente';
+        try { const err = await res.json(); message = err?.message || err?.error || message; } catch {}
+        return Promise.reject(message);
+      }
+      return res.json();
+    } catch (e) {
+      return Promise.reject('Erro de conexão com o servidor');
+    }
+  },
+
+  // Update client
+  update: async (
+    id: number,
+    data: Partial<{
+      codigoCliente: string;
+      cnpjCpf: string;
+      nome: string;
+      cep: string;
+      cidadeId: number;
+      uf: string;
+      endereco: string;
+      bairro: string;
+      segmentoId: number;
+      rotaId: number;
+      formaPagtoId: number;
+      prazoPagtoId: number;
+    }>
+  ): Promise<any> => {
+    const empresa = authService.getEmpresa();
+    const token = authService.getToken();
+    if (!empresa) return Promise.reject('Empresa não selecionada');
+    if (!token) return Promise.reject('Token ausente');
+
+    try {
+      const url = `${API_BASE}/api/clientes/${encodeURIComponent(id)}`;
+      const res = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          accept: 'application/json',
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ empresaId: empresa.empresa_id, data }),
+      });
+      if (!res.ok) {
+        let message = 'Falha ao atualizar cliente';
+        try { const err = await res.json(); message = err?.message || err?.error || message; } catch {}
+        return Promise.reject(message);
+      }
+      return res.json();
+    } catch (e) {
+      return Promise.reject('Erro de conexão com o servidor');
+    }
+  },
+
+  // Delete client
+  remove: async (id: number): Promise<boolean> => {
+    const empresa = authService.getEmpresa();
+    const token = authService.getToken();
+    if (!empresa) return Promise.reject('Empresa não selecionada');
+    if (!token) return Promise.reject('Token ausente');
+    try {
+      const url = `${API_BASE}/api/clientes/${encodeURIComponent(id)}?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
+      const res = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          accept: 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) {
+        let message = 'Falha ao excluir cliente';
+        try { const err = await res.json(); message = err?.message || err?.error || message; } catch {}
+        return Promise.reject(message);
+      }
+      return true;
+    } catch (e) {
+      return Promise.reject('Erro de conexão com o servidor');
+    }
+  },
 };
