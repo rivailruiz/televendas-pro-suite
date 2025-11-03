@@ -3,7 +3,7 @@ export interface Empresa {
   razao_social: string;
   fantasia: string;
 }
-import { API_BASE } from '@/utils/env';
+import { API_BASE, shouldIncludeCredentialsForLogin } from '@/utils/env';
 
 export const authService = {
   login: async (usuario: string, senha: string) => {
@@ -15,8 +15,8 @@ export const authService = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ usuario, senha }),
-        // Permite autenticação baseada em cookie/sessão em origens cruzadas
-        credentials: 'include',
+        // Em prod (domínio público) incluímos cookies; em localhost omitimos para evitar CORS com '*'
+        credentials: shouldIncludeCredentialsForLogin() ? 'include' : 'omit',
       });
 
       // Try to extract error details if not OK
