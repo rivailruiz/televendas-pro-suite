@@ -56,10 +56,21 @@ export const metadataService = {
       }
       const data = await res.json();
       const arr = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
-      return arr.map(normalizeOperacao);
+      const mapped: Operacao[] = arr.map(normalizeOperacao);
+      // Sort by id ascending (numeric when possible, fallback to string compare)
+      mapped.sort((a, b) => {
+        const aNum = typeof a.id === 'number' ? a.id : Number(a.id);
+        const bNum = typeof b.id === 'number' ? b.id : Number(b.id);
+        const aIsNum = Number.isFinite(aNum);
+        const bIsNum = Number.isFinite(bNum);
+        if (aIsNum && bIsNum) return (aNum as number) - (bNum as number);
+        const as = String(a.id ?? '');
+        const bs = String(b.id ?? '');
+        return as.localeCompare(bs, 'pt-BR', { numeric: true, sensitivity: 'base' } as any);
+      });
+      return mapped;
     } catch (e) {
       return Promise.reject('Erro de conexão com o servidor');
     }
   },
 };
-

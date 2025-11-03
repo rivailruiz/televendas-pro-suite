@@ -396,8 +396,10 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="__ALL__">Todas</SelectItem>
-              {operacoes.filter((op) => String(op.descricao || '').trim().length > 0).map((op) => (
-                <SelectItem key={`${op.id}-${op.codigo}`} value={op.descricao}>
+              {operacoes
+                .filter((op) => String(op.descricao || '').trim().length > 0 && String(op.codigo || '').trim().length > 0)
+                .map((op) => (
+                <SelectItem key={`${op.id}-${op.codigo}`} value={op.codigo}>
                   {op.codigo ? `${op.codigo} - ${op.descricao}` : op.descricao}
                 </SelectItem>
               ))}
