@@ -24,6 +24,10 @@ const Televendas = () => {
       navigate('/login');
       return;
     }
+    if (!authService.getToken()) {
+      navigate('/login');
+      return;
+    }
     if (!authService.getEmpresa()) {
       navigate('/empresa');
       return;

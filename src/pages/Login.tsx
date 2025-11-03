@@ -41,12 +41,10 @@ const Login = () => {
           toast.error('Não foi possível carregar as empresas');
         }
       } else {
-        // Exibir no mesmo toast de sucesso, porém com a mensagem de erro
-        toast.success(String(result.error));
+        toast.error(String(result.error));
       }
     } catch (error) {
-      // Exibir no mesmo toast de sucesso, porém com a mensagem de erro
-      toast.success('Erro ao realizar login');
+      toast.error('Erro ao realizar login');
     } finally {
       setLoading(false);
     }

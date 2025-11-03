@@ -16,15 +16,3 @@ export const getApiBase = (): string => {
 };
 
 export const API_BASE = getApiBase();
-
-export const shouldIncludeCredentialsForLogin = (): boolean => {
-  try {
-    const url = new URL(API_BASE);
-    const host = url.hostname;
-    // Em geral, produção (domínio público) usa cookie HttpOnly; localhost usa token
-    if (host === 'localhost' || host === '127.0.0.1') return false;
-    return true;
-  } catch {
-    return false;
-  }
-};

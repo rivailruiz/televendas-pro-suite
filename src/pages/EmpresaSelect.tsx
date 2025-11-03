@@ -23,6 +23,14 @@ const EmpresaSelect = () => {
       return;
     }
 
+    // Garantir que existe token válido antes de buscar empresas
+    if (!authService.getToken()) {
+      toast.error('Sessão inválida. Faça login novamente.');
+      authService.logout();
+      navigate('/login');
+      return;
+    }
+
     // If an empresa is already selected, jump to app
     const atual = authService.getEmpresa();
     if (atual) {
@@ -86,4 +94,3 @@ const EmpresaSelect = () => {
 };
 
 export default EmpresaSelect;
-
