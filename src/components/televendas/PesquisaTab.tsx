@@ -5,9 +5,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Search, X, FileEdit, Trash2, Mail, Download, Printer, Video } from 'lucide-react';
-import { ordersService } from '@/services/ordersService';
+import { Search, X, FileEdit, Trash2, Mail, Download, Printer, File } from 'lucide-react';
+import { ordersService, type Order } from '@/services/ordersService';
 import { useStore } from '@/store/useStore';
 import { situacoes } from '@/mocks/data';
 import { formatCurrency } from '@/utils/format';
@@ -30,6 +31,8 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
     cliente: ''
   });
   const [outputMode, setOutputMode] = useState<'video' | 'impressora'>('video');
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewOrder, setPreviewOrder] = useState<Order | null>(null);
 
   useEffect(() => {
     loadOrders();
@@ -98,6 +101,112 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
     .reduce((sum, o) => sum + o.valor, 0);
 
   const selectAll = selectedOrders.length === orders.length && orders.length > 0;
+
+  const getSingleSelectedOrder = (): Order | null => {
+    if (selectedOrders.length !== 1) return null;
+    const id = selectedOrders[0];
+    return orders.find(o => o.id === id) || null;
+  };
+
+  const handleVisualizar = () => {
+    const order = getSingleSelectedOrder();
+    if (!order) {
+      toast.error('Selecione exatamente um pedido para visualizar');
+      return;
+    }
+    setPreviewOrder(order);
+    setPreviewOpen(true);
+  };
+
+  const buildPrintableHtml = (order: Order) => {
+    const rows = (order.itens || [])
+      .map(
+        (it) => `
+          <tr>
+            <td>${it.produtoId ?? ''}</td>
+            <td>${String(it.descricao ?? '')}</td>
+            <td>${String(it.un ?? '')}</td>
+            <td style="text-align:right;">${Number(it.quant ?? 0)}</td>
+            <td style="text-align:right;">${(Number(it.descontoPerc ?? 0)).toFixed(2)}%</td>
+            <td style="text-align:right;">${formatCurrency(it.preco ?? 0)}</td>
+            <td style="text-align:right; font-weight:600;">${formatCurrency(it.total ?? 0)}</td>
+          </tr>`
+      )
+      .join('');
+
+    return `<!DOCTYPE html>
+      <html lang="pt-br">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Pedido ${order.id}</title>
+        <style>
+          body { font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; padding: 24px; color: #111827; }
+          h1 { font-size: 18px; margin: 0 0 8px; }
+          .meta { margin-bottom: 12px; font-size: 12px; color: #6B7280; }
+          table { width: 100%; border-collapse: collapse; font-size: 12px; }
+          th, td { border-bottom: 1px solid #E5E7EB; padding: 6px 8px; }
+          th { text-align: left; background: #F9FAFB; }
+          .totais { margin-top: 16px; font-size: 14px; }
+          .totais div { display: flex; justify-content: space-between; padding: 4px 0; }
+          .bold { font-weight: 700; }
+          @media print { body { padding: 0; } }
+        </style>
+      </head>
+      <body>
+        <h1>Pedido #${order.id}</h1>
+        <div class="meta">
+          <div>Data: ${new Date(order.data).toLocaleDateString('pt-BR')}</div>
+          <div>Cliente: ${order.clienteNome ?? ''} (${order.clienteId ?? ''})</div>
+          <div>Operação: ${order.operacao ?? ''}</div>
+          <div>Representante: ${order.representanteNome ?? ''}</div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Produto</th>
+              <th>Descrição</th>
+              <th>UN</th>
+              <th style="text-align:right;">Quant.</th>
+              <th style="text-align:right;">%Desc</th>
+              <th style="text-align:right;">Preço</th>
+              <th style="text-align:right;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows || '<tr><td colspan="7" style="text-align:center; color:#6B7280;">Sem itens</td></tr>'}
+          </tbody>
+        </table>
+        <div class="totais">
+          <div><span>Total Bruto:</span><span>${formatCurrency(order.totais?.bruto ?? order.valor ?? 0)}</span></div>
+          <div><span>Descontos:</span><span>${formatCurrency(order.totais?.descontos ?? 0)} (${(order.totais?.descontosPerc ?? 0).toFixed?.(2) ?? 0}%)</span></div>
+          <div class="bold"><span>Total do Pedido:</span><span>${formatCurrency(order.totais?.liquido ?? order.valor ?? 0)}</span></div>
+        </div>
+      </body>
+      </html>`;
+  };
+
+  const handleImpressora = () => {
+    const order = getSingleSelectedOrder();
+    if (!order) {
+      toast.error('Selecione exatamente um pedido para imprimir');
+      return;
+    }
+    const html = buildPrintableHtml(order);
+    const win = window.open('', '_blank');
+    if (!win) {
+      toast.error('Não foi possível abrir a janela de impressão');
+      return;
+    }
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    // Pequeno delay para garantir render antes de imprimir
+    setTimeout(() => {
+      try { win.print(); } catch {}
+    }, 100);
+  };
 
   return (
     <div className="space-y-4">
@@ -269,14 +378,14 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
             <Button
               variant={outputMode === 'video' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setOutputMode('video')}
+              onClick={handleVisualizar}
             >
-              <Video className="h-4 w-4" />
+              <File className="h-4 w-4" />
             </Button>
             <Button
               variant={outputMode === 'impressora' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setOutputMode('impressora')}
+              onClick={handleImpressora}
             >
               <Printer className="h-4 w-4" />
             </Button>
@@ -318,15 +427,15 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
             <Button
               variant={outputMode === 'video' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setOutputMode('video')}
+              onClick={handleVisualizar}
             >
-              <Video className="h-4 w-4 mr-1" />
-              Vídeo
+              <File className="h-4 w-4 mr-1" />
+              Visualizar
             </Button>
             <Button
               variant={outputMode === 'impressora' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setOutputMode('impressora')}
+              onClick={handleImpressora}
             >
               <Printer className="h-4 w-4 mr-1" />
               Impressora
@@ -339,6 +448,60 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
           </div>
         </div>
       </div>
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>{previewOrder ? `Pedido #${previewOrder.id}` : 'Pedido'}</DialogTitle>
+          </DialogHeader>
+          {previewOrder && (
+            <div className="space-y-4">
+              <div className="text-sm text-muted-foreground">
+                <div>Data: {new Date(previewOrder.data).toLocaleDateString('pt-BR')}</div>
+                <div>Cliente: {previewOrder.clienteNome} ({previewOrder.clienteId})</div>
+                <div>Operação: {previewOrder.operacao}</div>
+                <div>Representante: {previewOrder.representanteNome}</div>
+              </div>
+              <div className="overflow-x-auto scrollbar-thin">
+                <Table className="min-w-[800px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Produto</TableHead>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead>UN</TableHead>
+                      <TableHead className="text-right">Quant.</TableHead>
+                      <TableHead className="text-right">%Desc</TableHead>
+                      <TableHead className="text-right">Preço</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(previewOrder.itens || []).map((it, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell>{it.produtoId}</TableCell>
+                        <TableCell>{it.descricao}</TableCell>
+                        <TableCell>{it.un}</TableCell>
+                        <TableCell className="text-right">{it.quant}</TableCell>
+                        <TableCell className="text-right">{(it.descontoPerc ?? 0).toFixed(2)}%</TableCell>
+                        <TableCell className="text-right">{formatCurrency(it.preco)}</TableCell>
+                        <TableCell className="text-right font-semibold">{formatCurrency(it.total)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="mt-2 space-y-1 border-t pt-3 text-sm">
+                <div className="flex justify-between"><span>Total Bruto:</span><span>{formatCurrency(previewOrder.totais?.bruto ?? previewOrder.valor ?? 0)}</span></div>
+                <div className="flex justify-between"><span>Descontos:</span><span>{formatCurrency(previewOrder.totais?.descontos ?? 0)} ({(previewOrder.totais?.descontosPerc ?? 0).toFixed(2)}%)</span></div>
+                <div className="flex justify-between font-bold text-base border-t pt-2"><span>Total do Pedido:</span><span>{formatCurrency(previewOrder.totais?.liquido ?? previewOrder.valor ?? 0)}</span></div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setPreviewOpen(false)}>Fechar</Button>
+                <Button onClick={() => { setPreviewOpen(false); handleImpressora(); }}>Imprimir</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -6,14 +6,18 @@ export type Order = typeof pedidos[0];
 const API_BASE = 'http://localhost:3000';
 
 export const ordersService = {
-  list: async (_filters?: any) => {
+  list: async (_filters?: any, page: number = 1, limit: number = 100) => {
     const empresa = authService.getEmpresa();
     const token = authService.getToken();
     if (!empresa) return Promise.reject('Empresa não selecionada');
     if (!token) return Promise.reject('Token ausente');
 
     try {
-      const url = `${API_BASE}/api/pedidos?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
+      const params = new URLSearchParams();
+      params.set('empresaId', String(empresa.empresa_id));
+      if (page) params.set('page', String(page));
+      if (limit) params.set('limit', String(limit));
+      const url = `${API_BASE}/api/pedidos?${params.toString()}`;
       const res = await fetch(url, {
         method: 'GET',
         headers: {
