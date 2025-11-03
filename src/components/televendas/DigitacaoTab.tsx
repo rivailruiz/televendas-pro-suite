@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from '@/components/ui/textarea';
 import { Save, Undo, Search, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { operacoes, representantes, tabelas, formasPagamento, clientes, produtos } from '@/mocks/data';
+import { operacoes, tabelas, formasPagamento, produtos } from '@/mocks/data';
+import { clientsService, type Client } from '@/services/clientsService';
+import { representativesService, type Representative } from '@/services/representativesService';
 import { formatCurrency } from '@/utils/format';
 import { ordersService } from '@/services/ordersService';
 import { useStore } from '@/store/useStore';
@@ -56,17 +58,106 @@ export const DigitacaoTab = () => {
   const [clientSearch, setClientSearch] = useState('');
   const [productSearch, setProductSearch] = useState('');
 
-  const filteredClients = clientes.filter(c => 
-    c.nome.toLowerCase().includes(clientSearch.toLowerCase()) ||
-    c.id.toString().includes(clientSearch)
-  );
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loadingClients, setLoadingClients] = useState(false);
+  const [clientsError, setClientsError] = useState<string | null>(null);
+  const [clientPage, setClientPage] = useState(1);
+  const [clientHasMore, setClientHasMore] = useState(true);
+
+  const [representatives, setRepresentatives] = useState<Representative[]>([]);
+  const [repSearchOpen, setRepSearchOpen] = useState(false);
+  const [repSearch, setRepSearch] = useState('');
+  const [loadingReps, setLoadingReps] = useState(false);
+  const [repsError, setRepsError] = useState<string | null>(null);
+  const [repPage, setRepPage] = useState(1);
+  const [repHasMore, setRepHasMore] = useState(true);
+
+  const CLIENT_LIMIT = 100;
+  const loadClients = async (reset = false) => {
+    if (loadingClients) return;
+    setLoadingClients(true);
+    setClientsError(null);
+    try {
+      const nextPage = reset ? 1 : clientPage + 1;
+      const data = await clientsService.find(clientSearch || undefined, nextPage, CLIENT_LIMIT);
+      setClients((prev) => {
+        const combined = reset ? data : [...prev, ...data];
+        // dedupe by id
+        const seen = new Set<number>();
+        return combined.filter((c) => (seen.has(c.id) ? false : (seen.add(c.id), true)));
+      });
+      setClientPage(nextPage);
+      setClientHasMore(Array.isArray(data) && data.length === CLIENT_LIMIT);
+    } catch (e: any) {
+      setClientsError(String(e));
+    } finally {
+      setLoadingClients(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!clientSearchOpen) return;
+    // initial load when opening dialog
+    loadClients(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientSearchOpen]);
+
+  useEffect(() => {
+    if (!clientSearchOpen) return;
+    const t = setTimeout(() => {
+      loadClients(true);
+    }, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientSearch]);
+
+  const REP_LIMIT = 100;
+  const loadReps = async (reset = false) => {
+    if (loadingReps) return;
+    setLoadingReps(true);
+    setRepsError(null);
+    try {
+      const nextPage = reset ? 1 : repPage + 1;
+      const data = await representativesService.find(repSearch || undefined, nextPage, REP_LIMIT);
+      setRepresentatives((prev) => {
+        const combined = reset ? data : [...prev, ...data];
+        const seen = new Set<string>();
+        return combined.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
+      });
+      setRepPage(nextPage);
+      setRepHasMore(Array.isArray(data) && data.length === REP_LIMIT);
+    } catch (e: any) {
+      setRepsError(String(e));
+    } finally {
+      setLoadingReps(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!repSearchOpen) return;
+    loadReps(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repSearchOpen]);
+
+  useEffect(() => {
+    if (!repSearchOpen) return;
+    const t = setTimeout(() => {
+      loadReps(true);
+    }, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repSearch]);
+
+  const filteredClients = clients; // server already filters by q
 
   const filteredProducts = produtos.filter(p => 
     p.descricao.toLowerCase().includes(productSearch.toLowerCase()) ||
     p.id.toString().includes(productSearch)
   );
 
-  const handleSelectClient = (client: typeof clientes[0]) => {
+  const filteredRepresentatives = representatives; // server already filters by q
+
+  const handleSelectClient = (client: Client) => {
     setFormData({
       ...formData,
       clienteId: client.id,
@@ -230,29 +321,47 @@ export const DigitacaoTab = () => {
                       onChange={(e) => setClientSearch(e.target.value)}
                       autoFocus
                     />
-                    <div className="max-h-96 overflow-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>ID</TableHead>
-                            <TableHead>Nome</TableHead>
-                            <TableHead>Cidade</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {filteredClients.map(client => (
-                            <TableRow 
-                              key={client.id}
-                              className="cursor-pointer"
-                              onClick={() => handleSelectClient(client)}
-                            >
-                              <TableCell>{client.id}</TableCell>
-                              <TableCell>{client.nome}</TableCell>
-                              <TableCell>{client.cidade}</TableCell>
+                    <div className="max-h-96 overflow-auto" onScroll={(e) => {
+                      const el = e.currentTarget;
+                      if (clientHasMore && !loadingClients && el.scrollTop + el.clientHeight >= el.scrollHeight - 24) {
+                        loadClients(false);
+                      }
+                    }}>
+                      {loadingClients ? (
+                        <div className="py-6 text-center text-sm text-muted-foreground">Carregando clientes...</div>
+                      ) : clientsError ? (
+                        <div className="py-6 text-center text-sm text-red-600">{clientsError}</div>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>ID</TableHead>
+                              <TableHead>Nome</TableHead>
+                              <TableHead>Cidade</TableHead>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredClients.map((client) => (
+                              <TableRow
+                                key={client.id}
+                                className="cursor-pointer"
+                                onClick={() => handleSelectClient(client)}
+                              >
+                                <TableCell>{client.id}</TableCell>
+                                <TableCell>{client.nome}</TableCell>
+                                <TableCell>{client.cidade}</TableCell>
+                              </TableRow>
+                            ))}
+                            {filteredClients.length === 0 && (
+                              <TableRow>
+                                <TableCell colSpan={3} className="text-center text-sm text-muted-foreground">
+                                  Nenhum cliente encontrado
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      )}
                     </div>
                   </div>
                 </DialogContent>
@@ -261,19 +370,75 @@ export const DigitacaoTab = () => {
 
             <div>
               <label className="text-sm font-medium mb-2 block">Representante</label>
-              <Select value={formData.representanteId} onValueChange={(v) => {
-                const rep = representantes.find(r => r.id === v);
-                setFormData({...formData, representanteId: v, representanteNome: rep?.nome || ''});
-              }}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  {representantes.map(r => (
-                    <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Dialog open={repSearchOpen} onOpenChange={setRepSearchOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start">
+                    <Search className="h-4 w-4 mr-2" />
+                    {formData.representanteNome || 'Buscar representante'}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Buscar Representante</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <Input
+                      placeholder="Digite nome ou ID..."
+                      value={repSearch}
+                      onChange={(e) => setRepSearch(e.target.value)}
+                      autoFocus
+                    />
+                    <div className="max-h-96 overflow-auto" onScroll={(e) => {
+                      const el = e.currentTarget;
+                      if (repHasMore && !loadingReps && el.scrollTop + el.clientHeight >= el.scrollHeight - 24) {
+                        loadReps(false);
+                      }
+                    }}>
+                      {loadingReps ? (
+                        <div className="py-6 text-center text-sm text-muted-foreground">Carregando representantes...</div>
+                      ) : repsError ? (
+                        <div className="py-6 text-center text-sm text-red-600">{repsError}</div>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>ID</TableHead>
+                              <TableHead>Nome</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredRepresentatives.map((r) => (
+                              <TableRow
+                                key={r.id}
+                                className="cursor-pointer"
+                                onClick={() => {
+                                  setFormData({
+                                    ...formData,
+                                    representanteId: r.id,
+                                    representanteNome: r.nome,
+                                  });
+                                  setRepSearchOpen(false);
+                                  setRepSearch('');
+                                }}
+                              >
+                                <TableCell>{r.id}</TableCell>
+                                <TableCell>{r.nome}</TableCell>
+                              </TableRow>
+                            ))}
+                            {filteredRepresentatives.length === 0 && (
+                              <TableRow>
+                                <TableCell colSpan={2} className="text-center text-sm text-muted-foreground">
+                                  Nenhum representante encontrado
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      )}
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
 
             <div>

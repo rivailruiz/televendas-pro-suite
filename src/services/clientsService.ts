@@ -1,38 +1,96 @@
-import { clientes } from '@/mocks/data';
+import { authService } from '@/services/authService';
 
-export type Client = typeof clientes[0];
+const API_BASE = 'http://localhost:3000';
+
+export interface Client {
+  id: number;
+  nome: string;
+  cidade: string;
+  uf: string;
+  bairro: string;
+  fone?: string;
+  contato?: string;
+}
+
+function normalizeClient(raw: any): Client {
+  // Try multiple common API field names and normalize to UI expectations
+  const id = raw?.id ?? raw?.cliente_id ?? raw?.codigo ?? raw?.cod ?? 0;
+  const nome =
+    raw?.nome ??
+    raw?.razao_social ??
+    raw?.fantasia ??
+    raw?.razaoSocial ??
+    raw?.razao ??
+    '';
+  const cidade = raw?.cidade ?? raw?.municipio ?? raw?.city ?? '';
+  const uf = raw?.uf ?? raw?.estado ?? raw?.state ?? '';
+  const bairro = raw?.bairro ?? raw?.district ?? raw?.bairro_nome ?? '';
+  const fone = raw?.fone ?? raw?.telefone ?? raw?.phone ?? '';
+  const contato = raw?.contato ?? raw?.responsavel ?? raw?.contact ?? '';
+
+  return {
+    id: Number(id) || 0,
+    nome: String(nome || '').trim(),
+    cidade: String(cidade || '').trim(),
+    uf: String(uf || '').trim(),
+    bairro: String(bairro || '').trim(),
+    fone: fone ? String(fone) : undefined,
+    contato: contato ? String(contato) : undefined,
+  };
+}
+
+async function fetchFromApi({ q, page = 1, limit = 100 }: { q?: string; page?: number; limit?: number; }): Promise<Client[]> {
+  const empresa = authService.getEmpresa();
+  const token = authService.getToken();
+  if (!empresa) return Promise.reject('Empresa não selecionada');
+  if (!token) return Promise.reject('Token ausente');
+
+  try {
+    const params = new URLSearchParams();
+    params.set('empresaId', String(empresa.empresa_id));
+    if (q) params.set('q', q);
+    if (page) params.set('page', String(page));
+    if (limit) params.set('limit', String(limit));
+    const url = `${API_BASE}/api/clientes?${params.toString()}`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        accept: 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      let message = 'Falha ao buscar clientes';
+      try {
+        const err = await res.json();
+        message = err?.message || err?.error || message;
+      } catch {}
+      return Promise.reject(message);
+    }
+
+    const data = await res.json();
+    const arr = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
+    return arr.map(normalizeClient);
+  } catch (e) {
+    return Promise.reject('Erro de conexão com o servidor');
+  }
+}
 
 export const clientsService = {
-  search: (query?: string, filters?: any) => {
-    let filtered = [...clientes];
-    
-    if (query) {
-      const q = query.toLowerCase();
-      filtered = filtered.filter(c => 
-        c.nome.toLowerCase().includes(q) ||
-        c.id.toString().includes(q)
-      );
-    }
-    
-    if (filters?.cidade) {
-      filtered = filtered.filter(c => c.cidade === filters.cidade);
-    }
-    
-    if (filters?.uf) {
-      filtered = filtered.filter(c => c.uf === filters.uf);
-    }
-    
-    if (filters?.bairro) {
-      filtered = filtered.filter(c => 
-        c.bairro.toLowerCase().includes(filters.bairro.toLowerCase())
-      );
-    }
-    
-    return Promise.resolve(filtered);
+  // Server-side search with pagination
+  find: async (query?: string, page = 1, limit = 100): Promise<Client[]> => {
+    return fetchFromApi({ q: query, page, limit });
   },
 
-  getById: (id: number) => {
-    const cliente = clientes.find(c => c.id === id);
-    return Promise.resolve(cliente);
-  }
+  // Backwards-compatible search signature used elsewhere in the app
+  search: async (query?: string, _filters?: any, page = 1, limit = 100): Promise<Client[]> => {
+    return fetchFromApi({ q: query, page, limit });
+  },
+
+  // Convenience to get a single client by id using a server search
+  getById: async (id: number): Promise<Client | undefined> => {
+    const list = await fetchFromApi({ q: String(id), page: 1, limit: 1 });
+    return list.find((c) => c.id === id);
+  },
 };
