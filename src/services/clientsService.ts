@@ -41,9 +41,9 @@ function normalizeClient(raw: any): Client {
 
 async function fetchFromApi({ q, page = 1, limit = 100 }: { q?: string; page?: number; limit?: number; }): Promise<Client[]> {
   const empresa = authService.getEmpresa();
-  const token = authService.getToken();
   if (!empresa) return Promise.reject('Empresa não selecionada');
-  if (!token) return Promise.reject('Token ausente');
+  const token = authService.getToken();
+  const useCookie = authService.isCookieAuth();
 
   try {
     const params = new URLSearchParams();
@@ -52,12 +52,12 @@ async function fetchFromApi({ q, page = 1, limit = 100 }: { q?: string; page?: n
     if (page) params.set('page', String(page));
     if (limit) params.set('limit', String(limit));
     const url = `${API_BASE}/api/clientes?${params.toString()}`;
+    const headers: Record<string, string> = { accept: 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(url, {
       method: 'GET',
-      headers: {
-        accept: 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
+      headers,
+      credentials: useCookie ? 'include' : 'omit',
     });
 
     if (!res.ok) {
@@ -97,18 +97,18 @@ export const clientsService = {
   // Detailed GET by id (raw object from API)
   getDetail: async (id: number): Promise<any> => {
     const empresa = authService.getEmpresa();
-    const token = authService.getToken();
     if (!empresa) return Promise.reject('Empresa não selecionada');
-    if (!token) return Promise.reject('Token ausente');
+    const token = authService.getToken();
+    const useCookie = authService.isCookieAuth();
 
     try {
       const url = `${API_BASE}/api/clientes/${encodeURIComponent(id)}?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
+      const headers: Record<string, string> = { accept: 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
       const res = await fetch(url, {
         method: 'GET',
-        headers: {
-          accept: 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
+        credentials: useCookie ? 'include' : 'omit',
       });
       if (!res.ok) {
         let message = 'Falha ao buscar cliente';
@@ -137,19 +137,21 @@ export const clientsService = {
     prazoPagtoId: number;
   }): Promise<any> => {
     const empresa = authService.getEmpresa();
-    const token = authService.getToken();
     if (!empresa) return Promise.reject('Empresa não selecionada');
-    if (!token) return Promise.reject('Token ausente');
+    const token = authService.getToken();
+    const useCookie = authService.isCookieAuth();
 
     try {
       const url = `${API_BASE}/api/clientes`;
+      const headers: Record<string, string> = {
+        accept: 'application/json',
+        'Content-Type': 'application/json',
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
       const res = await fetch(url, {
         method: 'POST',
-        headers: {
-          accept: 'application/json',
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
+        credentials: useCookie ? 'include' : 'omit',
         body: JSON.stringify({ empresaId: empresa.empresa_id, data }),
       });
       if (!res.ok) {
@@ -182,19 +184,21 @@ export const clientsService = {
     }>
   ): Promise<any> => {
     const empresa = authService.getEmpresa();
-    const token = authService.getToken();
     if (!empresa) return Promise.reject('Empresa não selecionada');
-    if (!token) return Promise.reject('Token ausente');
+    const token = authService.getToken();
+    const useCookie = authService.isCookieAuth();
 
     try {
       const url = `${API_BASE}/api/clientes/${encodeURIComponent(id)}`;
+      const headers: Record<string, string> = {
+        accept: 'application/json',
+        'Content-Type': 'application/json',
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
       const res = await fetch(url, {
         method: 'PUT',
-        headers: {
-          accept: 'application/json',
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
+        credentials: useCookie ? 'include' : 'omit',
         body: JSON.stringify({ empresaId: empresa.empresa_id, data }),
       });
       if (!res.ok) {
@@ -211,17 +215,17 @@ export const clientsService = {
   // Delete client
   remove: async (id: number): Promise<boolean> => {
     const empresa = authService.getEmpresa();
-    const token = authService.getToken();
     if (!empresa) return Promise.reject('Empresa não selecionada');
-    if (!token) return Promise.reject('Token ausente');
+    const token = authService.getToken();
+    const useCookie = authService.isCookieAuth();
     try {
       const url = `${API_BASE}/api/clientes/${encodeURIComponent(id)}?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
+      const headers: Record<string, string> = { accept: 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
       const res = await fetch(url, {
         method: 'DELETE',
-        headers: {
-          accept: 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
+        credentials: useCookie ? 'include' : 'omit',
       });
       if (!res.ok) {
         let message = 'Falha ao excluir cliente';

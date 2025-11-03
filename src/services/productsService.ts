@@ -35,9 +35,9 @@ function normalizeProduct(raw: any): Product {
 
 async function fetchFromApi({ q, page = 1, limit = 100 }: { q?: string; page?: number; limit?: number; }): Promise<Product[]> {
   const empresa = authService.getEmpresa();
-  const token = authService.getToken();
   if (!empresa) return Promise.reject('Empresa não selecionada');
-  if (!token) return Promise.reject('Token ausente');
+  const token = authService.getToken();
+  const useCookie = authService.isCookieAuth();
 
   try {
     const params = new URLSearchParams();
@@ -46,12 +46,12 @@ async function fetchFromApi({ q, page = 1, limit = 100 }: { q?: string; page?: n
     if (page) params.set('page', String(page));
     if (limit) params.set('limit', String(limit));
     const url = `${API_BASE}/api/produtos?${params.toString()}`;
+    const headers: Record<string, string> = { accept: 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(url, {
       method: 'GET',
-      headers: {
-        accept: 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
+      headers,
+      credentials: useCookie ? 'include' : 'omit',
     });
 
     if (!res.ok) {

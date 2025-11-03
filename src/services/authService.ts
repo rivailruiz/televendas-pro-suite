@@ -16,6 +16,8 @@ export const authService = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ usuario, senha }),
+        // Permite autenticação baseada em cookie/sessão em origens cruzadas
+        credentials: 'include',
       });
 
       // Try to extract error details if not OK
@@ -37,10 +39,19 @@ export const authService = {
       const data: any = await res.json();
 
       // Normalize a session object based on common API fields
+      const token =
+        data?.token ??
+        data?.accessToken ??
+        data?.jwt ??
+        data?.access_token ??
+        data?.idToken ??
+        data?.id_token;
       const session = {
         usuario: data?.usuario ?? usuario,
         nome: data?.nome ?? data?.name ?? data?.username ?? usuario,
-        token: data?.token ?? data?.accessToken ?? data?.jwt,
+        token,
+        // Se não veio token, assume fluxo via cookie de sessão (HttpOnly)
+        cookieAuth: !token,
         // Keep full payload for potential future use
         payload: data,
         timestamp: new Date().toISOString(),
@@ -71,17 +82,22 @@ export const authService = {
     return session?.token;
   },
 
+  isCookieAuth: () => {
+    const session = authService.getSession();
+    return Boolean(session?.cookieAuth);
+  },
+
   getEmpresas: async (): Promise<Empresa[]> => {
     const token = authService.getToken();
-    if (!token) return Promise.reject('Token ausente');
+    const useCookie = authService.isCookieAuth();
 
     try {
+      const headers: Record<string, string> = { accept: '*/*' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
       const res = await fetch(`${API_BASE}/api/auth/empresas`, {
         method: 'GET',
-        headers: {
-          accept: '*/*',
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
+        credentials: useCookie ? 'include' : 'omit',
       });
 
       if (!res.ok) {

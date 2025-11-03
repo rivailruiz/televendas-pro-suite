@@ -36,9 +36,10 @@ async function fetchFromApi({ q, page = 1, limit = 100 }: { q?: string; page?: n
   const url = `${API_BASE}/api/representantes?${params.toString()}`;
   const headers: Record<string, string> = { accept: 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
+  const useCookie = authService.isCookieAuth();
 
   try {
-    const res = await fetch(url, { method: 'GET', headers });
+    const res = await fetch(url, { method: 'GET', headers, credentials: useCookie ? 'include' : 'omit' });
     if (!res.ok) {
       let message = 'Falha ao buscar representantes';
       try {
