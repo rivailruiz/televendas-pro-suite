@@ -303,7 +303,7 @@ export const ClientesTab = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto scrollbar-thin">
+          <div className="max-h-[60vh] overflow-auto scrollbar-thin">
             <Table className="min-w-[700px]">
             <TableHeader>
               <TableRow>
