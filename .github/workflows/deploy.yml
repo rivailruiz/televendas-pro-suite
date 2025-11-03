@@ -18,6 +18,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # Hardcoded API base for production build
+      VITE_API_BASE: https://api.adsvendas.tecdisa.com.br
     steps:
       - name: Checkout
         uses: actions/checkout@v4
