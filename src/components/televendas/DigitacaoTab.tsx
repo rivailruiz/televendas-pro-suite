@@ -8,8 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from '@/components/ui/textarea';
 import { Save, Undo, Search, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { tabelas, formasPagamento } from '@/mocks/data';
-import { metadataService, type Operacao } from '@/services/metadataService';
+import { formasPagamento } from '@/mocks/data';
+import { metadataService, type Operacao, type Tabela } from '@/services/metadataService';
 import { clientsService, type Client } from '@/services/clientsService';
 import { productsService, type Product } from '@/services/productsService';
 import { representativesService, type Representative } from '@/services/representativesService';
@@ -59,6 +59,15 @@ export const DigitacaoTab = () => {
   const [operacoes, setOperacoes] = useState<Operacao[]>([]);
   const [loadingOperacoes, setLoadingOperacoes] = useState(false);
   const [operacoesError, setOperacoesError] = useState<string | null>(null);
+
+  // Tabelas (metadata)
+  const [tabelas, setTabelas] = useState<Tabela[]>([]);
+  const [loadingTabelas, setLoadingTabelas] = useState(false);
+  const [tabelasError, setTabelasError] = useState<string | null>(null);
+  const selectedTabela = tabelas.find((t) => String(t.id) === String(formData.tabela));
+  const prazoMax = selectedTabela && typeof selectedTabela.prazoMedio === 'number' && selectedTabela.prazoMedio > 0
+    ? selectedTabela.prazoMedio
+    : undefined;
 
   const [clientSearchOpen, setClientSearchOpen] = useState(false);
   const [productSearchOpen, setProductSearchOpen] = useState(false);
@@ -119,6 +128,35 @@ export const DigitacaoTab = () => {
     };
     loadOps();
   }, []);
+
+  // Carrega tabelas ao montar
+  useEffect(() => {
+    const loadTabelas = async () => {
+      if (loadingTabelas) return;
+      setLoadingTabelas(true);
+      setTabelasError(null);
+      try {
+        const tabs = await metadataService.getTabelas();
+        setTabelas(tabs);
+      } catch (e: any) {
+        setTabelasError(String(e));
+      } finally {
+        setLoadingTabelas(false);
+      }
+    };
+    loadTabelas();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Ao trocar a tabela, garante que prazo atual respeita o máximo
+  useEffect(() => {
+    if (typeof prazoMax !== 'number') return;
+    const n = Math.floor(Number(formData.prazo) || 0);
+    if (n > prazoMax) {
+      setFormData((prev) => ({ ...prev, prazo: String(prazoMax) }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.tabela, prazoMax]);
 
   useEffect(() => {
     if (!clientSearchOpen) return;
@@ -276,6 +314,12 @@ export const DigitacaoTab = () => {
   const handleSave = async () => {
     if (!formData.operacao || !formData.clienteId || items.length === 0) {
       toast.error('Preencha operação, cliente e adicione pelo menos um item');
+      return;
+    }
+    // Valida prazo máximo conforme a tabela selecionada
+    const prazoNum = Math.floor(Number(formData.prazo) || 0);
+    if (typeof prazoMax === 'number' && prazoNum > prazoMax) {
+      toast.error(`Prazo não pode exceder ${prazoMax} dias para a tabela selecionada`);
       return;
     }
 
@@ -512,14 +556,22 @@ export const DigitacaoTab = () => {
 
             <div>
               <label className="text-sm font-medium mb-2 block">Tabela</label>
-              <Select value={formData.tabela} onValueChange={(v) => setFormData({...formData, tabela: v})}>
+              <Select
+                value={formData.tabela}
+                onValueChange={(v) => setFormData({ ...formData, tabela: v })}
+                disabled={loadingTabelas || !!tabelasError}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
+                  <SelectValue placeholder={loadingTabelas ? 'Carregando...' : tabelasError ? 'Erro ao carregar' : 'Selecione'} />
                 </SelectTrigger>
                 <SelectContent>
-                  {tabelas.map(t => (
-                    <SelectItem key={t} value={t}>{t}</SelectItem>
-                  ))}
+                  {tabelas
+                    .filter((t) => String(t.descricao || '').trim().length > 0)
+                    .map((t) => (
+                      <SelectItem key={`${t.id}-${t.descricao}`} value={String(t.id)}>
+                        {t.descricao}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
@@ -540,11 +592,28 @@ export const DigitacaoTab = () => {
 
             <div>
               <label className="text-sm font-medium mb-2 block">Prazo</label>
-              <Input 
-                placeholder="Ex: 30 dias"
+              <Input
+                type="number"
+                inputMode="numeric"
+                placeholder={prazoMax ? `Máx: ${prazoMax} dias` : 'Dias'}
+                min={0}
+                {...(prazoMax ? { max: prazoMax } : {})}
                 value={formData.prazo}
-                onChange={(e) => setFormData({...formData, prazo: e.target.value})}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  // permite vazio
+                  if (raw === '') {
+                    setFormData({ ...formData, prazo: '' });
+                    return;
+                  }
+                  const n = Math.max(0, Math.floor(Number(raw) || 0));
+                  const clamped = typeof prazoMax === 'number' ? Math.min(n, prazoMax) : n;
+                  setFormData({ ...formData, prazo: String(clamped) });
+                }}
               />
+              {typeof prazoMax === 'number' && (
+                <p className="text-xs text-muted-foreground mt-1">Prazo máximo permitido pela tabela: {prazoMax} dias</p>
+              )}
             </div>
           </div>
         </CardContent>
