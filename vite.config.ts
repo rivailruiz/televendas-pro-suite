@@ -15,6 +15,18 @@ export default defineConfig(({ mode }) => {
     server: {
       host: "::",
       port: 8080,
+      // Proxy API requests in development to avoid CORS during local dev.
+      // Use VITE_API_PROXY_TARGET if provided, otherwise fall back to VITE_API_BASE or http://localhost:3000
+      proxy: {
+        "/api": {
+          target:
+            (env.VITE_API_PROXY_TARGET && env.VITE_API_PROXY_TARGET.trim()) ||
+            (env.VITE_API_BASE && env.VITE_API_BASE.trim()) ||
+            "http://localhost:3000",
+          changeOrigin: true,
+          secure: false,
+        },
+      },
     },
     plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
     resolve: {

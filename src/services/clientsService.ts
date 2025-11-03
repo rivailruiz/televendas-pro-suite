@@ -11,6 +11,33 @@ export interface Client {
   contato?: string;
 }
 
+function extractErrorMessage(err: any, fallback: string): string {
+  try {
+    if (!err) return fallback;
+    // Common shapes: { message }, { error: string }, { error: { message } }
+    if (typeof err === 'string') return err;
+    if (typeof err?.error === 'string') return err.error;
+    if (typeof err?.error?.message === 'string') return err.error.message;
+    if (typeof err?.message === 'string') return err.message;
+
+    // Zod-style details: error.details.fieldErrors / formErrors
+    const details = err?.error?.details ?? err?.details;
+    const fieldErrors = details?.fieldErrors;
+    if (fieldErrors && typeof fieldErrors === 'object') {
+      const values = Object.values(fieldErrors).flat().filter(Boolean) as any[];
+      if (values.length) return String(values[0]);
+    }
+    const formErrors = details?.formErrors;
+    if (Array.isArray(formErrors) && formErrors.length) {
+      return String(formErrors[0]);
+    }
+
+    return fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function normalizeClient(raw: any): Client {
   // Try multiple common API field names and normalize to UI expectations
   const id = raw?.id ?? raw?.cliente_id ?? raw?.codigo ?? raw?.cod ?? 0;
@@ -61,7 +88,7 @@ async function fetchFromApi({ q, page = 1, limit = 100 }: { q?: string; page?: n
       let message = 'Falha ao buscar clientes';
       try {
         const err = await res.json();
-        message = err?.message || err?.error || message;
+        message = extractErrorMessage(err, message);
       } catch {}
       return Promise.reject(message);
     }
@@ -107,7 +134,7 @@ export const clientsService = {
       });
       if (!res.ok) {
         let message = 'Falha ao buscar cliente';
-        try { const err = await res.json(); message = err?.message || err?.error || message; } catch {}
+        try { const err = await res.json(); message = extractErrorMessage(err, message); } catch {}
         return Promise.reject(message);
       }
       return res.json();
@@ -150,7 +177,7 @@ export const clientsService = {
       });
       if (!res.ok) {
         let message = 'Falha ao criar cliente';
-        try { const err = await res.json(); message = err?.message || err?.error || message; } catch {}
+        try { const err = await res.json(); message = extractErrorMessage(err, message); } catch {}
         return Promise.reject(message);
       }
       return res.json();
@@ -196,7 +223,7 @@ export const clientsService = {
       });
       if (!res.ok) {
         let message = 'Falha ao atualizar cliente';
-        try { const err = await res.json(); message = err?.message || err?.error || message; } catch {}
+        try { const err = await res.json(); message = extractErrorMessage(err, message); } catch {}
         return Promise.reject(message);
       }
       return res.json();
@@ -220,7 +247,7 @@ export const clientsService = {
       });
       if (!res.ok) {
         let message = 'Falha ao excluir cliente';
-        try { const err = await res.json(); message = err?.message || err?.error || message; } catch {}
+        try { const err = await res.json(); message = extractErrorMessage(err, message); } catch {}
         return Promise.reject(message);
       }
       return true;
