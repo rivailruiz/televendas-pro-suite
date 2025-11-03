@@ -4,12 +4,12 @@ export interface Empresa {
   fantasia: string;
 }
 
-const API_BASE = 'http://localhost:3000';
+const API_BASE = (import.meta as any)?.env?.VITE_API_BASE || 'http://localhost:3000';
 
 export const authService = {
   login: async (usuario: string, senha: string) => {
     try {
-      const res = await fetch('http://localhost:3000/api/auth/login', {
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
         headers: {
           'accept': '*/*',
