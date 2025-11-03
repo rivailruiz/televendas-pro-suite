@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { toast } from 'sonner';
 import { Search, X, FileEdit, Trash2, Mail, Download, Printer, File } from 'lucide-react';
 import { ordersService, type Order } from '@/services/ordersService';
+import { authService } from '@/services/authService';
 import { useStore } from '@/store/useStore';
 import { situacoes } from '@/mocks/data';
 import { formatCurrency } from '@/utils/format';
@@ -39,8 +40,16 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   }, []);
 
   const loadOrders = async () => {
-    const data = await ordersService.list(filters);
-    setOrders(data);
+    // Evita chamada quando empresa não está selecionada (ex.: navegação/redirect em andamento)
+    const empresa = authService.getEmpresa();
+    if (!empresa) return;
+    try {
+      const data = await ordersService.list(filters);
+      setOrders(data);
+    } catch (e: any) {
+      // Silencia rejeições esperadas na transição e registra no console
+      console.warn('Falha ao carregar pedidos:', e);
+    }
   };
 
   const handlePesquisar = () => {

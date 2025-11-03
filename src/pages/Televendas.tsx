@@ -16,15 +16,19 @@ import { toast } from 'sonner';
 const Televendas = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('pesquisa');
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    // Gate rendering until auth + empresa checados
     if (!authService.isAuthenticated()) {
       navigate('/login');
       return;
     }
     if (!authService.getEmpresa()) {
       navigate('/empresa');
+      return;
     }
+    setReady(true);
   }, [navigate]);
 
   const handleLogout = () => {
@@ -35,6 +39,21 @@ const Televendas = () => {
 
   const session = authService.getSession();
   const empresa = authService.getEmpresa();
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="border-b bg-card sticky top-0 z-50">
+          <div className="container mx-auto px-4 py-3">
+            <h1 className="text-lg sm:text-2xl font-bold text-primary">Ads Vendas</h1>
+          </div>
+        </header>
+        <main className="container mx-auto px-2 sm:px-4 py-6">
+          <div className="text-sm text-muted-foreground">Carregando...</div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
