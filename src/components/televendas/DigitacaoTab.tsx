@@ -8,8 +8,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from '@/components/ui/textarea';
 import { Save, Undo, Search, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { operacoes, tabelas, formasPagamento, produtos } from '@/mocks/data';
+import { operacoes, tabelas, formasPagamento } from '@/mocks/data';
 import { clientsService, type Client } from '@/services/clientsService';
+import { productsService, type Product } from '@/services/productsService';
 import { representativesService, type Representative } from '@/services/representativesService';
 import { formatCurrency } from '@/utils/format';
 import { ordersService } from '@/services/ordersService';
@@ -150,10 +151,48 @@ export const DigitacaoTab = () => {
 
   const filteredClients = clients; // server already filters by q
 
-  const filteredProducts = produtos.filter(p => 
-    p.descricao.toLowerCase().includes(productSearch.toLowerCase()) ||
-    p.id.toString().includes(productSearch)
-  );
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [productsError, setProductsError] = useState<string | null>(null);
+  const [productPage, setProductPage] = useState(1);
+  const [productHasMore, setProductHasMore] = useState(true);
+
+  const PRODUCT_LIMIT = 100;
+  const loadProducts = async (reset = false) => {
+    if (loadingProducts) return;
+    setLoadingProducts(true);
+    setProductsError(null);
+    try {
+      const nextPage = reset ? 1 : productPage + 1;
+      const data = await productsService.find(productSearch || undefined, nextPage, PRODUCT_LIMIT);
+      setProducts((prev) => {
+        const combined = reset ? data : [...prev, ...data];
+        const seen = new Set<number>();
+        return combined.filter((p) => (seen.has(p.id) ? false : (seen.add(p.id), true)));
+      });
+      setProductPage(nextPage);
+      setProductHasMore(Array.isArray(data) && data.length === PRODUCT_LIMIT);
+    } catch (e: any) {
+      setProductsError(String(e));
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!productSearchOpen) return;
+    loadProducts(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productSearchOpen]);
+
+  useEffect(() => {
+    if (!productSearchOpen) return;
+    const t = setTimeout(() => {
+      loadProducts(true);
+    }, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productSearch]);
 
   const filteredRepresentatives = representatives; // server already filters by q
 
@@ -167,7 +206,7 @@ export const DigitacaoTab = () => {
     setClientSearch('');
   };
 
-  const handleSelectProduct = (product: typeof produtos[0]) => {
+  const handleSelectProduct = (product: Product) => {
     setNewItem({
       ...newItem,
       produtoId: product.id,
@@ -507,31 +546,49 @@ export const DigitacaoTab = () => {
                       onChange={(e) => setProductSearch(e.target.value)}
                       autoFocus
                     />
-                    <div className="max-h-96 overflow-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>ID</TableHead>
-                            <TableHead>Descrição</TableHead>
-                            <TableHead>UN</TableHead>
-                            <TableHead>Preço</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {filteredProducts.map(product => (
-                            <TableRow 
-                              key={product.id}
-                              className="cursor-pointer"
-                              onClick={() => handleSelectProduct(product)}
-                            >
-                              <TableCell>{product.id}</TableCell>
-                              <TableCell>{product.descricao}</TableCell>
-                              <TableCell>{product.un}</TableCell>
-                              <TableCell>{formatCurrency(product.preco)}</TableCell>
+                    <div className="max-h-96 overflow-auto" onScroll={(e) => {
+                      const el = e.currentTarget;
+                      if (productHasMore && !loadingProducts && el.scrollTop + el.clientHeight >= el.scrollHeight - 24) {
+                        loadProducts(false);
+                      }
+                    }}>
+                      {loadingProducts && products.length === 0 ? (
+                        <div className="py-6 text-center text-sm text-muted-foreground">Carregando produtos...</div>
+                      ) : productsError ? (
+                        <div className="py-6 text-center text-sm text-red-600">{productsError}</div>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>ID</TableHead>
+                              <TableHead>Descrição</TableHead>
+                              <TableHead>UN</TableHead>
+                              <TableHead>Preço</TableHead>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                          </TableHeader>
+                          <TableBody>
+                            {products.map((product) => (
+                              <TableRow
+                                key={product.id}
+                                className="cursor-pointer"
+                                onClick={() => handleSelectProduct(product)}
+                              >
+                                <TableCell>{product.id}</TableCell>
+                                <TableCell>{product.descricao}</TableCell>
+                                <TableCell>{product.un}</TableCell>
+                                <TableCell>{formatCurrency(product.preco)}</TableCell>
+                              </TableRow>
+                            ))}
+                            {products.length === 0 && !loadingProducts && (
+                              <TableRow>
+                                <TableCell colSpan={4} className="text-center text-sm text-muted-foreground">
+                                  Nenhum produto encontrado
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      )}
                     </div>
                   </div>
                 </DialogContent>
