@@ -3,8 +3,7 @@ export interface Empresa {
   razao_social: string;
   fantasia: string;
 }
-
-const API_BASE = (import.meta as any)?.env?.VITE_API_BASE || 'http://localhost:3000';
+import { API_BASE } from '@/utils/env';
 
 export const authService = {
   login: async (usuario: string, senha: string) => {

@@ -1,6 +1,5 @@
 import { authService } from '@/services/authService';
-
-const API_BASE = (import.meta as any)?.env?.VITE_API_BASE || 'http://localhost:3000';
+import { API_BASE } from '@/utils/env';
 
 export interface Product {
   id: number;

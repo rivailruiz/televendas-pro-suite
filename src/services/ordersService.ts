@@ -1,9 +1,9 @@
 import { pedidos } from '@/mocks/data';
 import { authService } from '@/services/authService';
+import { API_BASE } from '@/utils/env';
 
 export type Order = typeof pedidos[0];
 
-const API_BASE = (import.meta as any)?.env?.VITE_API_BASE || 'http://localhost:3000';
 
 export const ordersService = {
   list: async (_filters?: any, page: number = 1, limit: number = 100) => {
