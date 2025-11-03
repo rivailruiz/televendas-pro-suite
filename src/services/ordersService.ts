@@ -10,7 +10,7 @@ export const ordersService = {
     const empresa = authService.getEmpresa();
     if (!empresa) return Promise.reject('Empresa não selecionada');
     const token = authService.getToken();
-    const useCookie = authService.isCookieAuth();
+    if (!token) return Promise.reject('Token ausente');
 
     try {
       const params = new URLSearchParams();
@@ -18,12 +18,10 @@ export const ordersService = {
       if (page) params.set('page', String(page));
       if (limit) params.set('limit', String(limit));
       const url = `${API_BASE}/api/pedidos?${params.toString()}`;
-      const headers: Record<string, string> = { accept: 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const headers: Record<string, string> = { accept: 'application/json', Authorization: `Bearer ${token}` };
       const res = await fetch(url, {
         method: 'GET',
         headers,
-        credentials: useCookie ? 'include' : 'omit',
       });
 
       if (!res.ok) {

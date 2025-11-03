@@ -3,7 +3,7 @@ export interface Empresa {
   razao_social: string;
   fantasia: string;
 }
-import { API_BASE, shouldIncludeCredentialsForLogin } from '@/utils/env';
+import { API_BASE } from '@/utils/env';
 
 export const authService = {
   login: async (usuario: string, senha: string) => {
@@ -15,8 +15,8 @@ export const authService = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ usuario, senha }),
-        // Em prod (domínio público) incluímos cookies; em localhost omitimos para evitar CORS com '*'
-        credentials: shouldIncludeCredentialsForLogin() ? 'include' : 'omit',
+        // Fluxo baseado em token no corpo da resposta (sem cookies)
+        credentials: 'omit',
       });
 
       // Try to extract error details if not OK
@@ -45,12 +45,15 @@ export const authService = {
         data?.access_token ??
         data?.idToken ??
         data?.id_token;
+
+      if (!token) {
+        return { success: false, error: 'Token não recebido do servidor' } as const;
+      }
+
       const session = {
         usuario: data?.usuario ?? usuario,
         nome: data?.nome ?? data?.name ?? data?.username ?? usuario,
         token,
-        // Se não veio token, assume fluxo via cookie de sessão (HttpOnly)
-        cookieAuth: !token,
         // Keep full payload for potential future use
         payload: data,
         timestamp: new Date().toISOString(),
@@ -81,22 +84,15 @@ export const authService = {
     return session?.token;
   },
 
-  isCookieAuth: () => {
-    const session = authService.getSession();
-    return Boolean(session?.cookieAuth);
-  },
-
   getEmpresas: async (): Promise<Empresa[]> => {
     const token = authService.getToken();
-    const useCookie = authService.isCookieAuth();
+    if (!token) return Promise.reject('Token ausente');
 
     try {
-      const headers: Record<string, string> = { accept: '*/*' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const headers: Record<string, string> = { accept: '*/*', Authorization: `Bearer ${token}` };
       const res = await fetch(`${API_BASE}/api/auth/empresas`, {
         method: 'GET',
         headers,
-        credentials: useCookie ? 'include' : 'omit',
       });
 
       if (!res.ok) {

@@ -25,6 +25,7 @@ async function fetchFromApi({ q, page = 1, limit = 100 }: { q?: string; page?: n
   const empresa = authService.getEmpresa();
   const token = authService.getToken();
   if (!empresa) return Promise.reject('Empresa não selecionada');
+  if (!token) return Promise.reject('Token ausente');
 
   const params = new URLSearchParams();
   params.set('empresaId', String(empresa.empresa_id));
@@ -33,12 +34,10 @@ async function fetchFromApi({ q, page = 1, limit = 100 }: { q?: string; page?: n
   if (limit) params.set('limit', String(limit));
 
   const url = `${API_BASE}/api/representantes?${params.toString()}`;
-  const headers: Record<string, string> = { accept: 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  const useCookie = authService.isCookieAuth();
+  const headers: Record<string, string> = { accept: 'application/json', Authorization: `Bearer ${token}` };
 
   try {
-    const res = await fetch(url, { method: 'GET', headers, credentials: useCookie ? 'include' : 'omit' });
+    const res = await fetch(url, { method: 'GET', headers });
     if (!res.ok) {
       let message = 'Falha ao buscar representantes';
       try {
