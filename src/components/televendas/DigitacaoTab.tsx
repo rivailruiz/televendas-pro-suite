@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from '@/components/ui/textarea';
 import { Save, Undo, Search, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { operacoes, tabelas, formasPagamento } from '@/mocks/data';
+import { tabelas, formasPagamento } from '@/mocks/data';
+import { metadataService, type Operacao } from '@/services/metadataService';
 import { clientsService, type Client } from '@/services/clientsService';
 import { productsService, type Product } from '@/services/productsService';
 import { representativesService, type Representative } from '@/services/representativesService';
@@ -54,6 +55,11 @@ export const DigitacaoTab = () => {
     nf: ''
   });
 
+  // Operações (metadata)
+  const [operacoes, setOperacoes] = useState<Operacao[]>([]);
+  const [loadingOperacoes, setLoadingOperacoes] = useState(false);
+  const [operacoesError, setOperacoesError] = useState<string | null>(null);
+
   const [clientSearchOpen, setClientSearchOpen] = useState(false);
   const [productSearchOpen, setProductSearchOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
@@ -95,6 +101,24 @@ export const DigitacaoTab = () => {
       setLoadingClients(false);
     }
   };
+
+  useEffect(() => {
+    // Carrega operações ao montar
+    const loadOps = async () => {
+      if (loadingOperacoes) return;
+      setLoadingOperacoes(true);
+      setOperacoesError(null);
+      try {
+        const ops = await metadataService.getOperacoes();
+        setOperacoes(ops);
+      } catch (e: any) {
+        setOperacoesError(String(e));
+      } finally {
+        setLoadingOperacoes(false);
+      }
+    };
+    loadOps();
+  }, []);
 
   useEffect(() => {
     if (!clientSearchOpen) return;
@@ -328,13 +352,19 @@ export const DigitacaoTab = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             <div>
               <label className="text-sm font-medium mb-2 block">Operação *</label>
-              <Select value={formData.operacao} onValueChange={(v) => setFormData({...formData, operacao: v})}>
+              <Select
+                value={formData.operacao}
+                onValueChange={(v) => setFormData({ ...formData, operacao: v })}
+                disabled={loadingOperacoes || !!operacoesError}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
+                  <SelectValue placeholder={loadingOperacoes ? 'Carregando...' : operacoesError ? 'Erro ao carregar' : 'Selecione'} />
                 </SelectTrigger>
                 <SelectContent>
-                  {operacoes.map(op => (
-                    <SelectItem key={op} value={op}>{op}</SelectItem>
+                  {operacoes.filter((op) => String(op.descricao || '').trim().length > 0).map((op) => (
+                    <SelectItem key={`${op.id}-${op.codigo}`} value={op.descricao}>
+                      {op.codigo ? `${op.codigo} - ${op.descricao}` : op.descricao}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>

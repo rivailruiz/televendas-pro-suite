@@ -9,9 +9,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { toast } from 'sonner';
 import { Search, X, FileEdit, Trash2, Mail, Download, Printer, File } from 'lucide-react';
 import { ordersService, type Order } from '@/services/ordersService';
+import { clientsService, type Client } from '@/services/clientsService';
 import { authService } from '@/services/authService';
 import { useStore } from '@/store/useStore';
 import { situacoes } from '@/mocks/data';
+import { metadataService, type Operacao } from '@/services/metadataService';
+import { representativesService, type Representative } from '@/services/representativesService';
 import { formatCurrency } from '@/utils/format';
 
 interface PesquisaTabProps {
@@ -19,24 +22,67 @@ interface PesquisaTabProps {
 }
 
 export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
+  const getTodayStr = () => new Date().toLocaleDateString('sv-SE');
   const { orders, selectedOrders, setOrders, toggleOrderSelection, clearSelection } = useStore();
   const [filters, setFilters] = useState({
     dataInicio: '2022-01-01',
-    dataFim: '2025-10-17',
-    usuario: 'ALEX',
+    dataFim: getTodayStr(),
     situacao: 'Pendentes',
     especial: false,
     operacoes: '',
-    pedidos: '',
+    pedidoIds: '',
     representante: '',
-    cliente: ''
+    cliente: '',
   });
   const [outputMode, setOutputMode] = useState<'video' | 'impressora'>('video');
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewOrder, setPreviewOrder] = useState<Order | null>(null);
+  const [clienteNome, setClienteNome] = useState<string>('');
+  
+  // Operações (metadata)
+  const [operacoes, setOperacoes] = useState<Operacao[]>([]);
+  const [loadingOperacoes, setLoadingOperacoes] = useState(false);
+  const [operacoesError, setOperacoesError] = useState<string | null>(null);
+
+  // Representantes para busca
+  const [repSearchOpen, setRepSearchOpen] = useState(false);
+  const [repSearch, setRepSearch] = useState('');
+  const [representatives, setRepresentatives] = useState<Representative[]>([]);
+  const [loadingReps, setLoadingReps] = useState(false);
+  const [repsError, setRepsError] = useState<string | null>(null);
+  const [repPage, setRepPage] = useState(1);
+  const [repHasMore, setRepHasMore] = useState(true);
+
+  // Clientes para busca
+  const [clientSearchOpen, setClientSearchOpen] = useState(false);
+  const [clientSearch, setClientSearch] = useState('');
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loadingClients, setLoadingClients] = useState(false);
+  const [clientsError, setClientsError] = useState<string | null>(null);
+  const [clientPage, setClientPage] = useState(1);
+  const [clientHasMore, setClientHasMore] = useState(true);
 
   useEffect(() => {
     loadOrders();
+  }, []);
+
+  // Carrega operações ao montar
+  useEffect(() => {
+    const loadOps = async () => {
+      if (loadingOperacoes) return;
+      setLoadingOperacoes(true);
+      setOperacoesError(null);
+      try {
+        const ops = await metadataService.getOperacoes();
+        setOperacoes(ops);
+      } catch (e: any) {
+        setOperacoesError(String(e));
+      } finally {
+        setLoadingOperacoes(false);
+      }
+    };
+    loadOps();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadOrders = async () => {
@@ -56,18 +102,93 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
     loadOrders();
   };
 
+  const REP_LIMIT = 100;
+  const loadReps = async (reset = false) => {
+    if (loadingReps) return;
+    setLoadingReps(true);
+    setRepsError(null);
+    try {
+      const nextPage = reset ? 1 : repPage + 1;
+      const data = await representativesService.find(repSearch || undefined, nextPage, REP_LIMIT);
+      setRepresentatives((prev) => {
+        const combined = reset ? data : [...prev, ...data];
+        const seen = new Set<string>();
+        return combined.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
+      });
+      setRepPage(nextPage);
+      setRepHasMore(Array.isArray(data) && data.length === REP_LIMIT);
+    } catch (e: any) {
+      setRepsError(String(e));
+    } finally {
+      setLoadingReps(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!repSearchOpen) return;
+    loadReps(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repSearchOpen]);
+
+  useEffect(() => {
+    if (!repSearchOpen) return;
+    const t = setTimeout(() => {
+      loadReps(true);
+    }, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repSearch]);
+
+  // Clientes - busca e paginação
+  const CLIENT_LIMIT = 100;
+  const loadClients = async (reset = false) => {
+    if (loadingClients) return;
+    setLoadingClients(true);
+    setClientsError(null);
+    try {
+      const nextPage = reset ? 1 : clientPage + 1;
+      const data = await clientsService.find(clientSearch || undefined, nextPage, CLIENT_LIMIT);
+      setClients((prev) => {
+        const combined = reset ? data : [...prev, ...data];
+        const seen = new Set<number>();
+        return combined.filter((c) => (seen.has(c.id) ? false : (seen.add(c.id), true)));
+      });
+      setClientPage(nextPage);
+      setClientHasMore(Array.isArray(data) && data.length === CLIENT_LIMIT);
+    } catch (e: any) {
+      setClientsError(String(e));
+    } finally {
+      setLoadingClients(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!clientSearchOpen) return;
+    loadClients(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientSearchOpen]);
+
+  useEffect(() => {
+    if (!clientSearchOpen) return;
+    const t = setTimeout(() => {
+      loadClients(true);
+    }, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientSearch]);
+
   const handleLimparFiltros = () => {
     setFilters({
       dataInicio: '2022-01-01',
-      dataFim: '2025-10-17',
-      usuario: 'ALEX',
+      dataFim: getTodayStr(),
       situacao: 'Pendentes',
       especial: false,
       operacoes: '',
-      pedidos: '',
+      pedidoIds: '',
       representante: '',
-      cliente: ''
+      cliente: '',
     });
+    setClienteNome('');
     clearSelection();
   };
 
@@ -238,17 +359,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label>Usuário</Label>
-          <Select value={filters.usuario} onValueChange={(v) => setFilters({ ...filters, usuario: v })}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALEX">ALEX</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Campo Usuário removido: não suportado pela API de pedidos */}
 
         <div className="space-y-2">
           <Label>Situação</Label>
@@ -275,37 +386,172 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
 
         <div className="space-y-2">
           <Label>Operações</Label>
-          <Input
+          <Select
             value={filters.operacoes}
-            onChange={(e) => setFilters({ ...filters, operacoes: e.target.value })}
-          />
+            onValueChange={(v) => setFilters({ ...filters, operacoes: v === '__ALL__' ? '' : v })}
+            disabled={loadingOperacoes || !!operacoesError}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={loadingOperacoes ? 'Carregando...' : operacoesError ? 'Erro ao carregar' : 'Todas'} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__ALL__">Todas</SelectItem>
+              {operacoes.filter((op) => String(op.descricao || '').trim().length > 0).map((op) => (
+                <SelectItem key={`${op.id}-${op.codigo}`} value={op.descricao}>
+                  {op.codigo ? `${op.codigo} - ${op.descricao}` : op.descricao}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-2">
-          <Label>Pedidos</Label>
+          <Label>Pedido(s)</Label>
           <Input
-            type="number"
-            value={filters.pedidos}
-            onChange={(e) => setFilters({ ...filters, pedidos: e.target.value })}
+            placeholder="IDs separados por vírgula"
+            value={filters.pedidoIds}
+            onChange={(e) => setFilters({ ...filters, pedidoIds: e.target.value })}
           />
         </div>
 
         <div className="space-y-2">
           <Label>Representante</Label>
-          <Input
-            value={filters.representante}
-            onChange={(e) => setFilters({ ...filters, representante: e.target.value })}
-          />
+          <Button variant="outline" className="w-full justify-start" onClick={() => setRepSearchOpen(true)}>
+            <Search className="h-4 w-4 mr-2" />
+            {filters.representante || 'Buscar representante'}
+          </Button>
+          <Dialog open={repSearchOpen} onOpenChange={setRepSearchOpen}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Buscar Representante</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <Input
+                  placeholder="Digite nome ou ID..."
+                  value={repSearch}
+                  onChange={(e) => setRepSearch(e.target.value)}
+                  autoFocus
+                />
+                <div className="max-h-96 overflow-auto" onScroll={(e) => {
+                  const el = e.currentTarget;
+                  if (repHasMore && !loadingReps && el.scrollTop + el.clientHeight >= el.scrollHeight - 24) {
+                    loadReps(false);
+                  }
+                }}>
+                  {loadingReps ? (
+                    <div className="py-6 text-center text-sm text-muted-foreground">Carregando representantes...</div>
+                  ) : repsError ? (
+                    <div className="py-6 text-center text-sm text-red-600">{repsError}</div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>ID</TableHead>
+                          <TableHead>Nome</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {representatives.map((r) => (
+                          <TableRow
+                            key={r.id}
+                            className="cursor-pointer"
+                            onClick={() => {
+                              setFilters({ ...filters, representante: r.nome });
+                              setRepSearchOpen(false);
+                              setRepSearch('');
+                            }}
+                          >
+                            <TableCell>{r.id}</TableCell>
+                            <TableCell>{r.nome}</TableCell>
+                          </TableRow>
+                        ))}
+                        {representatives.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={2} className="text-center text-sm text-muted-foreground">
+                              Nenhum representante encontrado
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         <div className="space-y-2">
           <Label>Cliente</Label>
-          <Input
-            type="number"
-            value={filters.cliente}
-            onChange={(e) => setFilters({ ...filters, cliente: e.target.value })}
-          />
+          <Button variant="outline" className="w-full justify-start" onClick={() => setClientSearchOpen(true)}>
+            <Search className="h-4 w-4 mr-2" />
+            {clienteNome || (filters.cliente ? `Cliente #${filters.cliente}` : 'Buscar cliente')}
+          </Button>
+          <Dialog open={clientSearchOpen} onOpenChange={setClientSearchOpen}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Buscar Cliente</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <Input
+                  placeholder="Digite nome ou ID..."
+                  value={clientSearch}
+                  onChange={(e) => setClientSearch(e.target.value)}
+                  autoFocus
+                />
+                <div className="max-h-96 overflow-auto" onScroll={(e) => {
+                  const el = e.currentTarget;
+                  if (clientHasMore && !loadingClients && el.scrollTop + el.clientHeight >= el.scrollHeight - 24) {
+                    loadClients(false);
+                  }
+                }}>
+                  {loadingClients ? (
+                    <div className="py-6 text-center text-sm text-muted-foreground">Carregando clientes...</div>
+                  ) : clientsError ? (
+                    <div className="py-6 text-center text-sm text-red-600">{clientsError}</div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>ID</TableHead>
+                          <TableHead>Nome</TableHead>
+                          <TableHead>Cidade</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {clients.map((client) => (
+                          <TableRow
+                            key={client.id}
+                            className="cursor-pointer"
+                            onClick={() => {
+                              setFilters({ ...filters, cliente: String(client.id) });
+                              setClienteNome(client.nome);
+                              setClientSearchOpen(false);
+                              setClientSearch('');
+                            }}
+                          >
+                            <TableCell>{client.id}</TableCell>
+                            <TableCell>{client.nome}</TableCell>
+                            <TableCell>{client.cidade}</TableCell>
+                          </TableRow>
+                        ))}
+                        {clients.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={3} className="text-center text-sm text-muted-foreground">
+                              Nenhum cliente encontrado
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
+
+        {/* Campo Cliente removido: não presente na API fornecida */}
       </div>
 
       {/* Botões de ação - filtros */}

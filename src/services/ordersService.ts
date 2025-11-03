@@ -6,7 +6,7 @@ export type Order = typeof pedidos[0];
 
 
 export const ordersService = {
-  list: async (_filters?: any, page: number = 1, limit: number = 100) => {
+  list: async (filters?: any, _page: number = 1, _limit: number = 100) => {
     const empresa = authService.getEmpresa();
     if (!empresa) return Promise.reject('Empresa não selecionada');
     const token = authService.getToken();
@@ -15,8 +15,19 @@ export const ordersService = {
     try {
       const params = new URLSearchParams();
       params.set('empresaId', String(empresa.empresa_id));
-      if (page) params.set('page', String(page));
-      if (limit) params.set('limit', String(limit));
+      // Map known filters to API params
+      if (filters) {
+        if (filters.representante) params.set('representante', String(filters.representante));
+        // Accept both 'pedidoIds' and legacy 'pedidos'
+        const pedidoIds = filters.pedidoIds ?? filters.pedidos;
+        if (pedidoIds) params.set('pedidoIds', String(pedidoIds));
+        if (filters.operacoes) params.set('operacoes', String(filters.operacoes));
+        if (typeof filters.especial === 'boolean') params.set('especial', String(filters.especial));
+        if (filters.situacao) params.set('situacao', String(filters.situacao));
+        if (filters.dataInicio) params.set('dataInicio', String(filters.dataInicio));
+        if (filters.dataFim) params.set('dataFim', String(filters.dataFim));
+        if (filters.cliente) params.set('cliente', String(filters.cliente));
+      }
       const url = `${API_BASE}/api/pedidos?${params.toString()}`;
       const headers: Record<string, string> = { accept: 'application/json', Authorization: `Bearer ${token}` };
       const res = await fetch(url, {
