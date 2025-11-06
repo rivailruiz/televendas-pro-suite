@@ -14,6 +14,7 @@ export interface Tabela {
   codigo?: string;
   descricao: string;
   prazoMedio?: number; // dias; 0 ou undefined = sem limite
+  principal?: boolean;
 }
 
 function normalizeOperacao(raw: any): Operacao {
@@ -109,6 +110,7 @@ export const metadataService = {
         codigo: codigo ? String(codigo).trim() : undefined,
         descricao: String(desc || '').trim(),
         prazoMedio: Number(raw?.prazo_medio ?? 0) || 0,
+        principal: Boolean(raw?.principal ?? false),
       };
     };
 
@@ -134,6 +136,71 @@ export const metadataService = {
       const mapped = arr.map(normalizeTabela).filter((t) => String(t.descricao || '').length > 0);
       // Ordena por descricao asc, com código como desempate
       mapped.sort((a, b) => {
+        const ad = String(a.descricao || '');
+        const bd = String(b.descricao || '');
+        const byDesc = ad.localeCompare(bd, 'pt-BR', { numeric: true, sensitivity: 'base' } as any);
+        if (byDesc !== 0) return byDesc;
+        const ac = String(a.codigo || a.id || '');
+        const bc = String(b.codigo || b.id || '');
+        return ac.localeCompare(bc, 'pt-BR', { numeric: true, sensitivity: 'base' } as any);
+      });
+      return mapped;
+    } catch (e) {
+      return Promise.reject('Erro de conexão com o servidor');
+    }
+  },
+  // Tabelas de preço por cliente
+  getTabelasByCliente: async (clienteId: number): Promise<Tabela[]> => {
+    const empresa = authService.getEmpresa();
+    if (!empresa) return Promise.reject('Empresa não selecionada');
+    const token = authService.getToken();
+    if (!token) return Promise.reject('Token ausente');
+
+    // Normaliza payload específico do endpoint de cliente
+    const normalizeTabelaCliente = (raw: any): Tabela => {
+      if (!raw) return { id: '', descricao: '' };
+      const id = raw?.tabela_preco_id ?? raw?.id ?? raw?.tabela_id ?? raw?.codigo ?? raw?.cod ?? '';
+      const codigo = raw?.codigo_tabela_preco ?? raw?.codigo ?? raw?.sigla ?? undefined;
+      const desc =
+        raw?.descricao_tabela_preco ??
+        raw?.descricao ??
+        raw?.descricao_tabela ??
+        raw?.descricaoTabela ??
+        raw?.nome ??
+        raw?.tabela ??
+        '';
+      return {
+        id: typeof id === 'number' ? id : String(id || '').trim(),
+        codigo: codigo ? String(codigo).trim() : undefined,
+        descricao: String(desc || '').trim(),
+        prazoMedio: Number(raw?.prazo_medio ?? 0) || 0,
+        principal: Boolean(raw?.principal ?? false),
+      };
+    };
+
+    try {
+      const url = `${API_BASE}/api/clientes/${encodeURIComponent(clienteId)}/tabelas-precos?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
+      const headers: Record<string, string> = {
+        accept: 'application/json',
+        Authorization: `Bearer ${token}`,
+      };
+      const res = await fetch(url, { method: 'GET', headers });
+      if (!res.ok) {
+        let message = 'Falha ao buscar tabelas do cliente';
+        try {
+          const err = await res.json();
+          message = err?.message || err?.error || message;
+        } catch {}
+        return Promise.reject(message);
+      }
+      const data = await res.json();
+      const arr = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
+      const mapped = arr.map(normalizeTabelaCliente).filter((t) => String(t.descricao || '').trim().length > 0);
+      // Ordena por principal desc, depois descricao asc, depois codigo/id
+      mapped.sort((a, b) => {
+        const ap = a.principal ? 1 : 0;
+        const bp = b.principal ? 1 : 0;
+        if (bp !== ap) return bp - ap; // principal primeiro
         const ad = String(a.descricao || '');
         const bd = String(b.descricao || '');
         const byDesc = ad.localeCompare(bd, 'pt-BR', { numeric: true, sensitivity: 'base' } as any);

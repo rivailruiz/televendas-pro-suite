@@ -120,6 +120,17 @@ export const DigitacaoTab = () => {
       try {
         const ops = await metadataService.getOperacoes();
         setOperacoes(ops);
+        // Preseleciona operação '001' se disponível e se ainda não houver seleção
+        if (Array.isArray(ops) && ops.length > 0) {
+          setFormData((prev) => {
+            if (prev.operacao) return prev;
+            const preferred =
+              ops.find((op) => String(op.codigo || '').trim() === '001') ||
+              ops.find((op) => String(op.id || '').trim() === '001') ||
+              ops[0];
+            return preferred ? { ...prev, operacao: preferred.descricao } : prev;
+          });
+        }
       } catch (e: any) {
         setOperacoesError(String(e));
       } finally {
@@ -131,22 +142,32 @@ export const DigitacaoTab = () => {
 
   // Carrega tabelas ao montar
   useEffect(() => {
-    const loadTabelas = async () => {
+    // Carrega tabelas de preço quando um cliente é selecionado
+    const loadTabelasCliente = async () => {
+      if (!formData.clienteId) {
+        setTabelas([]);
+        setFormData((prev) => ({ ...prev, tabela: '' }));
+        return;
+      }
       if (loadingTabelas) return;
       setLoadingTabelas(true);
       setTabelasError(null);
       try {
-        const tabs = await metadataService.getTabelas();
+        const tabs = await metadataService.getTabelasByCliente(formData.clienteId);
         setTabelas(tabs);
+        const principal = tabs.find((t) => t.principal);
+        setFormData((prev) => ({ ...prev, tabela: principal ? String(principal.id) : '' }));
       } catch (e: any) {
         setTabelasError(String(e));
+        setTabelas([]);
+        setFormData((prev) => ({ ...prev, tabela: '' }));
       } finally {
         setLoadingTabelas(false);
       }
     };
-    loadTabelas();
+    loadTabelasCliente();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [formData.clienteId]);
 
   // Ao trocar a tabela, garante que prazo atual respeita o máximo
   useEffect(() => {
@@ -262,7 +283,8 @@ export const DigitacaoTab = () => {
     setFormData({
       ...formData,
       clienteId: client.id,
-      clienteNome: client.nome
+      clienteNome: client.nome,
+      tabela: '',
     });
     setClientSearchOpen(false);
     setClientSearch('');
@@ -559,10 +581,10 @@ export const DigitacaoTab = () => {
               <Select
                 value={formData.tabela}
                 onValueChange={(v) => setFormData({ ...formData, tabela: v })}
-                disabled={loadingTabelas || !!tabelasError}
+                disabled={loadingTabelas || !!tabelasError || !formData.clienteId}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={loadingTabelas ? 'Carregando...' : tabelasError ? 'Erro ao carregar' : 'Selecione'} />
+                  <SelectValue placeholder={!formData.clienteId ? 'Selecione um cliente' : (loadingTabelas ? 'Carregando...' : tabelasError ? 'Erro ao carregar' : 'Selecione')} />
                 </SelectTrigger>
                 <SelectContent>
                   {tabelas
