@@ -23,7 +23,7 @@ interface PesquisaTabProps {
 
 export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   const getTodayStr = () => new Date().toLocaleDateString('sv-SE');
-  const { orders, selectedOrders, setOrders, toggleOrderSelection, clearSelection } = useStore();
+  const { orders, selectedOrders, setOrders, toggleOrderSelection, clearSelection, setCurrentOrder } = useStore();
   const [filters, setFilters] = useState({
     dataInicio: '2022-01-01',
     dataFim: getTodayStr(),
@@ -224,6 +224,20 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
     } catch (error) {
       toast.error('Erro ao exportar pedidos');
     }
+  };
+
+  const handleAlterar = () => {
+    const order = getSingleSelectedOrder();
+    if (!order) {
+      toast.error('Selecione exatamente um pedido para alterar');
+      return;
+    }
+    if (order.transmitido) {
+      toast.error('Pedido já transmitido; não pode ser alterado');
+      return;
+    }
+    setCurrentOrder(order);
+    if (onNavigateToDigitacao) onNavigateToDigitacao();
   };
 
   const totalSelecionado = orders
@@ -660,7 +674,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
             const single = getSingleSelectedOrder();
             const canAlterar = !!single && single.transmitido !== true;
             return (
-              <Button variant="outline" size="sm" className="w-full sm:w-auto" disabled={!canAlterar}>
+              <Button variant="outline" size="sm" className="w-full sm:w-auto" disabled={!canAlterar} onClick={handleAlterar}>
                 <FileEdit className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">Alterar</span>
                 <span className="sm:hidden">Alterar</span>

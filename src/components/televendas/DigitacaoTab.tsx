@@ -29,7 +29,7 @@ type OrderItem = {
 };
 
 export const DigitacaoTab = () => {
-  const { orders, setOrders } = useStore();
+  const { orders, setOrders, currentOrder, setCurrentOrder } = useStore();
   const [formData, setFormData] = useState({
     operacao: '',
     clienteId: 0,
@@ -151,6 +151,79 @@ export const DigitacaoTab = () => {
     };
     loadOps();
   }, []);
+
+  // Se veio um pedido para edição, busca detalhes via API e preenche o formulário e itens
+  useEffect(() => {
+    if (!currentOrder) return;
+    const fill = async () => {
+      try {
+        const detail = await ordersService.getById(currentOrder.id);
+        setFormData((prev) => ({
+          ...prev,
+          operacao: detail.operacao || prev.operacao,
+          clienteId: detail.clienteId || 0,
+          clienteNome: detail.clienteNome || '',
+          representanteId: detail.representanteId || '',
+          representanteNome: detail.representanteNome || '',
+          tabela: '', // header de tabela fica vazio; seleção por item
+          formaPagamento: detail.formaPagamento || '',
+          prazo: detail.prazo || '',
+          boleto: '',
+          rede: detail.rede || '',
+        }));
+        const mapped = (detail.itens || []).map((it: any) => ({
+          produtoId: it.produtoId,
+          descricao: it.descricao,
+          un: it.un,
+          quant: it.quant,
+          descontoPerc: it.descontoPerc,
+          preco: it.preco,
+          total: it.total,
+          obs: it.obs,
+          tabelaId: it.tabela_preco_id ?? it.tabelaId, // se o backend retornar
+        })) as OrderItem[];
+        setItems(mapped);
+        setObservacoes({
+          cliente: detail.observacaoCliente || '',
+          pedido: detail.observacaoPedido || '',
+          nf: detail.observacaoNF || '',
+        });
+      } catch {
+        // Fallback: preenche com o que já temos
+        setFormData((prev) => ({
+          ...prev,
+          operacao: currentOrder.operacao || prev.operacao,
+          clienteId: currentOrder.clienteId || 0,
+          clienteNome: currentOrder.clienteNome || '',
+          representanteId: currentOrder.representanteId || '',
+          representanteNome: currentOrder.representanteNome || '',
+          tabela: '',
+          formaPagamento: currentOrder.formaPagamento || '',
+          prazo: currentOrder.prazo || '',
+          boleto: '',
+          rede: currentOrder.rede || '',
+        }));
+        const mapped = (currentOrder.itens || []).map((it: any) => ({
+          produtoId: it.produtoId,
+          descricao: it.descricao,
+          un: it.un,
+          quant: it.quant,
+          descontoPerc: it.descontoPerc,
+          preco: it.preco,
+          total: it.total,
+          obs: it.obs,
+          tabelaId: (it as any)?.tabela_preco_id ?? (it as any)?.tabelaId,
+        })) as OrderItem[];
+        setItems(mapped);
+        setObservacoes({
+          cliente: currentOrder.observacaoCliente || '',
+          pedido: currentOrder.observacaoPedido || '',
+          nf: currentOrder.observacaoNF || '',
+        });
+      }
+    };
+    fill();
+  }, [currentOrder]);
 
   // Carrega formas de pagamento ao montar
   useEffect(() => {
@@ -533,9 +606,18 @@ export const DigitacaoTab = () => {
     };
 
     try {
-      const newOrder = await ordersService.create(order as any);
-      setOrders([...orders, newOrder]);
-      toast.success(`Pedido ${newOrder.id} criado com sucesso!`);
+      let saved;
+      if (currentOrder && currentOrder.id) {
+        // Atualiza (mock possui update; backend pode não ter ainda)
+        saved = await ordersService.update(currentOrder.id, order as any);
+        // Atualiza array local
+        setOrders(orders.map(o => (o.id === currentOrder.id ? { ...(o as any), ...saved } : o)) as any);
+        toast.success(`Pedido ${currentOrder.id} atualizado com sucesso!`);
+      } else {
+        saved = await ordersService.create(order as any);
+        setOrders([...orders, saved]);
+        toast.success(`Pedido ${saved.id} criado com sucesso!`);
+      }
       
       // Reset form
       setFormData({
@@ -552,6 +634,7 @@ export const DigitacaoTab = () => {
       });
       setItems([]);
       setObservacoes({ cliente: '', pedido: '', nf: '' });
+      setCurrentOrder(null);
     } catch (error) {
       toast.error('Erro ao criar pedido');
     }
@@ -1034,7 +1117,7 @@ export const DigitacaoTab = () => {
           <Undo className="h-4 w-4 sm:mr-2" />
           <span>Desfazer</span>
         </Button>
-        <Button onClick={handleSave} size="sm" className="w-full sm:w-auto">
+        <Button onClick={handleSave} size="sm" className="w-full sm:w-auto" disabled={!!(currentOrder && currentOrder.transmitido)}>
           <Save className="h-4 w-4 sm:mr-2" />
           <span>Salvar Pedido</span>
         </Button>
