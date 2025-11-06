@@ -9,6 +9,7 @@ export interface Client {
   bairro: string;
   fone?: string;
   contato?: string;
+  formaPagtoId?: number | string | null;
 }
 
 function extractErrorMessage(err: any, fallback: string): string {
@@ -53,6 +54,7 @@ function normalizeClient(raw: any): Client {
   const bairro = raw?.bairro ?? raw?.district ?? raw?.bairro_nome ?? '';
   const fone = raw?.fone ?? raw?.telefone ?? raw?.phone ?? '';
   const contato = raw?.contato ?? raw?.responsavel ?? raw?.contact ?? '';
+  const formaPagtoId = raw?.forma_pagto_id ?? raw?.formaPagtoId ?? raw?.forma_pagto ?? null;
 
   return {
     id: Number(id) || 0,
@@ -62,6 +64,7 @@ function normalizeClient(raw: any): Client {
     bairro: String(bairro || '').trim(),
     fone: fone ? String(fone) : undefined,
     contato: contato ? String(contato) : undefined,
+    formaPagtoId: typeof formaPagtoId === 'number' ? formaPagtoId : (formaPagtoId != null ? String(formaPagtoId) : null),
   };
 }
 

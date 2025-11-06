@@ -8,8 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from '@/components/ui/textarea';
 import { Save, Undo, Search, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { formasPagamento } from '@/mocks/data';
-import { metadataService, type Operacao, type Tabela } from '@/services/metadataService';
+import { metadataService, type Operacao, type Tabela, type FormaPagamento } from '@/services/metadataService';
 import { clientsService, type Client } from '@/services/clientsService';
 import { productsService, type Product } from '@/services/productsService';
 import { representativesService, type Representative } from '@/services/representativesService';
@@ -69,6 +68,11 @@ export const DigitacaoTab = () => {
     ? selectedTabela.prazoMedio
     : undefined;
 
+  // Formas de pagamento (metadata)
+  const [formas, setFormas] = useState<FormaPagamento[]>([]);
+  const [loadingFormas, setLoadingFormas] = useState(false);
+  const [formasError, setFormasError] = useState<string | null>(null);
+
   const [clientSearchOpen, setClientSearchOpen] = useState(false);
   const [productSearchOpen, setProductSearchOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
@@ -79,6 +83,8 @@ export const DigitacaoTab = () => {
   const [clientsError, setClientsError] = useState<string | null>(null);
   const [clientPage, setClientPage] = useState(1);
   const [clientHasMore, setClientHasMore] = useState(true);
+  // Guarda ID de forma de pagamento preferida do cliente selecionado para aplicar quando as formas carregarem
+  const [preferredFormaId, setPreferredFormaId] = useState<string | number | null>(null);
 
   const [representatives, setRepresentatives] = useState<Representative[]>([]);
   const [repSearchOpen, setRepSearchOpen] = useState(false);
@@ -138,6 +144,25 @@ export const DigitacaoTab = () => {
       }
     };
     loadOps();
+  }, []);
+
+  // Carrega formas de pagamento ao montar
+  useEffect(() => {
+    const loadFormas = async () => {
+      if (loadingFormas) return;
+      setLoadingFormas(true);
+      setFormasError(null);
+      try {
+        const fps = await metadataService.getFormasPagamento();
+        setFormas(fps);
+      } catch (e: any) {
+        setFormasError(String(e));
+      } finally {
+        setLoadingFormas(false);
+      }
+    };
+    loadFormas();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Carrega tabelas ao montar
@@ -285,10 +310,32 @@ export const DigitacaoTab = () => {
       clienteId: client.id,
       clienteNome: client.nome,
       tabela: '',
+      formaPagamento: '',
     });
+    // Marca forma preferida e tenta aplicar imediatamente se já temos a lista
+    const pf = client.formaPagtoId ?? null;
+    setPreferredFormaId(pf);
+    if (pf != null && formas && formas.length > 0) {
+      const match = formas.find((f) => String(f.id) === String(pf));
+      if (match) {
+        setFormData((prev) => ({ ...prev, formaPagamento: match.descricao }));
+      }
+    }
     setClientSearchOpen(false);
     setClientSearch('');
   };
+
+  // Aplica forma de pagamento preferida quando a lista de formas estiver carregada
+  useEffect(() => {
+    if (preferredFormaId == null) return;
+    if (!formas || formas.length === 0) return;
+    const match = formas.find((f) => String(f.id) === String(preferredFormaId));
+    if (match) {
+      setFormData((prev) => ({ ...prev, formaPagamento: match.descricao }));
+      setPreferredFormaId(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formas]);
 
   const handleSelectProduct = (product: Product) => {
     setNewItem({
@@ -600,14 +647,22 @@ export const DigitacaoTab = () => {
 
             <div>
               <label className="text-sm font-medium mb-2 block">Forma Pagamento</label>
-              <Select value={formData.formaPagamento} onValueChange={(v) => setFormData({...formData, formaPagamento: v})}>
+              <Select
+                value={formData.formaPagamento}
+                onValueChange={(v) => setFormData({ ...formData, formaPagamento: v })}
+                disabled={loadingFormas || !!formasError}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
+                  <SelectValue placeholder={loadingFormas ? 'Carregando...' : formasError ? 'Erro ao carregar' : 'Selecione'} />
                 </SelectTrigger>
                 <SelectContent>
-                  {formasPagamento.map(fp => (
-                    <SelectItem key={fp} value={fp}>{fp}</SelectItem>
-                  ))}
+                  {formas
+                    .filter((f) => !f.inativo && String(f.descricao || '').trim().length > 0)
+                    .map((f) => (
+                      <SelectItem key={`${f.id}-${f.codigo || f.descricao}`} value={String(f.descricao)}>
+                        {f.codigo ? `${f.codigo} - ${f.descricao}` : f.descricao}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>

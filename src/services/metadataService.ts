@@ -17,6 +17,21 @@ export interface Tabela {
   principal?: boolean;
 }
 
+export interface FormaPagamento {
+  id: number | string;
+  codigo?: string;
+  descricao: string;
+  somenteAvista?: boolean;
+  boleto?: boolean;
+  cartaoDebito?: boolean;
+  cartaoCredito?: boolean;
+  pix?: boolean;
+  indiceFinanceiro?: number;
+  taxaAdicional?: number;
+  prazoPagtoId?: number | string | null;
+  inativo?: boolean;
+}
+
 function normalizeOperacao(raw: any): Operacao {
   const id = raw?.operacao_id ?? raw?.id ?? raw?.codigo ?? raw?.codigo_operacao ?? '';
   const codigo = raw?.codigo_operacao ?? raw?.codigo ?? String(id ?? '');
@@ -208,6 +223,65 @@ export const metadataService = {
         const ac = String(a.codigo || a.id || '');
         const bc = String(b.codigo || b.id || '');
         return ac.localeCompare(bc, 'pt-BR', { numeric: true, sensitivity: 'base' } as any);
+      });
+      return mapped;
+    } catch (e) {
+      return Promise.reject('Erro de conexão com o servidor');
+    }
+  },
+
+  // Formas de pagamento
+  getFormasPagamento: async (): Promise<FormaPagamento[]> => {
+    const empresa = authService.getEmpresa();
+    if (!empresa) return Promise.reject('Empresa não selecionada');
+    const token = authService.getToken();
+    if (!token) return Promise.reject('Token ausente');
+    try {
+      const url = `${API_BASE}/api/metadata/formas-pagamento?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
+      const headers: Record<string, string> = {
+        accept: 'application/json',
+        Authorization: `Bearer ${token}`,
+      };
+      const res = await fetch(url, { method: 'GET', headers });
+      if (!res.ok) {
+        let message = 'Falha ao buscar formas de pagamento';
+        try { const err = await res.json(); message = err?.message || err?.error || message; } catch {}
+        return Promise.reject(message);
+      }
+      const data = await res.json();
+      const arr = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
+      const normalize = (raw: any): FormaPagamento => {
+        const id = raw?.forma_pagto_id ?? raw?.id ?? raw?.codigo ?? raw?.codigo_formapagto ?? '';
+        const codigo = raw?.codigo_formapagto ?? raw?.codigo ?? undefined;
+        const descricao =
+          raw?.descricao_forma_pagto ??
+          raw?.descricao ??
+          raw?.nome ??
+          '';
+        return {
+          id: typeof id === 'number' ? id : String(id || '').trim(),
+          codigo: codigo ? String(codigo).trim() : undefined,
+          descricao: String(descricao || '').trim(),
+          somenteAvista: Boolean(raw?.somente_avista ?? false),
+          boleto: Boolean(raw?.boleto ?? false),
+          cartaoDebito: Boolean(raw?.cartao_debito ?? false),
+          cartaoCredito: Boolean(raw?.cartao_credito ?? false),
+          pix: Boolean(raw?.pix ?? false),
+          indiceFinanceiro: Number(raw?.indice_financeiro ?? 0) || 0,
+          taxaAdicional: Number(raw?.taxa_adicional ?? 0) || 0,
+          prazoPagtoId: raw?.prazo_pagto_id ?? null,
+          inativo: Boolean(raw?.inativo ?? false),
+        };
+      };
+      const mapped = arr.map(normalize).filter((f) => String(f.descricao || '').trim().length > 0 && !f.inativo);
+      mapped.sort((a, b) => {
+        const ac = String(a.codigo || '');
+        const bc = String(b.codigo || '');
+        const byCode = ac.localeCompare(bc, 'pt-BR', { numeric: true, sensitivity: 'base' } as any);
+        if (byCode !== 0) return byCode;
+        const ad = String(a.descricao || '');
+        const bd = String(b.descricao || '');
+        return ad.localeCompare(bd, 'pt-BR', { numeric: true, sensitivity: 'base' } as any);
       });
       return mapped;
     } catch (e) {
