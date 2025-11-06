@@ -656,11 +656,17 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
             <span className="hidden sm:inline">Digitar Pedido</span>
             <span className="sm:hidden">Digitar</span>
           </Button>
-          <Button variant="outline" size="sm" className="w-full sm:w-auto">
-            <FileEdit className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Alterar</span>
-            <span className="sm:hidden">Alterar</span>
-          </Button>
+          {(() => {
+            const single = getSingleSelectedOrder();
+            const canAlterar = !!single && single.transmitido !== true;
+            return (
+              <Button variant="outline" size="sm" className="w-full sm:w-auto" disabled={!canAlterar}>
+                <FileEdit className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Alterar</span>
+                <span className="sm:hidden">Alterar</span>
+              </Button>
+            );
+          })()}
           <Button variant="outline" onClick={handleExcluir} size="sm" className="w-full sm:w-auto">
             <Trash2 className="h-4 w-4 sm:mr-2" />
             <span className="hidden sm:inline">Excluir</span>

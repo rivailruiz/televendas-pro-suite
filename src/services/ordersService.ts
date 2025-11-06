@@ -2,7 +2,49 @@ import { pedidos } from '@/mocks/data';
 import { authService } from '@/services/authService';
 import { API_BASE } from '@/utils/env';
 
-export type Order = typeof pedidos[0];
+export interface OrderItemUI {
+  produtoId: number;
+  descricao: string;
+  av: number;
+  un: string;
+  c: number;
+  quant: number;
+  descontoPerc: number;
+  preco: number;
+  liquido: number;
+  total: number;
+  obs?: string;
+}
+
+export interface Order {
+  id: number;
+  data: string;
+  operacao: string;
+  clienteId: number;
+  clienteNome: string;
+  representanteId: string;
+  representanteNome: string;
+  tabela: string;
+  formaPagamento: string;
+  prazo: string;
+  boleto: boolean;
+  rede: string;
+  especial: boolean;
+  situacao: string;
+  valor: number;
+  itens: OrderItemUI[];
+  totais: {
+    bruto: number;
+    descontos: number;
+    descontosPerc: number;
+    icmsRepasse: number;
+    liquido: number;
+  };
+  observacaoCliente?: string;
+  observacaoPedido?: string;
+  observacaoNF?: string;
+  transmitido?: boolean;
+}
 
 
 export const ordersService = {
@@ -79,6 +121,7 @@ export const ordersService = {
         observacaoCliente: p?.observacaoCliente ?? '',
         observacaoPedido: p?.observacaoPedido ?? '',
         observacaoNF: p?.observacaoNF ?? '',
+        transmitido: Boolean(p?.transmitido ?? false),
       }));
 
       return normalized;
@@ -92,13 +135,95 @@ export const ordersService = {
     return Promise.resolve(pedido);
   },
 
-  create: (order: Omit<Order, 'id'>) => {
-    const newOrder = {
-      ...order,
-      id: Math.max(...pedidos.map(p => p.id)) + 1
+  create: async (order: any) => {
+    const empresa = authService.getEmpresa();
+    if (!empresa) return Promise.reject('Empresa não selecionada');
+    const token = authService.getToken();
+    if (!token) return Promise.reject('Token ausente');
+
+    // Constrói itens conforme a tabela vendas_itens
+    const buildItens = (uiItens: any[]): any[] => {
+      const itens = Array.isArray(uiItens) ? uiItens : [];
+      return itens.map((it: any, idx: number) => {
+        const produto_id = it?.produtoId ?? it?.produto_id ?? it?.id;
+        const quantidade = Number(it?.quant ?? it?.quantidade ?? 0) || 0;
+        const preco_tabela = Number(it?.preco ?? it?.preco_tabela ?? 0) || 0;
+        const percentual_desconto = Number(it?.descontoPerc ?? it?.percentual_desconto ?? 0) || 0;
+        const valor_bruto = Number(it?.valor_bruto_calc ?? (preco_tabela * quantidade)) || 0;
+        const preco_unitario = quantidade > 0
+          ? Number(it?.liquido ?? (it?.total / quantidade) ?? 0) || 0
+          : 0;
+        const valor_liquido = Number(it?.total ?? (preco_unitario * quantidade)) || 0;
+        const valor_desconto = Math.max(0, valor_bruto - valor_liquido);
+        const tabela_preco_id_raw = it?.tabela_preco_id ?? it?.tabelaId ?? order?.tabela;
+        const tabela_preco_id = tabela_preco_id_raw != null ? Number(tabela_preco_id_raw) || 0 : 0;
+
+        return {
+          empresa_id: empresa.empresa_id,
+          pedido_id: 0, // definido no backend ao persistir o pedido
+          produto_id: Number(produto_id) || 0,
+          ordem: Number(it?.ordem ?? idx + 1) || (idx + 1),
+          tabela_preco_id,
+          quantidade,
+          preco_tabela,
+          percentual_desconto,
+          preco_unitario,
+          valor_bruto,
+          valor_desconto,
+          valor_icms_repasse: Number(it?.valor_icms_repasse ?? 0) || 0,
+          rateio_desconto_do_pedido: Number(it?.rateio_desconto_do_pedido ?? 0) || 0,
+          rateio_despesas: Number(it?.rateio_despesas ?? 0) || 0,
+          rateio_frete: Number(it?.rateio_frete ?? 0) || 0,
+          valor_liquido,
+          peso_bruto: Number(it?.peso_bruto ?? 0) || 0,
+          peso_liquido: Number(it?.peso_liquido ?? 0) || 0,
+          corte: Number(it?.corte ?? 0) || 0,
+          obs: it?.obs ? String(it.obs) : undefined,
+        };
+      });
     };
-    pedidos.push(newOrder);
-    return Promise.resolve(newOrder);
+
+    // Monta payload para API de pedidos
+    const payload: any = {
+      empresaId: empresa.empresa_id,
+      data: order?.data,
+      operacao: order?.operacao,
+      clienteId: order?.clienteId,
+      representanteId: order?.representanteId,
+      tabela: order?.tabela,
+      formaPagamento: order?.formaPagamento,
+      prazo: order?.prazo,
+      boleto: Boolean(order?.boleto ?? false),
+      rede: order?.rede,
+      valor: order?.valor,
+      observacoes: order?.observacoes,
+      itens: buildItens(order?.itens),
+    };
+
+    try {
+      const url = `${API_BASE}/api/pedidos`;
+      const headers: Record<string, string> = {
+        accept: 'application/json',
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      };
+      const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) });
+      if (!res.ok) {
+        let message = 'Falha ao criar pedido';
+        try { const err = await res.json(); message = err?.message || err?.error || message; } catch {}
+        return Promise.reject(message);
+      }
+      return res.json();
+    } catch (e) {
+      // Fallback para mock em caso de ambiente offline
+      const newOrder: Order = {
+        ...order,
+        id: Math.max(...pedidos.map(p => p.id)) + 1,
+        transmitido: false,
+      };
+      pedidos.push(newOrder);
+      return newOrder;
+    }
   },
 
   update: (id: number, order: Partial<Order>) => {

@@ -20,6 +20,7 @@ type OrderItem = {
   produtoId: number;
   descricao: string;
   un: string;
+  tabelaId?: string | number;
   quant: number;
   descontoPerc: number;
   preco: number;
@@ -289,6 +290,32 @@ export const DigitacaoTab = () => {
   const [productPage, setProductPage] = useState(1);
   const [productHasMore, setProductHasMore] = useState(true);
 
+  // Cache de tabelas por produto para dropdown por item
+  const [itemTabelas, setItemTabelas] = useState<Record<number, Tabela[]>>({});
+  const [itemTabelasLoading, setItemTabelasLoading] = useState<Record<number, boolean>>({});
+  const [itemTabelasError, setItemTabelasError] = useState<Record<number, string | null>>({});
+
+  const ensureItemTabelas = async (productId: number) => {
+    if (itemTabelas[productId] || itemTabelasLoading[productId]) return;
+    setItemTabelasLoading((prev) => ({ ...prev, [productId]: true }));
+    setItemTabelasError((prev) => ({ ...prev, [productId]: null }));
+    try {
+      const tabs = await metadataService.getTabelasByProduto(productId);
+      setItemTabelas((prev) => ({ ...prev, [productId]: tabs }));
+      // Define padrão nos itens do mesmo produto se ainda não houver seleção
+      setItems((prev) => prev.map((it) => {
+        if (it.produtoId !== productId || it.tabelaId) return it;
+        const prefer = tabs.find((t) => String(t.id) === String(formData.tabela));
+        const chosen = prefer || tabs[0];
+        return chosen ? { ...it, tabelaId: chosen.id } : it;
+      }));
+    } catch (e: any) {
+      setItemTabelasError((prev) => ({ ...prev, [productId]: String(e) }));
+    } finally {
+      setItemTabelasLoading((prev) => ({ ...prev, [productId]: false }));
+    }
+  };
+
   const PRODUCT_LIMIT = 100;
   const loadProducts = async (reset = false) => {
     if (loadingProducts) return;
@@ -325,6 +352,14 @@ export const DigitacaoTab = () => {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productSearch]);
+
+  // Garante cache de tabelas por produto para todos itens atuais
+  useEffect(() => {
+    items.forEach((it) => {
+      if (it?.produtoId) ensureItemTabelas(it.produtoId);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items]);
 
   const filteredRepresentatives = representatives; // server already filters by q
 
@@ -410,8 +445,23 @@ export const DigitacaoTab = () => {
     }
     
     const total = calculateItemTotal(newItem);
-    setItems([...items, { ...newItem, total } as OrderItem]);
+    const base = { ...newItem, total } as OrderItem;
+    const withTabela = formData.tabela ? { ...base, tabelaId: formData.tabela } : base;
+    setItems([...items, withTabela]);
+    if (typeof newItem.produtoId === 'number' && newItem.produtoId > 0) {
+      ensureItemTabelas(newItem.produtoId);
+    }
     setNewItem({ produtoId: 0, quant: 1, descontoPerc: 0 });
+  };
+
+  const handleUpdateItem = (index: number, patch: Partial<OrderItem>) => {
+    setItems((prev) => {
+      const updated = [...prev];
+      const current = { ...updated[index], ...patch } as OrderItem;
+      const total = calculateItemTotal(current);
+      updated[index] = { ...current, total };
+      return updated;
+    });
   };
 
   const handleRemoveItem = (index: number) => {
@@ -455,7 +505,7 @@ export const DigitacaoTab = () => {
       boleto: false,
       rede: formData.rede,
       valor: totals.liquido,
-      itens: items.map(item => ({
+      itens: items.map((item, idx) => ({
         produtoId: item.produtoId,
         descricao: item.descricao,
         av: 1,
@@ -464,9 +514,13 @@ export const DigitacaoTab = () => {
         quant: item.quant,
         descontoPerc: item.descontoPerc,
         preco: item.preco,
-        liquido: item.total / item.quant,
+        liquido: item.quant ? (item.total / item.quant) : 0,
         total: item.total,
-        obs: item.obs
+        obs: item.obs,
+        // campos auxiliares para o serviço montar o payload do backend
+        tabela_preco_id: item.tabelaId ?? (formData.tabela ? Number(formData.tabela) : undefined),
+        ordem: idx + 1,
+        valor_bruto_calc: (item.preco || 0) * (item.quant || 0),
       })),
       totais: {
         bruto: totals.bruto,
@@ -816,10 +870,7 @@ export const DigitacaoTab = () => {
                 </DialogContent>
               </Dialog>
             </div>
-            <div>
-              <label className="text-sm font-medium mb-2 block">UN</label>
-              <Input value={newItem.un || ''} disabled />
-            </div>
+            
             <div>
               <label className="text-sm font-medium mb-2 block">Quant.</label>
               <Input 
@@ -850,7 +901,7 @@ export const DigitacaoTab = () => {
               <TableRow>
                 <TableHead>Produto</TableHead>
                 <TableHead>Descrição</TableHead>
-                <TableHead>UN</TableHead>
+                <TableHead>Tabela</TableHead>
                 <TableHead className="text-right">Quant.</TableHead>
                 <TableHead className="text-right">%Desc</TableHead>
                 <TableHead className="text-right">Pr.Unit</TableHead>
@@ -863,9 +914,59 @@ export const DigitacaoTab = () => {
                 <TableRow key={idx}>
                   <TableCell>{item.produtoId}</TableCell>
                   <TableCell>{item.descricao}</TableCell>
-                  <TableCell>{item.un}</TableCell>
-                  <TableCell className="text-right">{item.quant}</TableCell>
-                  <TableCell className="text-right">{item.descontoPerc}%</TableCell>
+                  <TableCell>
+                    {(() => {
+                      const tabs = itemTabelas[item.produtoId] || [];
+                      const loading = !!itemTabelasLoading[item.produtoId];
+                      const error = itemTabelasError[item.produtoId];
+                      return (
+                        <Select
+                          value={item.tabelaId != null ? String(item.tabelaId) : ''}
+                          onValueChange={(v) => handleUpdateItem(idx, { tabelaId: v })}
+                          disabled={loading || !!error}
+                        >
+                          <SelectTrigger className="h-8">
+                            <SelectValue placeholder={loading ? '...' : error ? 'Erro' : 'Sel.'} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {tabs
+                              .filter((t) => String(t.descricao || '').trim().length > 0)
+                              .map((t) => (
+                                <SelectItem key={`${t.id}-${t.descricao}`} value={String(t.id)}>
+                                  {t.descricao}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      );
+                    })()}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      className="h-8 w-24 ml-auto text-right"
+                      value={item.quant}
+                      onChange={(e) => handleUpdateItem(idx, { quant: parseFloat(e.target.value) || 0 })}
+                      min={0}
+                      step="any"
+                    />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center gap-1 justify-end">
+                      <Input
+                        type="number"
+                        inputMode="decimal"
+                        className="h-8 w-20 text-right"
+                        value={item.descontoPerc}
+                        onChange={(e) => handleUpdateItem(idx, { descontoPerc: parseFloat(e.target.value) || 0 })}
+                        min={0}
+                        max={100}
+                        step="any"
+                      />
+                      <span className="text-xs text-muted-foreground">%</span>
+                    </div>
+                  </TableCell>
                   <TableCell className="text-right">{formatCurrency(item.preco)}</TableCell>
                   <TableCell className="text-right font-semibold">{formatCurrency(item.total)}</TableCell>
                   <TableCell>
