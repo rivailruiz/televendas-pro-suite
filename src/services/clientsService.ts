@@ -10,6 +10,7 @@ export interface Client {
   fone?: string;
   contato?: string;
   formaPagtoId?: number | string | null;
+  prazoPagtoId?: number | string | null;
 }
 
 function extractErrorMessage(err: any, fallback: string): string {
@@ -55,6 +56,7 @@ function normalizeClient(raw: any): Client {
   const fone = raw?.fone ?? raw?.telefone ?? raw?.phone ?? '';
   const contato = raw?.contato ?? raw?.responsavel ?? raw?.contact ?? '';
   const formaPagtoId = raw?.forma_pagto_id ?? raw?.formaPagtoId ?? raw?.forma_pagto ?? null;
+  const prazoPagtoId = raw?.prazo_pagto_id ?? raw?.prazoPagtoId ?? null;
 
   return {
     id: Number(id) || 0,
@@ -65,6 +67,7 @@ function normalizeClient(raw: any): Client {
     fone: fone ? String(fone) : undefined,
     contato: contato ? String(contato) : undefined,
     formaPagtoId: typeof formaPagtoId === 'number' ? formaPagtoId : (formaPagtoId != null ? String(formaPagtoId) : null),
+    prazoPagtoId: typeof prazoPagtoId === 'number' ? prazoPagtoId : (prazoPagtoId != null ? String(prazoPagtoId) : null),
   };
 }
 

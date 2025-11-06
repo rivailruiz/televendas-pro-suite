@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from '@/components/ui/textarea';
 import { Save, Undo, Search, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { metadataService, type Operacao, type Tabela, type FormaPagamento } from '@/services/metadataService';
+import { metadataService, type Operacao, type Tabela, type FormaPagamento, type PrazoPagto } from '@/services/metadataService';
 import { clientsService, type Client } from '@/services/clientsService';
 import { productsService, type Product } from '@/services/productsService';
 import { representativesService, type Representative } from '@/services/representativesService';
@@ -72,6 +72,11 @@ export const DigitacaoTab = () => {
   const [formas, setFormas] = useState<FormaPagamento[]>([]);
   const [loadingFormas, setLoadingFormas] = useState(false);
   const [formasError, setFormasError] = useState<string | null>(null);
+  
+  // Prazos de pagamento (metadata)
+  const [prazos, setPrazos] = useState<PrazoPagto[]>([]);
+  const [loadingPrazos, setLoadingPrazos] = useState(false);
+  const [prazosError, setPrazosError] = useState<string | null>(null);
 
   const [clientSearchOpen, setClientSearchOpen] = useState(false);
   const [productSearchOpen, setProductSearchOpen] = useState(false);
@@ -162,6 +167,25 @@ export const DigitacaoTab = () => {
       }
     };
     loadFormas();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Carrega prazos ao montar
+  useEffect(() => {
+    const loadPrazos = async () => {
+      if (loadingPrazos) return;
+      setLoadingPrazos(true);
+      setPrazosError(null);
+      try {
+        const ps = await metadataService.getPrazos();
+        setPrazos(ps);
+      } catch (e: any) {
+        setPrazosError(String(e));
+      } finally {
+        setLoadingPrazos(false);
+      }
+    };
+    loadPrazos();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -304,6 +328,8 @@ export const DigitacaoTab = () => {
 
   const filteredRepresentatives = representatives; // server already filters by q
 
+  const [preferredPrazoId, setPreferredPrazoId] = useState<string | number | null>(null);
+
   const handleSelectClient = (client: Client) => {
     setFormData({
       ...formData,
@@ -311,6 +337,7 @@ export const DigitacaoTab = () => {
       clienteNome: client.nome,
       tabela: '',
       formaPagamento: '',
+      prazo: '',
     });
     // Marca forma preferida e tenta aplicar imediatamente se já temos a lista
     const pf = client.formaPagtoId ?? null;
@@ -319,6 +346,15 @@ export const DigitacaoTab = () => {
       const match = formas.find((f) => String(f.id) === String(pf));
       if (match) {
         setFormData((prev) => ({ ...prev, formaPagamento: match.descricao }));
+      }
+    }
+    // Marca prazo preferido e tenta aplicar imediatamente se já temos a lista
+    const pp = client.prazoPagtoId ?? null;
+    setPreferredPrazoId(pp);
+    if (pp != null && prazos && prazos.length > 0) {
+      const matchPrazo = prazos.find((p) => String(p.id) === String(pp));
+      if (matchPrazo) {
+        setFormData((prev) => ({ ...prev, prazo: matchPrazo.descricao }));
       }
     }
     setClientSearchOpen(false);
@@ -336,6 +372,18 @@ export const DigitacaoTab = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formas]);
+
+  // Aplica prazo preferido quando a lista de prazos estiver carregada
+  useEffect(() => {
+    if (preferredPrazoId == null) return;
+    if (!prazos || prazos.length === 0) return;
+    const match = prazos.find((p) => String(p.id) === String(preferredPrazoId));
+    if (match) {
+      setFormData((prev) => ({ ...prev, prazo: match.descricao }));
+      setPreferredPrazoId(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prazos]);
 
   const handleSelectProduct = (product: Product) => {
     setNewItem({
@@ -669,25 +717,23 @@ export const DigitacaoTab = () => {
 
             <div>
               <label className="text-sm font-medium mb-2 block">Prazo</label>
-              <Input
-                type="number"
-                inputMode="numeric"
-                placeholder={prazoMax ? `Máx: ${prazoMax} dias` : 'Dias'}
-                min={0}
-                {...(prazoMax ? { max: prazoMax } : {})}
+              <Select
                 value={formData.prazo}
-                onChange={(e) => {
-                  const raw = e.target.value;
-                  // permite vazio
-                  if (raw === '') {
-                    setFormData({ ...formData, prazo: '' });
-                    return;
-                  }
-                  const n = Math.max(0, Math.floor(Number(raw) || 0));
-                  const clamped = typeof prazoMax === 'number' ? Math.min(n, prazoMax) : n;
-                  setFormData({ ...formData, prazo: String(clamped) });
-                }}
-              />
+                onValueChange={(v) => setFormData({ ...formData, prazo: v })}
+                disabled={loadingPrazos || !!prazosError}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={loadingPrazos ? 'Carregando...' : prazosError ? 'Erro ao carregar' : 'Selecione'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {prazos
+                    .map((p) => (
+                      <SelectItem key={`${p.id}-${p.codigo || p.descricao}`} value={String(p.descricao)}>
+                        {p.codigo ? `${p.codigo} - ${p.descricao}` : p.descricao}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
               {typeof prazoMax === 'number' && (
                 <p className="text-xs text-muted-foreground mt-1">Prazo máximo permitido pela tabela: {prazoMax} dias</p>
               )}

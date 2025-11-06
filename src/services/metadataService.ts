@@ -32,6 +32,22 @@ export interface FormaPagamento {
   inativo?: boolean;
 }
 
+export interface PrazoPagto {
+  id: number | string;
+  codigo?: string;
+  descricao: string;
+  avista?: boolean;
+  somenteCartao?: boolean;
+  prazoNegociado?: boolean;
+  formaPagtoId?: number | string | null;
+  numeroParcelas?: number;
+  prazosEmDias?: number[];
+  pedidoMinimo?: number;
+  prazoMedio?: number; // 0 = sem limite
+  comissao?: number;
+  inativo?: boolean;
+}
+
 function normalizeOperacao(raw: any): Operacao {
   const id = raw?.operacao_id ?? raw?.id ?? raw?.codigo ?? raw?.codigo_operacao ?? '';
   const codigo = raw?.codigo_operacao ?? raw?.codigo ?? String(id ?? '');
@@ -274,6 +290,66 @@ export const metadataService = {
         };
       };
       const mapped = arr.map(normalize).filter((f) => String(f.descricao || '').trim().length > 0 && !f.inativo);
+      mapped.sort((a, b) => {
+        const ac = String(a.codigo || '');
+        const bc = String(b.codigo || '');
+        const byCode = ac.localeCompare(bc, 'pt-BR', { numeric: true, sensitivity: 'base' } as any);
+        if (byCode !== 0) return byCode;
+        const ad = String(a.descricao || '');
+        const bd = String(b.descricao || '');
+        return ad.localeCompare(bd, 'pt-BR', { numeric: true, sensitivity: 'base' } as any);
+      });
+      return mapped;
+    } catch (e) {
+      return Promise.reject('Erro de conexão com o servidor');
+    }
+  },
+
+  // Prazos de pagamento
+  getPrazos: async (): Promise<PrazoPagto[]> => {
+    const empresa = authService.getEmpresa();
+    if (!empresa) return Promise.reject('Empresa não selecionada');
+    const token = authService.getToken();
+    if (!token) return Promise.reject('Token ausente');
+    try {
+      const url = `${API_BASE}/api/metadata/prazos?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
+      const headers: Record<string, string> = {
+        accept: 'application/json',
+        Authorization: `Bearer ${token}`,
+      };
+      const res = await fetch(url, { method: 'GET', headers });
+      if (!res.ok) {
+        let message = 'Falha ao buscar prazos';
+        try { const err = await res.json(); message = err?.message || err?.error || message; } catch {}
+        return Promise.reject(message);
+      }
+      const data = await res.json();
+      const arr = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
+      const normalize = (raw: any): PrazoPagto => {
+        const id = raw?.prazo_pagto_id ?? raw?.id ?? raw?.codigo ?? raw?.codigo_prazopagto ?? '';
+        const codigo = raw?.codigo_prazopagto ?? raw?.codigo ?? undefined;
+        const descricao = raw?.descricao_prazo_pagto ?? raw?.descricao ?? '';
+        const pedidoMinimo = Number(raw?.pedido_minimo ?? 0) || 0;
+        const comissao = Number(raw?.comissao ?? 0) || 0;
+        const prazoMedio = Number(raw?.prazo_medio ?? 0) || 0;
+        const dias = Array.isArray(raw?.prazos_em_dias) ? raw.prazos_em_dias.map((n: any) => Number(n)).filter((n: any) => Number.isFinite(n)) : undefined;
+        return {
+          id: typeof id === 'number' ? id : String(id || '').trim(),
+          codigo: codigo ? String(codigo).trim() : undefined,
+          descricao: String(descricao || '').trim(),
+          avista: Boolean(raw?.avista ?? false),
+          somenteCartao: Boolean(raw?.somente_cartao ?? false),
+          prazoNegociado: Boolean(raw?.prazo_negociado ?? false),
+          formaPagtoId: raw?.forma_pagto_id ?? null,
+          numeroParcelas: Number(raw?.numero_de_parcelas ?? 0) || 0,
+          prazosEmDias: dias,
+          pedidoMinimo,
+          prazoMedio,
+          comissao,
+          inativo: Boolean(raw?.inativo ?? false),
+        };
+      };
+      const mapped = arr.map(normalize).filter((p) => String(p.descricao || '').trim().length > 0 && !p.inativo);
       mapped.sort((a, b) => {
         const ac = String(a.codigo || '');
         const bc = String(b.codigo || '');
