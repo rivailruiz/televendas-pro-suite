@@ -520,11 +520,53 @@ export const DigitacaoTab = () => {
       toast.error('Preencha produto e quantidade');
       return;
     }
-    
-    const total = calculateItemTotal(newItem);
-    const base = { ...newItem, total } as OrderItem;
-    const withTabela = formData.tabela ? { ...base, tabelaId: formData.tabela } : base;
-    setItems([...items, withTabela]);
+
+    const produtoId = typeof newItem.produtoId === 'number' ? newItem.produtoId : Number(newItem.produtoId);
+    const quant = Math.max(0, Number(newItem.quant) || 0);
+    const descricao = newItem.descricao || '';
+    const un = newItem.un || '';
+    const descontoPerc = newItem.descontoPerc || 0;
+    const preco = newItem.preco || 0;
+    const obs = newItem.obs;
+    const tabelaSelecionada = formData.tabela ? String(formData.tabela) : undefined;
+
+    setItems((prev) => {
+      if (!produtoId || !quant) return prev;
+
+      const existingIndex = prev.findIndex((it) => {
+        if (it.produtoId !== produtoId) return false;
+        const itemTabela = it.tabelaId != null ? String(it.tabelaId) : undefined;
+        return itemTabela === tabelaSelecionada;
+      });
+
+      if (existingIndex === -1) {
+        const base: OrderItem = {
+          produtoId,
+          descricao,
+          un,
+          tabelaId: tabelaSelecionada,
+          quant,
+          descontoPerc,
+          preco,
+          total: 0,
+          obs,
+        };
+        const total = calculateItemTotal(base);
+        const withTotal = { ...base, total };
+        return [...prev, withTotal];
+      }
+
+      const updated = [...prev];
+      const current = updated[existingIndex];
+      const merged: OrderItem = {
+        ...current,
+        quant: (current.quant || 0) + quant,
+      };
+      const total = calculateItemTotal(merged);
+      updated[existingIndex] = { ...merged, total };
+      return updated;
+    });
+
     if (typeof newItem.produtoId === 'number' && newItem.produtoId > 0) {
       ensureItemTabelas(newItem.produtoId);
     }
@@ -539,6 +581,29 @@ export const DigitacaoTab = () => {
       updated[index] = { ...current, total };
       return updated;
     });
+  };
+
+  const handleChangeItemTabela = async (index: number, tabelaId: string) => {
+    const current = items[index];
+    // Atualiza primeiro a tabela selecionada no item
+    handleUpdateItem(index, { tabelaId });
+
+    if (!current || !current.produtoId) return;
+    const tabelaNum = Number(tabelaId);
+    if (!tabelaNum) return;
+
+    try {
+      const novoPreco = await productsService.getPrecoByTabela(
+        current.produtoId,
+        tabelaNum,
+      );
+      handleUpdateItem(index, { preco: novoPreco });
+    } catch (e: any) {
+      toast.error(
+        String(e) ||
+          'Não foi possível atualizar o preço para a tabela selecionada',
+      );
+    }
   };
 
   const handleRemoveItem = (index: number) => {
@@ -1020,7 +1085,7 @@ export const DigitacaoTab = () => {
                       return (
                         <Select
                           value={item.tabelaId != null ? String(item.tabelaId) : ''}
-                          onValueChange={(v) => handleUpdateItem(idx, { tabelaId: v })}
+                          onValueChange={(v) => handleChangeItemTabela(idx, v)}
                           disabled={loading || !!error}
                         >
                           <SelectTrigger className="h-8">

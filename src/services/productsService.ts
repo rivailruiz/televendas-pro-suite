@@ -9,6 +9,12 @@ export interface Product {
   categoria?: string;
 }
 
+interface ProductTabelaPrecoResponse {
+  produtoId: number;
+  tabelaPrecoId: number;
+  preco: number;
+}
+
 function normalizeProduct(raw: any): Product {
   const id = raw?.id ?? raw?.produto_id ?? raw?.codigo ?? raw?.cod ?? 0;
   const descricao =
@@ -68,6 +74,57 @@ async function fetchFromApi({ q, page = 1, limit = 100 }: { q?: string; page?: n
   }
 }
 
+async function fetchPrecoByTabela({
+  produtoId,
+  tabelaPrecoId,
+}: {
+  produtoId: number;
+  tabelaPrecoId: number;
+}): Promise<ProductTabelaPrecoResponse> {
+  const empresa = authService.getEmpresa();
+  if (!empresa) return Promise.reject('Empresa não selecionada');
+  const token = authService.getToken();
+  if (!token) return Promise.reject('Token ausente');
+
+  try {
+    const params = new URLSearchParams();
+    params.set('empresaId', String(empresa.empresa_id));
+    params.set('tabelaPrecoId', String(tabelaPrecoId));
+
+    const url = `${API_BASE}/api/produtos/${encodeURIComponent(
+      produtoId,
+    )}/preco?${params.toString()}`;
+    const headers: Record<string, string> = {
+      accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    };
+    const res = await fetch(url, { method: 'GET', headers });
+
+    if (!res.ok) {
+      let message = 'Erro ao buscar preço do produto';
+      try {
+        const err = await res.json();
+        message = err?.message || err?.error || message;
+      } catch {}
+      return Promise.reject(message);
+    }
+
+    const data = await res.json();
+    const produtoIdResp = Number(data?.produtoId ?? produtoId) || produtoId;
+    const tabelaIdResp =
+      Number(data?.tabelaPrecoId ?? tabelaPrecoId) || tabelaPrecoId;
+    const precoResp = Number(data?.preco ?? 0) || 0;
+
+    return {
+      produtoId: produtoIdResp,
+      tabelaPrecoId: tabelaIdResp,
+      preco: precoResp,
+    };
+  } catch {
+    return Promise.reject('Erro de conexão ao buscar preço do produto');
+  }
+}
+
 export const productsService = {
   find: async (query?: string, page = 1, limit = 100): Promise<Product[]> => {
     return fetchFromApi({ q: query, page, limit });
@@ -78,5 +135,12 @@ export const productsService = {
   getById: async (id: number): Promise<Product | undefined> => {
     const list = await fetchFromApi({ q: String(id), page: 1, limit: 1 });
     return list.find((p) => p.id === id);
+  },
+  getPrecoByTabela: async (
+    produtoId: number,
+    tabelaPrecoId: number,
+  ): Promise<number> => {
+    const data = await fetchPrecoByTabela({ produtoId, tabelaPrecoId });
+    return data.preco;
   },
 };
