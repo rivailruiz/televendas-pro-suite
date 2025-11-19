@@ -196,7 +196,7 @@ export const ordersService = {
         const percentual_desconto = Number(it?.descontoPerc ?? it?.percentual_desconto ?? 0) || 0;
         const valor_bruto = Number(it?.valor_bruto_calc ?? (preco_tabela * quantidade)) || 0;
         const preco_unitario = quantidade > 0
-          ? Number(it?.liquido ?? (it?.total / quantidade) ?? 0) || 0
+          ? Number(it?.liquido ?? (it?.total ? it.total / quantidade : 0)) || 0
           : 0;
         const valor_liquido = Number(it?.total ?? (preco_unitario * quantidade)) || 0;
         const valor_desconto = Math.max(0, valor_bruto - valor_liquido);
@@ -265,8 +265,12 @@ export const ordersService = {
         ...order,
         id: Math.max(...pedidos.map(p => p.id)) + 1,
         transmitido: false,
+        itens: order.itens.map((item: OrderItemUI) => ({
+          ...item,
+          obs: item.obs || ''
+        }))
       };
-      pedidos.push(newOrder);
+      pedidos.push(newOrder as any);
       return newOrder;
     }
   },
@@ -287,7 +291,7 @@ export const ordersService = {
         const percentual_desconto = Number(it?.descontoPerc ?? it?.percentual_desconto ?? 0) || 0;
         const valor_bruto = Number(it?.valor_bruto_calc ?? (preco_tabela * quantidade)) || 0;
         const preco_unitario = quantidade > 0
-          ? Number(it?.liquido ?? (it?.total / quantidade) ?? 0) || 0
+          ? Number(it?.liquido ?? (it?.total ? it.total / quantidade : 0)) || 0
           : 0;
         const valor_liquido = Number(it?.total ?? (preco_unitario * quantidade)) || 0;
         const valor_desconto = Math.max(0, valor_bruto - valor_liquido);
