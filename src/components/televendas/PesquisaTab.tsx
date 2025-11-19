@@ -593,7 +593,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
       <div className="border rounded-lg overflow-hidden">
         <div className="max-h-[60vh] overflow-auto scrollbar-thin">
           <Table className="min-w-[800px]">
-          <TableHeader>
+          <TableHeader className="sticky top-0 z-10 bg-background">
             <TableRow className="bg-table-header">
               <TableHead className="w-10">
                 <Checkbox
