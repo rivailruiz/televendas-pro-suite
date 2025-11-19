@@ -7,7 +7,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Search, X, FileEdit, Trash2, Mail, Download, Printer, File } from 'lucide-react';
+import { Search, X, FileEdit, Trash2, Mail, Download, Printer, File, Eye } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ordersService, type Order } from '@/services/ordersService';
 import { clientsService, type Client } from '@/services/clientsService';
 import { authService } from '@/services/authService';
@@ -613,6 +614,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
               <TableHead>Cliente</TableHead>
               <TableHead>Nome</TableHead>
               <TableHead className="text-right">Valor</TableHead>
+              <TableHead className="text-center">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -636,6 +638,126 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                 <TableCell>{order.clienteId}</TableCell>
                 <TableCell>{order.clienteNome}</TableCell>
                 <TableCell className="text-right font-medium">{formatCurrency(order.valor)}</TableCell>
+                <TableCell>
+                  <TooltipProvider>
+                    <div className="flex items-center justify-center gap-1">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => {
+                              setCurrentOrder(order);
+                              if (onNavigateToDigitacao) onNavigateToDigitacao();
+                            }}
+                            disabled={order.transmitido === true}
+                          >
+                            <FileEdit className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Alterar pedido</TooltipContent>
+                      </Tooltip>
+
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => {
+                              setPreviewOrder(order);
+                              setPreviewOpen(true);
+                            }}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Visualizar pedido</TooltipContent>
+                      </Tooltip>
+
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => {
+                              const html = buildPrintableHtml(order);
+                              const win = window.open('', '', 'width=800,height=600');
+                              if (!win) return;
+                              win.document.write(html);
+                              win.document.close();
+                              setTimeout(() => {
+                                try { win.print(); } catch {}
+                              }, 100);
+                            }}
+                          >
+                            <Printer className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Imprimir pedido</TooltipContent>
+                      </Tooltip>
+
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={async () => {
+                              try {
+                                await ordersService.remove(order.id);
+                                toast.success('Pedido excluído');
+                                loadOrders();
+                              } catch (e: any) {
+                                toast.error(`Erro ao excluir: ${e.message || e}`);
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Excluir pedido</TooltipContent>
+                      </Tooltip>
+
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                          >
+                            <Mail className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Enviar por e-mail</TooltipContent>
+                      </Tooltip>
+
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={async () => {
+                              try {
+                                await ordersService.export(order.id);
+                                toast.success('Pedido exportado para faturamento');
+                                loadOrders();
+                              } catch (e: any) {
+                                toast.error(`Erro ao exportar: ${e.message || e}`);
+                              }
+                            }}
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Exportar para faturamento</TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </TooltipProvider>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -643,89 +765,36 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
         </div>
       </div>
 
-      {/* Rodapé com ações */}
-      <div className="flex flex-col gap-3 sm:gap-4 p-3 sm:p-4 bg-card rounded-lg border">
-        {/* Total - Primeira linha em mobile */}
-        <div className="flex justify-between items-center sm:hidden border-b pb-3">
-          <div>
-            <div className="text-xl font-bold text-primary">{formatCurrency(totalSelecionado)}</div>
-            <div className="text-xs text-muted-foreground">{selectedOrders.length} selecionado(s)</div>
+      {/* Resumo de seleção */}
+      {selectedOrders.length > 0 && (
+        <div className="flex items-center justify-between p-3 sm:p-4 bg-card rounded-lg border">
+          <div className="text-sm text-muted-foreground">
+            {selectedOrders.length} pedido(s) selecionado(s)
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-4">
             <Button
-              variant={outputMode === 'video' ? 'default' : 'outline'}
+              variant="outline"
               size="sm"
-              onClick={handleVisualizar}
+              onClick={handleExcluir}
             >
-              <File className="h-4 w-4" />
+              <Trash2 className="h-4 w-4 mr-2" />
+              Excluir selecionados
             </Button>
             <Button
-              variant={outputMode === 'impressora' ? 'default' : 'outline'}
+              variant="outline"
               size="sm"
-              onClick={handleImpressora}
+              onClick={handleExportar}
             >
-              <Printer className="h-4 w-4" />
+              <Download className="h-4 w-4 mr-2" />
+              Exportar selecionados
             </Button>
+            <div className="text-right">
+              <div className="text-xl font-bold text-primary">{formatCurrency(totalSelecionado)}</div>
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Botões de ação */}
-        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
-          {(() => {
-            const single = getSingleSelectedOrder();
-            const canAlterar = !!single && single.transmitido !== true;
-            return (
-              <Button variant="outline" size="sm" className="w-full sm:w-auto" disabled={!canAlterar} onClick={handleAlterar}>
-                <FileEdit className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Alterar</span>
-                <span className="sm:hidden">Alterar</span>
-              </Button>
-            );
-          })()}
-          <Button variant="outline" onClick={handleExcluir} size="sm" className="w-full sm:w-auto">
-            <Trash2 className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Excluir</span>
-            <span className="sm:hidden">Excluir</span>
-          </Button>
-          <Button variant="outline" size="sm" className="w-full sm:w-auto">
-            <Mail className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">E-mail</span>
-            <span className="sm:hidden">E-mail</span>
-          </Button>
-          <Button variant="outline" onClick={handleExportar} size="sm" className="col-span-2 sm:col-span-1 sm:w-auto">
-            <Download className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Exportar p/ faturamento</span>
-            <span className="sm:hidden">Exportar</span>
-          </Button>
-        </div>
-
-        {/* Total e modo de saída - Desktop */}
-        <div className="hidden sm:flex items-center justify-end gap-4 border-t pt-3">
-          <div className="flex gap-2">
-            <Button
-              variant={outputMode === 'video' ? 'default' : 'outline'}
-              size="sm"
-              onClick={handleVisualizar}
-            >
-              <File className="h-4 w-4 mr-1" />
-              Visualizar
-            </Button>
-            <Button
-              variant={outputMode === 'impressora' ? 'default' : 'outline'}
-              size="sm"
-              onClick={handleImpressora}
-            >
-              <Printer className="h-4 w-4 mr-1" />
-              Impressora
-            </Button>
-          </div>
-          
-          <div className="text-right">
-            <div className="text-2xl font-bold text-primary">{formatCurrency(totalSelecionado)}</div>
-            <div className="text-xs text-muted-foreground">{selectedOrders.length} selecionado(s)</div>
-          </div>
-        </div>
-      </div>
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
