@@ -591,9 +591,8 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
 
       {/* Tabela */}
       <div className="border rounded-lg overflow-hidden">
-        <div className="max-h-[60vh] overflow-auto scrollbar-thin">
-          <Table className="min-w-[800px]">
-          <TableHeader className="sticky top-0 z-10 bg-background">
+        <Table className="min-w-[800px]">
+          <TableHeader className="bg-background border-b">
             <TableRow className="bg-table-header">
               <TableHead className="w-10">
                 <Checkbox
@@ -617,8 +616,11 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
               <TableHead className="text-center">Ações</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
-            {orders.map((order) => (
+        </Table>
+        <div className="max-h-[60vh] overflow-auto scrollbar-thin">
+          <Table className="min-w-[800px]">
+            <TableBody>
+              {orders.map((order) => (
               <TableRow
                 key={order.id}
                 className={selectedOrders.includes(order.id) ? 'bg-table-selected' : 'hover:bg-table-hover'}
