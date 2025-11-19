@@ -571,15 +571,21 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
       </div>
 
       {/* Botões de ação - filtros */}
-      <div className="flex flex-col sm:flex-row gap-2">
-        <Button onClick={handlePesquisar} className="w-full sm:w-auto">
-          <Search className="h-4 w-4 mr-2" />
-          Pesquisar
+      <div className="flex flex-col sm:flex-row gap-2 sm:justify-between">
+        <Button variant="outline" onClick={onNavigateToDigitacao} className="w-full sm:w-auto">
+          <FileEdit className="h-4 w-4 mr-2" />
+          Digitar Pedido
         </Button>
-        <Button variant="outline" onClick={handleLimparFiltros} className="w-full sm:w-auto">
-          <X className="h-4 w-4 mr-2" />
-          Limpa filtros
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button onClick={handlePesquisar} className="w-full sm:w-auto">
+            <Search className="h-4 w-4 mr-2" />
+            Pesquisar
+          </Button>
+          <Button variant="outline" onClick={handleLimparFiltros} className="w-full sm:w-auto">
+            <X className="h-4 w-4 mr-2" />
+            Limpa filtros
+          </Button>
+        </div>
       </div>
 
       {/* Tabela */}
@@ -665,11 +671,6 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
 
         {/* Botões de ação */}
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
-          <Button variant="outline" onClick={onNavigateToDigitacao} size="sm" className="w-full sm:w-auto">
-            <FileEdit className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Digitar Pedido</span>
-            <span className="sm:hidden">Digitar</span>
-          </Button>
           {(() => {
             const single = getSingleSelectedOrder();
             const canAlterar = !!single && single.transmitido !== true;
