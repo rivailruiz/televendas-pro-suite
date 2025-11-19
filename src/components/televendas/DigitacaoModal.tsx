@@ -14,7 +14,7 @@ export const DigitacaoModal = ({ open, onOpenChange }: DigitacaoModalProps) => {
           <DialogTitle>Digitação de Pedido</DialogTitle>
         </DialogHeader>
         <div className="px-6 pb-6">
-          <DigitacaoTab />
+          <DigitacaoTab onClose={() => onOpenChange(false)} />
         </div>
       </DialogContent>
     </Dialog>

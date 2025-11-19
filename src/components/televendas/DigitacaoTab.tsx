@@ -28,7 +28,11 @@ type OrderItem = {
   obs?: string;
 };
 
-export const DigitacaoTab = () => {
+interface DigitacaoTabProps {
+  onClose?: () => void;
+}
+
+export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
   const { orders, setOrders, currentOrder, setCurrentOrder } = useStore();
   const [formData, setFormData] = useState({
     operacao: '',
@@ -720,6 +724,9 @@ export const DigitacaoTab = () => {
         saved = await ordersService.create(order as any);
         setOrders([...orders, saved]);
         toast.success(`Pedido ${saved.id} criado com sucesso!`);
+        if (onClose) {
+          onClose();
+        }
       }
       
       // Reset form
