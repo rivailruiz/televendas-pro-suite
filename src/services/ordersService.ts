@@ -333,7 +333,9 @@ export const ordersService = {
     };
 
     try {
-      const url = `${API_BASE}/api/pedidos/${encodeURIComponent(id)}`;
+      const url = `${API_BASE}/api/pedidos/${encodeURIComponent(
+        id,
+      )}?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
       const headers: Record<string, string> = {
         accept: 'application/json',
         'Content-Type': 'application/json',

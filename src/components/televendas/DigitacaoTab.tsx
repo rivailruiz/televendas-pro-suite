@@ -190,7 +190,7 @@ export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
           clienteNome: detail.clienteNome || '',
           representanteId: detail.representanteId || '',
           representanteNome: detail.representanteNome || '',
-          tabela: '', // header de tabela fica vazio; seleção por item
+          tabela: detail.tabela || prev.tabela || '',
           formaPagamento: detail.formaPagamento || '',
           prazo: detail.prazo || '',
           boleto: '',
@@ -222,7 +222,7 @@ export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
           clienteNome: currentOrder.clienteNome || '',
           representanteId: currentOrder.representanteId || '',
           representanteNome: currentOrder.representanteNome || '',
-          tabela: '',
+          tabela: currentOrder.tabela || prev.tabela || '',
           formaPagamento: currentOrder.formaPagamento || '',
           prazo: currentOrder.prazo || '',
           boleto: '',
@@ -304,7 +304,10 @@ export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
         const tabs = await metadataService.getTabelasByCliente(formData.clienteId);
         setTabelas(tabs);
         const principal = tabs.find((t) => t.principal);
-        setFormData((prev) => ({ ...prev, tabela: principal ? String(principal.id) : '' }));
+        setFormData((prev) => {
+          if (prev.tabela) return prev;
+          return { ...prev, tabela: principal ? String(principal.id) : '' };
+        });
       } catch (e: any) {
         setTabelasError(String(e));
         setTabelas([]);
@@ -720,6 +723,9 @@ export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
         // Atualiza array local
         setOrders(orders.map(o => (o.id === currentOrder.id ? { ...(o as any), ...saved } : o)) as any);
         toast.success(`Pedido ${currentOrder.id} atualizado com sucesso!`);
+        if (onClose) {
+          onClose();
+        }
       } else {
         saved = await ordersService.create(order as any);
         setOrders([...orders, saved]);
