@@ -512,8 +512,8 @@ export const DigitacaoTab = () => {
   };
 
   const handleAddItem = () => {
-    if (!formData.operacao || !formData.clienteId) {
-      toast.error('Preencha operação e cliente antes de adicionar itens');
+    if (!formData.operacao || !formData.clienteId || !formData.representanteId) {
+      toast.error('Preencha operação, cliente e representante antes de adicionar itens');
       return;
     }
     if (!newItem.produtoId || !newItem.quant) {
@@ -556,8 +556,8 @@ export const DigitacaoTab = () => {
   }, { bruto: 0, descontos: 0, liquido: 0 });
 
   const handleSave = async () => {
-    if (!formData.operacao || !formData.clienteId || items.length === 0) {
-      toast.error('Preencha operação, cliente e adicione pelo menos um item');
+    if (!formData.operacao || !formData.clienteId || !formData.representanteId || items.length === 0) {
+      toast.error('Preencha operação, cliente, representante e adicione pelo menos um item');
       return;
     }
     // Valida prazo máximo conforme a tabela selecionada
@@ -740,7 +740,7 @@ export const DigitacaoTab = () => {
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-2 block">Representante</label>
+              <label className="text-sm font-medium mb-2 block">Representante *</label>
               <Dialog open={repSearchOpen} onOpenChange={setRepSearchOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" className="w-full justify-start">
@@ -985,7 +985,7 @@ export const DigitacaoTab = () => {
               <Button
                 onClick={handleAddItem}
                 className="w-full"
-                disabled={!formData.operacao || !formData.clienteId}
+                disabled={!formData.operacao || !formData.clienteId || !formData.representanteId}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Adicionar
