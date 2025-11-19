@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { authService } from '@/services/authService';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { LogOut, Search, FileText, Route, Users, UserPlus, FileEdit } from 'lucide-react';
+import { LogOut, Search, FileText, Route, Users, UserPlus } from 'lucide-react';
 import { PesquisaTab } from '@/components/televendas/PesquisaTab';
 import { DadosTab } from '@/components/televendas/DadosTab';
 import { ItinerariosTab } from '@/components/televendas/ItinerariosTab';
 import { VisitasTab } from '@/components/televendas/VisitasTab';
 import { ClientesTab } from '@/components/televendas/ClientesTab';
-import { DigitacaoTab } from '@/components/televendas/DigitacaoTab';
+import { DigitacaoModal } from '@/components/televendas/DigitacaoModal';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { toast } from 'sonner';
 
@@ -17,6 +17,7 @@ const Televendas = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('pesquisa');
   const [ready, setReady] = useState(false);
+  const [digitacaoOpen, setDigitacaoOpen] = useState(false);
 
   useEffect(() => {
     // Gate rendering until auth + empresa checados
@@ -81,7 +82,7 @@ const Televendas = () => {
       <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
         <Tabs defaultValue="pesquisa" className="w-full" value={activeTab} onValueChange={setActiveTab}>
           <div className="overflow-x-auto mb-4 sm:mb-6 -mx-2 px-2">
-            <TabsList className="inline-flex w-auto min-w-full sm:grid sm:w-full grid-cols-3 sm:grid-cols-6 gap-1">{/* Changed to allow horizontal scroll on mobile */}
+            <TabsList className="inline-flex w-auto min-w-full sm:grid sm:w-full grid-cols-3 sm:grid-cols-5 gap-1">
               <TabsTrigger value="pesquisa" className="flex items-center gap-1 sm:gap-2 whitespace-nowrap px-3">
                 <Search className="h-4 w-4" />
                 <span className="text-xs sm:text-sm">Pesquisa</span>
@@ -102,16 +103,12 @@ const Televendas = () => {
                 <UserPlus className="h-4 w-4" />
                 <span className="text-xs sm:text-sm">Clientes</span>
               </TabsTrigger>
-              <TabsTrigger value="digitacao" className="flex items-center gap-1 sm:gap-2 whitespace-nowrap px-3">
-                <FileEdit className="h-4 w-4" />
-                <span className="text-xs sm:text-sm">Digitação</span>
-              </TabsTrigger>
             </TabsList>
           </div>
 
           <TabsContent value="pesquisa" className="space-y-4">
             <ErrorBoundary>
-              <PesquisaTab onNavigateToDigitacao={() => setActiveTab('digitacao')} />
+              <PesquisaTab onNavigateToDigitacao={() => setDigitacaoOpen(true)} />
             </ErrorBoundary>
           </TabsContent>
 
@@ -138,13 +135,9 @@ const Televendas = () => {
               <ClientesTab />
             </ErrorBoundary>
           </TabsContent>
-
-          <TabsContent value="digitacao" className="space-y-4">
-            <ErrorBoundary>
-              <DigitacaoTab />
-            </ErrorBoundary>
-          </TabsContent>
         </Tabs>
+
+        <DigitacaoModal open={digitacaoOpen} onOpenChange={setDigitacaoOpen} />
       </main>
     </div>
   );
