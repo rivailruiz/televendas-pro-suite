@@ -9,11 +9,11 @@ interface DigitacaoModalProps {
 export const DigitacaoModal = ({ open, onOpenChange }: DigitacaoModalProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] w-full max-h-[95vh] overflow-y-auto p-0">
-        <DialogHeader className="px-6 pt-6 pb-2 sticky top-0 bg-background z-10 border-b">
-          <DialogTitle>Digitação de Pedido</DialogTitle>
+      <DialogContent className="w-[95vw] max-w-[1400px] h-[95vh] max-h-[900px] p-0 flex flex-col">
+        <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-2 border-b shrink-0">
+          <DialogTitle className="text-base sm:text-lg">Digitação de Pedido</DialogTitle>
         </DialogHeader>
-        <div className="px-6 pb-6">
+        <div className="px-4 sm:px-6 pb-4 sm:pb-6 overflow-y-auto flex-1">
           <DigitacaoTab onClose={() => onOpenChange(false)} />
         </div>
       </DialogContent>
