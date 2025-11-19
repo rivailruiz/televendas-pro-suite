@@ -186,52 +186,51 @@ export const ordersService = {
     const token = authService.getToken();
     if (!token) return Promise.reject('Token ausente');
 
-    // Constrói itens conforme a tabela vendas_itens
+    // Constrói itens conforme contrato de criação da API
+    // (PedidoCreateItemInput em ../tecdisa-vendas-backend/src/api/dto/pedido.input.ts)
     const buildItens = (uiItens: any[]): any[] => {
       const itens = Array.isArray(uiItens) ? uiItens : [];
       return itens.map((it: any, idx: number) => {
-        const produto_id = it?.produtoId ?? it?.produto_id ?? it?.id;
-        const quantidade = Number(it?.quant ?? it?.quantidade ?? 0) || 0;
-        const preco_tabela = Number(it?.preco ?? it?.preco_tabela ?? 0) || 0;
-        const percentual_desconto = Number(it?.descontoPerc ?? it?.percentual_desconto ?? 0) || 0;
-        const valor_bruto = Number(it?.valor_bruto_calc ?? (preco_tabela * quantidade)) || 0;
-        const preco_unitario = quantidade > 0
-          ? Number(it?.liquido ?? (it?.total ? it.total / quantidade : 0)) || 0
-          : 0;
-        const valor_liquido = Number(it?.total ?? (preco_unitario * quantidade)) || 0;
-        const valor_desconto = Math.max(0, valor_bruto - valor_liquido);
-        const tabela_preco_id_raw = it?.tabela_preco_id ?? it?.tabelaId ?? order?.tabela;
-        const tabela_preco_id = tabela_preco_id_raw != null ? Number(tabela_preco_id_raw) || 0 : 0;
+        const produtoIdRaw = it?.produtoId ?? it?.produto_id ?? it?.id;
+        const quantRaw = it?.quant ?? it?.quantidade ?? 0;
+        const descontoRaw = it?.descontoPerc ?? it?.percentual_desconto ?? 0;
+        const tabelaRaw =
+          it?.tabela_preco_id ?? it?.tabelaId ?? order?.tabela ?? undefined;
+
+        const produtoId = Number(produtoIdRaw) || 0;
+        const quant = Number(quantRaw) || 0;
+        const descontoPerc = Number(descontoRaw) || 0;
+        const tabelaPrecoId =
+          tabelaRaw !== undefined && tabelaRaw !== null && tabelaRaw !== ''
+            ? Number(tabelaRaw) || 0
+            : undefined;
 
         return {
-          empresa_id: empresa.empresa_id,
-          pedido_id: 0, // definido no backend ao persistir o pedido
-          produto_id: Number(produto_id) || 0,
-          ordem: Number(it?.ordem ?? idx + 1) || (idx + 1),
-          tabela_preco_id,
-          quantidade,
-          preco_tabela,
-          percentual_desconto,
-          preco_unitario,
-          valor_bruto,
-          valor_desconto,
-          valor_icms_repasse: Number(it?.valor_icms_repasse ?? 0) || 0,
-          rateio_desconto_do_pedido: Number(it?.rateio_desconto_do_pedido ?? 0) || 0,
-          rateio_despesas: Number(it?.rateio_despesas ?? 0) || 0,
-          rateio_frete: Number(it?.rateio_frete ?? 0) || 0,
-          valor_liquido,
-          peso_bruto: Number(it?.peso_bruto ?? 0) || 0,
-          peso_liquido: Number(it?.peso_liquido ?? 0) || 0,
-          corte: Number(it?.corte ?? 0) || 0,
+          // Campos esperados pelo pedidoCreateSchema / PedidoCreateItemInput
+          produtoId,
+          quant,
+          descontoPerc,
           obs: it?.obs ? String(it.obs) : undefined,
+          tabelaPrecoId,
         };
       });
     };
 
     // Monta payload para API de pedidos
+    const canalId = Number(order?.canalId ?? 30) || 30;
+    const pedidoOrigem = String(order?.pedidoOrigem || 'ADS VENDAS').trim() || 'ADS VENDAS';
     const payload: any = {
+      // Campos auxiliares lidos pelo backend a partir do body
+      // (ver PedidoCreateInput em ../tecdisa-vendas-backend/src/api/dto/pedido.input.ts)
       empresaId: empresa.empresa_id,
-      data: order?.data,
+      canalId,
+      operacaoId: order?.operacaoId,
+      prazoPagtoId: order?.prazoPagtoId,
+      formaPagtoId: order?.formaPagtoId,
+      tabelaPrecoId: order?.tabelaPrecoId,
+      pedidoOrigem,
+
+      // Campos validados por pedidoCreateSchema
       operacao: order?.operacao,
       clienteId: order?.clienteId,
       representanteId: order?.representanteId,
@@ -281,50 +280,44 @@ export const ordersService = {
     const token = authService.getToken();
     if (!token) return Promise.reject('Token ausente');
 
-    // Reusa o mesmo mapeamento de itens do create
+    // Reusa o mesmo mapeamento de itens do create (contrato PedidoCreateItemInput)
     const buildItens = (uiItens: any[]): any[] => {
       const itens = Array.isArray(uiItens) ? uiItens : [];
       return itens.map((it: any, idx: number) => {
-        const produto_id = it?.produtoId ?? it?.produto_id ?? it?.id;
-        const quantidade = Number(it?.quant ?? it?.quantidade ?? 0) || 0;
-        const preco_tabela = Number(it?.preco ?? it?.preco_tabela ?? 0) || 0;
-        const percentual_desconto = Number(it?.descontoPerc ?? it?.percentual_desconto ?? 0) || 0;
-        const valor_bruto = Number(it?.valor_bruto_calc ?? (preco_tabela * quantidade)) || 0;
-        const preco_unitario = quantidade > 0
-          ? Number(it?.liquido ?? (it?.total ? it.total / quantidade : 0)) || 0
-          : 0;
-        const valor_liquido = Number(it?.total ?? (preco_unitario * quantidade)) || 0;
-        const valor_desconto = Math.max(0, valor_bruto - valor_liquido);
-        const tabela_preco_id_raw = it?.tabela_preco_id ?? it?.tabelaId ?? order?.tabela;
-        const tabela_preco_id = tabela_preco_id_raw != null ? Number(tabela_preco_id_raw) || 0 : 0;
+        const produtoIdRaw = it?.produtoId ?? it?.produto_id ?? it?.id;
+        const quantRaw = it?.quant ?? it?.quantidade ?? 0;
+        const descontoRaw = it?.descontoPerc ?? it?.percentual_desconto ?? 0;
+        const tabelaRaw =
+          it?.tabela_preco_id ?? it?.tabelaId ?? order?.tabela ?? undefined;
+
+        const produtoId = Number(produtoIdRaw) || 0;
+        const quant = Number(quantRaw) || 0;
+        const descontoPerc = Number(descontoRaw) || 0;
+        const tabelaPrecoId =
+          tabelaRaw !== undefined && tabelaRaw !== null && tabelaRaw !== ''
+            ? Number(tabelaRaw) || 0
+            : undefined;
 
         return {
-          empresa_id: empresa.empresa_id,
-          pedido_id: id,
-          produto_id: Number(produto_id) || 0,
-          ordem: Number(it?.ordem ?? idx + 1) || (idx + 1),
-          tabela_preco_id,
-          quantidade,
-          preco_tabela,
-          percentual_desconto,
-          preco_unitario,
-          valor_bruto,
-          valor_desconto,
-          valor_icms_repasse: Number(it?.valor_icms_repasse ?? 0) || 0,
-          rateio_desconto_do_pedido: Number(it?.rateio_desconto_do_pedido ?? 0) || 0,
-          rateio_despesas: Number(it?.rateio_despesas ?? 0) || 0,
-          rateio_frete: Number(it?.rateio_frete ?? 0) || 0,
-          valor_liquido,
-          peso_bruto: Number(it?.peso_bruto ?? 0) || 0,
-          peso_liquido: Number(it?.peso_liquido ?? 0) || 0,
-          corte: Number(it?.corte ?? 0) || 0,
+          produtoId,
+          quant,
+          descontoPerc,
           obs: it?.obs ? String(it.obs) : undefined,
+          tabelaPrecoId,
         };
       });
     };
 
+    const canalId = Number(order?.canalId ?? 30) || 30;
+
     const payload: any = {
       empresaId: empresa.empresa_id,
+      canalId,
+      operacaoId: order?.operacaoId,
+      prazoPagtoId: order?.prazoPagtoId,
+      formaPagtoId: order?.formaPagtoId,
+      tabelaPrecoId: order?.tabelaPrecoId,
+
       data: order?.data,
       operacao: order?.operacao,
       clienteId: order?.clienteId,

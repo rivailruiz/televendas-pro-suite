@@ -32,13 +32,16 @@ export const DigitacaoTab = () => {
   const { orders, setOrders, currentOrder, setCurrentOrder } = useStore();
   const [formData, setFormData] = useState({
     operacao: '',
+    operacaoId: '' as string | number | '',
     clienteId: 0,
     clienteNome: '',
     representanteId: '',
     representanteNome: '',
     tabela: '',
     formaPagamento: '',
+    formaPagtoId: '' as string | number | '',
     prazo: '',
+    prazoPagtoId: '' as string | number | '',
     boleto: '',
     rede: '',
   });
@@ -132,15 +135,33 @@ export const DigitacaoTab = () => {
       try {
         const ops = await metadataService.getOperacoes();
         setOperacoes(ops);
-        // Preseleciona operação '001' se disponível e se ainda não houver seleção
+        // Preseleciona operação '001' se disponível e/ou preenche operacaoId
         if (Array.isArray(ops) && ops.length > 0) {
           setFormData((prev) => {
-            if (prev.operacao) return prev;
-            const preferred =
-              ops.find((op) => String(op.codigo || '').trim() === '001') ||
-              ops.find((op) => String(op.id || '').trim() === '001') ||
-              ops[0];
-            return preferred ? { ...prev, operacao: preferred.descricao } : prev;
+            // Se já temos operacaoId, não mexe
+            if (prev.operacaoId) return prev;
+
+            // Se já existe uma descrição selecionada (ex.: edição), tenta casar com a lista
+            let preferred =
+              (prev.operacao
+                ? ops.find((op) => op.descricao === prev.operacao)
+                : undefined) || null;
+
+            // Caso contrário, usa '001' ou a primeira
+            if (!preferred) {
+              preferred =
+                ops.find((op) => String(op.codigo || '').trim() === '001') ||
+                ops.find((op) => String(op.id || '').trim() === '001') ||
+                ops[0] ||
+                null;
+            }
+
+            if (!preferred) return prev;
+            return {
+              ...prev,
+              operacao: prev.operacao || preferred.descricao,
+              operacaoId: preferred.id,
+            };
           });
         }
       } catch (e: any) {
@@ -445,7 +466,9 @@ export const DigitacaoTab = () => {
       clienteNome: client.nome,
       tabela: '',
       formaPagamento: '',
+      formaPagtoId: client.formaPagtoId ?? '',
       prazo: '',
+      prazoPagtoId: client.prazoPagtoId ?? '',
     });
     // Marca forma preferida e tenta aplicar imediatamente se já temos a lista
     const pf = client.formaPagtoId ?? null;
@@ -475,7 +498,11 @@ export const DigitacaoTab = () => {
     if (!formas || formas.length === 0) return;
     const match = formas.find((f) => String(f.id) === String(preferredFormaId));
     if (match) {
-      setFormData((prev) => ({ ...prev, formaPagamento: match.descricao }));
+      setFormData((prev) => ({
+        ...prev,
+        formaPagamento: match.descricao,
+        formaPagtoId: match.id,
+      }));
       setPreferredFormaId(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -487,7 +514,11 @@ export const DigitacaoTab = () => {
     if (!prazos || prazos.length === 0) return;
     const match = prazos.find((p) => String(p.id) === String(preferredPrazoId));
     if (match) {
-      setFormData((prev) => ({ ...prev, prazo: match.descricao }));
+      setFormData((prev) => ({
+        ...prev,
+        prazo: match.descricao,
+        prazoPagtoId: match.id,
+      }));
       setPreferredPrazoId(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -635,6 +666,7 @@ export const DigitacaoTab = () => {
     const order = {
       data: new Date().toISOString().split('T')[0],
       operacao: formData.operacao,
+      operacaoId: formData.operacaoId ? Number(formData.operacaoId) || undefined : undefined,
       clienteId: formData.clienteId,
       clienteNome: formData.clienteNome,
       representanteId: formData.representanteId,
@@ -643,7 +675,9 @@ export const DigitacaoTab = () => {
       especial: false,
       tabela: formData.tabela,
       formaPagamento: formData.formaPagamento,
+      formaPagtoId: formData.formaPagtoId ? Number(formData.formaPagtoId) || undefined : undefined,
       prazo: formData.prazo,
+      prazoPagtoId: formData.prazoPagtoId ? Number(formData.prazoPagtoId) || undefined : undefined,
       boleto: false,
       rede: formData.rede,
       valor: totals.liquido,
@@ -691,13 +725,16 @@ export const DigitacaoTab = () => {
       // Reset form
       setFormData({
         operacao: '',
+        operacaoId: '',
         clienteId: 0,
         clienteNome: '',
         representanteId: '',
         representanteNome: '',
         tabela: '',
         formaPagamento: '',
+        formaPagtoId: '',
         prazo: '',
+        prazoPagtoId: '',
         boleto: '',
         rede: '',
       });
@@ -721,7 +758,18 @@ export const DigitacaoTab = () => {
               <label className="text-sm font-medium mb-2 block">Operação *</label>
               <Select
                 value={formData.operacao}
-                onValueChange={(v) => setFormData({ ...formData, operacao: v })}
+                onValueChange={(v) => {
+                  const match =
+                    operacoes.find((op) => op.descricao === v) ||
+                    operacoes.find(
+                      (op) => String(op.codigo || '').trim() === String(v).trim(),
+                    );
+                  setFormData({
+                    ...formData,
+                    operacao: v,
+                    operacaoId: match ? match.id : '',
+                  });
+                }}
                 disabled={loadingOperacoes || !!operacoesError}
               >
                 <SelectTrigger>
@@ -903,7 +951,19 @@ export const DigitacaoTab = () => {
               <label className="text-sm font-medium mb-2 block">Forma Pagamento</label>
               <Select
                 value={formData.formaPagamento}
-                onValueChange={(v) => setFormData({ ...formData, formaPagamento: v })}
+                onValueChange={(v) => {
+                  const match =
+                    formas.find((f) => f.descricao === v) ||
+                    formas.find(
+                      (f) =>
+                        String(f.codigo || '').trim() === String(v).trim(),
+                    );
+                  setFormData({
+                    ...formData,
+                    formaPagamento: v,
+                    formaPagtoId: match ? match.id : '',
+                  });
+                }}
                 disabled={loadingFormas || !!formasError}
               >
                 <SelectTrigger>
@@ -925,7 +985,19 @@ export const DigitacaoTab = () => {
               <label className="text-sm font-medium mb-2 block">Prazo</label>
               <Select
                 value={formData.prazo}
-                onValueChange={(v) => setFormData({ ...formData, prazo: v })}
+                onValueChange={(v) => {
+                  const match =
+                    prazos?.find((p) => p.descricao === v) ||
+                    prazos?.find(
+                      (p) =>
+                        String(p.codigo || '').trim() === String(v).trim(),
+                    );
+                  setFormData({
+                    ...formData,
+                    prazo: v,
+                    prazoPagtoId: match ? match.id : '',
+                  });
+                }}
                 disabled={loadingPrazos || !!prazosError}
               >
                 <SelectTrigger>
