@@ -512,6 +512,10 @@ export const DigitacaoTab = () => {
   };
 
   const handleAddItem = () => {
+    if (!formData.operacao || !formData.clienteId) {
+      toast.error('Preencha operação e cliente antes de adicionar itens');
+      return;
+    }
     if (!newItem.produtoId || !newItem.quant) {
       toast.error('Preencha produto e quantidade');
       return;
@@ -845,7 +849,7 @@ export const DigitacaoTab = () => {
                     .filter((f) => !f.inativo && String(f.descricao || '').trim().length > 0)
                     .map((f) => (
                       <SelectItem key={`${f.id}-${f.codigo || f.descricao}`} value={String(f.descricao)}>
-                        {f.codigo ? `${f.codigo} - ${f.descricao}` : f.descricao}
+                        {f.descricao}
                       </SelectItem>
                     ))}
                 </SelectContent>
@@ -978,7 +982,11 @@ export const DigitacaoTab = () => {
               />
             </div>
             <div>
-              <Button onClick={handleAddItem} className="w-full">
+              <Button
+                onClick={handleAddItem}
+                className="w-full"
+                disabled={!formData.operacao || !formData.clienteId}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Adicionar
               </Button>
