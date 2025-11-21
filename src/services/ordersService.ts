@@ -158,7 +158,7 @@ export const ordersService = {
         return {
           id: p?.id ?? p?.pedido_id ?? p?.numero ?? 0,
           data: p?.data ?? p?.createdAt ?? new Date().toISOString().split('T')[0],
-          operacao: opFields.descricao || opFields.codigo || 'VENDA DE MERCADORIA',
+          operacao: opFields.descricao || opFields.codigo || '',
           operacaoCodigo: opFields.codigo || undefined,
           operacaoDescricao: opFields.descricao || undefined,
           clienteId: p?.clienteId ?? p?.cliente_id ?? p?.cliente ?? 0,
