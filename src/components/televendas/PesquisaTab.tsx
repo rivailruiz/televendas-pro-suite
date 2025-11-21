@@ -591,56 +591,54 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
 
       {/* Tabela */}
       <div className="border rounded-lg overflow-hidden">
-        <Table className="min-w-[800px]">
-          <TableHeader className="bg-background border-b">
-            <TableRow className="bg-table-header">
-              <TableHead className="w-10">
-                <Checkbox
-                  checked={selectAll}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      useStore.getState().setSelectedOrders(orders.map(o => o.id));
-                    } else {
-                      clearSelection();
-                    }
-                  }}
-                />
-              </TableHead>
-              <TableHead>I</TableHead>
-              <TableHead>Data</TableHead>
-              <TableHead>Pedido</TableHead>
-              <TableHead>Operação</TableHead>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Nome</TableHead>
-              <TableHead className="text-right">Valor</TableHead>
-              <TableHead className="text-center">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-        </Table>
         <div className="max-h-[60vh] overflow-auto scrollbar-thin">
           <Table className="min-w-[800px]">
+            <TableHeader className="sticky top-0 z-10 bg-background border-b">
+              <TableRow className="bg-table-header">
+                <TableHead className="w-[50px]">
+                  <Checkbox
+                    checked={selectAll}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        useStore.getState().setSelectedOrders(orders.map(o => o.id));
+                      } else {
+                        clearSelection();
+                      }
+                    }}
+                  />
+                </TableHead>
+                <TableHead className="w-[40px]">I</TableHead>
+                <TableHead className="w-[110px]">Data</TableHead>
+                <TableHead className="w-[90px]">Pedido</TableHead>
+                <TableHead className="w-[120px]">Operação</TableHead>
+                <TableHead className="w-[90px]">Cliente</TableHead>
+                <TableHead>Nome</TableHead>
+                <TableHead className="w-[120px] text-right">Valor</TableHead>
+                <TableHead className="w-[240px] text-center">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
             <TableBody>
               {orders.map((order) => (
               <TableRow
                 key={order.id}
                 className={selectedOrders.includes(order.id) ? 'bg-table-selected' : 'hover:bg-table-hover'}
               >
-                <TableCell>
+                <TableCell className="w-[50px]">
                   <Checkbox
                     checked={selectedOrders.includes(order.id)}
                     onCheckedChange={() => toggleOrderSelection(order.id)}
                   />
                 </TableCell>
-                <TableCell>
+                <TableCell className="w-[40px]">
                   <div className="w-4 h-4 bg-primary/20 rounded" />
                 </TableCell>
-                <TableCell>{new Date(order.data).toLocaleDateString('pt-BR')}</TableCell>
-                <TableCell className="font-medium">{order.id}</TableCell>
-                <TableCell>{order.operacao}</TableCell>
-                <TableCell>{order.clienteId}</TableCell>
+                <TableCell className="w-[110px]">{new Date(order.data).toLocaleDateString('pt-BR')}</TableCell>
+                <TableCell className="w-[90px] font-medium">{order.id}</TableCell>
+                <TableCell className="w-[120px]">{order.operacao}</TableCell>
+                <TableCell className="w-[90px]">{order.clienteId}</TableCell>
                 <TableCell>{order.clienteNome}</TableCell>
-                <TableCell className="text-right font-medium">{formatCurrency(order.valor)}</TableCell>
-                <TableCell>
+                <TableCell className="w-[120px] text-right font-medium">{formatCurrency(order.valor)}</TableCell>
+                <TableCell className="w-[240px]">
                   <TooltipProvider>
                     <div className="flex items-center justify-center gap-1">
                       <Tooltip>
@@ -762,6 +760,13 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                 </TableCell>
               </TableRow>
             ))}
+            {orders.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={9} className="text-center h-32 text-muted-foreground">
+                  Nenhum pedido encontrado
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
         </div>
