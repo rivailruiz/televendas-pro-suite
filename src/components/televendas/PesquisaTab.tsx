@@ -623,10 +623,14 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {orders.map((order) => (
+              {orders.map((order) => {
+                const isPendente = order.situacao === 'Pendente';
+                const baseClasses = selectedOrders.includes(order.id) ? 'bg-table-selected' : 'hover:bg-table-hover';
+                const pendenteClasses = isPendente ? 'bg-green-500/10 hover:bg-green-500/20' : '';
+                return (
               <TableRow
                 key={order.id}
-                className={selectedOrders.includes(order.id) ? 'bg-table-selected' : 'hover:bg-table-hover'}
+                className={`${baseClasses} ${pendenteClasses}`}
               >
                 <TableCell className="w-[50px]">
                   <Checkbox
@@ -764,7 +768,8 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                   </TooltipProvider>
                 </TableCell>
               </TableRow>
-            ))}
+              );
+            })}
             {orders.length === 0 && (
               <TableRow>
                 <TableCell colSpan={9} className="text-center h-32 text-muted-foreground">
