@@ -147,28 +147,40 @@ export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
         // Preseleciona operação '001' se disponível e/ou preenche operacaoId
         if (Array.isArray(ops) && ops.length > 0) {
           setFormData((prev) => {
-            // Se já temos operacaoId, não mexe
-            if (prev.operacaoId) return prev;
+            // Se já temos operacaoId, tenta preencher descrição se estiver vazia
+            if (prev.operacaoId) {
+              const match = ops.find(
+                (op) =>
+                  String(op.id) === String(prev.operacaoId) ||
+                  String(op.codigo) === String(prev.operacao),
+              );
+              if (!prev.operacao && match?.descricao) {
+                return { ...prev, operacao: match.descricao };
+              }
+              return prev;
+            }
 
-            // Se já existe uma descrição selecionada (ex.: edição), tenta casar com a lista
-            let preferred =
-              (prev.operacao
-                ? ops.find((op) => op.descricao === prev.operacao)
-                : undefined) || null;
+            // Se já existe valor em operacao, tenta casar por descricao ou codigo
+            if (prev.operacao) {
+              const match =
+                ops.find((op) => op.descricao === prev.operacao) ||
+                ops.find((op) => String(op.codigo) === String(prev.operacao));
+              if (match) {
+                return { ...prev, operacaoId: match.id, operacao: match.descricao || prev.operacao };
+              }
+            }
 
             // Caso contrário, usa '001' ou a primeira
-            if (!preferred) {
-              preferred =
-                ops.find((op) => String(op.codigo || '').trim() === '001') ||
-                ops.find((op) => String(op.id || '').trim() === '001') ||
-                ops[0] ||
-                null;
-            }
+            const preferred =
+              ops.find((op) => String(op.codigo || '').trim() === '001') ||
+              ops.find((op) => String(op.id || '').trim() === '001') ||
+              ops[0] ||
+              null;
 
             if (!preferred) return prev;
             return {
               ...prev,
-              operacao: prev.operacao || preferred.descricao,
+              operacao: preferred.descricao || preferred.codigo,
               operacaoId: preferred.id,
             };
           });
@@ -190,7 +202,8 @@ export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
         const detail = await ordersService.getById(currentOrder.id);
         setFormData((prev) => ({
           ...prev,
-          operacao: detail.operacao || prev.operacao,
+          operacao: detail.operacao || detail.operacaoDescricao || detail.operacaoCodigo || prev.operacao,
+          operacaoId: detail.operacaoId ?? prev.operacaoId ?? '',
           clienteId: detail.clienteId || 0,
           clienteNome: detail.clienteNome || '',
           representanteId: detail.representanteId || '',

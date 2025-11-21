@@ -21,6 +21,7 @@ export interface Order {
   id: number;
   data: string;
   operacao: string;
+  operacaoId?: number | string;
   operacaoCodigo?: string;
   operacaoDescricao?: string;
   clienteId: number;
@@ -80,7 +81,7 @@ const buildPedidoOrigem = (val?: any): string => {
   return `ADS-${stamp}-${rand}`;
 };
 
-const resolveOperacaoFields = (raw: any): { codigo?: string; descricao?: string } => {
+const resolveOperacaoFields = (raw: any): { id?: number | string; codigo?: string; descricao?: string } => {
   const opObj = raw?.operacao && typeof raw.operacao === 'object' ? raw.operacao : null;
   const descricao = firstNonEmpty(
     raw?.operacaoDescricao,
@@ -111,7 +112,10 @@ const resolveOperacaoFields = (raw: any): { codigo?: string; descricao?: string 
   const paddedCodigo =
     codigoStr && /^\d+$/.test(codigoStr) ? codigoStr.padStart(3, '0') : codigoStr;
 
+  const id = raw?.operacaoId ?? raw?.operacao_id ?? opObj?.id;
+
   return {
+    id: id as any,
     codigo: paddedCodigo || undefined,
     descricao: descricao || undefined,
   };
@@ -179,6 +183,7 @@ export const ordersService = {
           id: p?.id ?? p?.pedido_id ?? p?.numero ?? 0,
           data: p?.data ?? p?.createdAt ?? new Date().toISOString().split('T')[0],
           operacao: opFields.descricao || opFields.codigo || '',
+          operacaoId: opFields.id,
           operacaoCodigo: opFields.codigo || undefined,
           operacaoDescricao: opFields.descricao || undefined,
           clienteId: p?.clienteId ?? p?.cliente_id ?? p?.cliente ?? 0,
@@ -234,6 +239,7 @@ export const ordersService = {
         id: p?.id ?? p?.pedido_id ?? id,
         data: p?.data ?? new Date().toISOString().split('T')[0],
         operacao: opFields.descricao || opFields.codigo || '',
+        operacaoId: opFields.id,
         operacaoCodigo: opFields.codigo,
         operacaoDescricao: opFields.descricao,
         clienteId: p?.clienteId ?? p?.cliente_id ?? 0,
