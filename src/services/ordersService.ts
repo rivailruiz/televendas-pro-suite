@@ -148,7 +148,9 @@ export const ordersService = {
         if (pedidoIds) params.set('pedidoIds', String(pedidoIds));
         if (filters.operacoes) params.set('operacoes', String(filters.operacoes));
         if (typeof filters.especial === 'boolean') params.set('especial', String(filters.especial));
-        if (filters.situacao) params.set('situacao', String(filters.situacao));
+        if (filters.situacao && filters.situacao !== '__ALL__' && filters.situacao !== 'Todos') {
+          params.set('situacao', String(filters.situacao));
+        }
         if (filters.dataInicio) params.set('dataInicio', String(filters.dataInicio));
         if (filters.dataFim) params.set('dataFim', String(filters.dataFim));
         if (filters.cliente) params.set('cliente', String(filters.cliente));

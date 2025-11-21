@@ -29,7 +29,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   const [filters, setFilters] = useState({
     dataInicio: today,
     dataFim: today,
-    situacao: 'Pendentes',
+    situacao: '__ALL__',
     especial: false,
     operacoes: '',
     pedidoIds: '',
@@ -184,7 +184,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
     setFilters({
       dataInicio: getTodayStr(),
       dataFim: getTodayStr(),
-      situacao: 'Pendentes',
+      situacao: '__ALL__',
       especial: false,
       operacoes: '',
       pedidoIds: '',
@@ -387,6 +387,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="__ALL__">Todos</SelectItem>
               {situacoes.map(s => (
                 <SelectItem key={s} value={s}>{s}</SelectItem>
               ))}
