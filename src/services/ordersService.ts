@@ -37,6 +37,8 @@ export interface Order {
   situacao: string;
   valor: number;
   pedidoOrigem?: string;
+  cancelado?: boolean;
+  faturado?: boolean;
   itens: OrderItemUI[];
   totais: {
     bruto: number;
@@ -200,6 +202,8 @@ export const ordersService = {
           especial: Boolean(p?.especial ?? false),
           situacao: p?.situacao ?? p?.status ?? 'Pendentes',
           valor: typeof p?.valor === 'number' ? p.valor : Number(p?.valor ?? p?.total ?? 0) || 0,
+          cancelado: Boolean(p?.cancelado ?? false),
+          faturado: Boolean(p?.faturado ?? false),
           itens: normalizeItens(p?.itens),
           totais: p?.totais ?? {
             bruto: Number(p?.bruto ?? 0) || 0,
@@ -256,6 +260,8 @@ export const ordersService = {
         especial: Boolean(p?.especial ?? false),
         situacao: p?.situacao ?? p?.status ?? 'Pendentes',
         valor: typeof p?.valor === 'number' ? p.valor : Number(p?.valor ?? p?.total ?? 0) || 0,
+        cancelado: Boolean(p?.cancelado ?? false),
+        faturado: Boolean(p?.faturado ?? false),
         itens: normalizeItens(p?.itens),
         totais: p?.totais ?? {
           bruto: Number(p?.bruto ?? 0) || 0,
