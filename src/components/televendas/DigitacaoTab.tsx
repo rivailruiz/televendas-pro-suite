@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Save, Undo, Search, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { metadataService, type Operacao, type Tabela, type FormaPagamento, type PrazoPagto } from '@/services/metadataService';
@@ -48,6 +49,7 @@ export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
     prazoPagtoId: '' as string | number | '',
     boleto: '',
     rede: '',
+    especial: false,
   });
   
   const [items, setItems] = useState<OrderItem[]>([]);
@@ -699,7 +701,7 @@ export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
       representanteId: formData.representanteId,
       representanteNome: formData.representanteNome,
       situacao: 'Pendentes',
-      especial: false,
+      especial: formData.especial,
       tabela: formData.tabela,
       formaPagamento: formData.formaPagamento,
       formaPagtoId: formData.formaPagtoId ? Number(formData.formaPagtoId) || undefined : undefined,
@@ -769,6 +771,7 @@ export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
         prazoPagtoId: '',
         boleto: '',
         rede: '',
+        especial: false,
       });
       setItems([]);
       setObservacoes({ cliente: '', pedido: '', nf: '' });
@@ -1054,6 +1057,20 @@ export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
               {typeof prazoMax === 'number' && (
                 <p className="text-xs text-muted-foreground mt-1">Prazo máximo permitido pela tabela: {prazoMax} dias</p>
               )}
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="especial"
+                checked={formData.especial}
+                onCheckedChange={(checked) => setFormData({ ...formData, especial: checked === true })}
+              />
+              <label 
+                htmlFor="especial" 
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+              >
+                Pedido Especial
+              </label>
             </div>
           </div>
         </CardContent>
