@@ -709,7 +709,6 @@ export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
         obs: item.obs,
         // campos auxiliares para o serviço montar o payload do backend
         tabela_preco_id: item.tabelaId ?? (formData.tabela ? Number(formData.tabela) : undefined),
-        ordem: idx + 1,
         valor_bruto_calc: (item.preco || 0) * (item.quant || 0),
       })),
       totais: {
@@ -735,7 +734,7 @@ export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
         }
       } else {
         saved = await ordersService.create(order as any);
-        setOrders([...orders, saved]);
+        setOrders([saved, ...orders]);
         toast.success(`Pedido ${saved.id} criado com sucesso!`);
         if (onClose) {
           onClose();

@@ -41,18 +41,6 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   const [previewOrder, setPreviewOrder] = useState<Order | null>(null);
   const [clienteNome, setClienteNome] = useState<string>('');
   const formatOperacao = (order: Order) => order.operacaoCodigo || order.operacao;
-  const sortItens = (itens?: Order['itens']) => {
-    if (!Array.isArray(itens)) return [];
-    return itens
-      .map((item, index) => ({ item, index }))
-      .sort((a, b) => {
-        const ao = Number(a.item?.ordem ?? 0) || 0;
-        const bo = Number(b.item?.ordem ?? 0) || 0;
-        if (ao === bo) return a.index - b.index;
-        return ao - bo;
-      })
-      .map(({ item }) => item);
-  };
   
   // Operações (metadata)
   const [operacoes, setOperacoes] = useState<Operacao[]>([]);
@@ -278,7 +266,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   };
 
   const buildPrintableHtml = (order: Order) => {
-    const items = sortItens(order.itens);
+    const items = Array.isArray(order.itens) ? order.itens : [];
     const opLabel = formatOperacao(order);
     const rows = items
       .map(
@@ -845,7 +833,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sortItens(previewOrder.itens).map((it, idx) => (
+                    {(previewOrder.itens || []).map((it, idx) => (
                       <TableRow key={idx}>
                         <TableCell>{it.produtoId}</TableCell>
                         <TableCell>{it.descricao}</TableCell>

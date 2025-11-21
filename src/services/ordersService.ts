@@ -35,6 +35,7 @@ export interface Order {
   especial: boolean;
   situacao: string;
   valor: number;
+  pedidoOrigem?: string;
   itens: OrderItemUI[];
   totais: {
     bruto: number;
@@ -56,6 +57,27 @@ const firstNonEmpty = (...values: any[]): string | null => {
     if (text) return text;
   }
   return null;
+};
+
+const buildPedidoOrigem = (val?: any): string => {
+  // Se o front enviar algo já preenchido, respeita
+  const incoming = typeof val === 'string' ? val.trim() : '';
+  if (incoming) return incoming;
+
+  // Gera um identificador único baseado em timestamp UTC + random
+  const now = new Date();
+  const stamp = [
+    now.getUTCFullYear(),
+    String(now.getUTCMonth() + 1).padStart(2, '0'),
+    String(now.getUTCDate()).padStart(2, '0'),
+    String(now.getUTCHours()).padStart(2, '0'),
+    String(now.getUTCMinutes()).padStart(2, '0'),
+    String(now.getUTCSeconds()).padStart(2, '0'),
+  ].join('');
+  const rand = Math.floor(Math.random() * 1_000_000)
+    .toString()
+    .padStart(6, '0');
+  return `ADS-${stamp}-${rand}`;
 };
 
 const resolveOperacaoFields = (raw: any): { codigo?: string; descricao?: string } => {
@@ -97,12 +119,10 @@ const resolveOperacaoFields = (raw: any): { codigo?: string; descricao?: string 
 
 const normalizeItens = (raw: any[]): OrderItemUI[] => {
   const itens = Array.isArray(raw) ? raw : [];
-  const mapped = itens.map((it, idx) => ({
+  return itens.map((it, idx) => ({
     ...it,
     ordem: Number(it?.ordem ?? it?.order ?? it?.ord ?? idx + 1) || idx + 1,
-  }));
-  mapped.sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
-  return mapped as OrderItemUI[];
+  })) as OrderItemUI[];
 };
 
 
@@ -295,7 +315,7 @@ export const ordersService = {
       prazoPagtoId: order?.prazoPagtoId,
       formaPagtoId: order?.formaPagtoId,
       tabelaPrecoId: order?.tabelaPrecoId,
-      pedidoOrigem,
+      pedidoOrigem: buildPedidoOrigem(order?.pedidoOrigem),
 
       // Campos validados por pedidoCreateSchema
       operacao: order?.operacao,
@@ -331,6 +351,7 @@ export const ordersService = {
         ...order,
         id: Math.max(...pedidos.map(p => p.id)) + 1,
         transmitido: false,
+        pedidoOrigem: buildPedidoOrigem(order?.pedidoOrigem),
         itens: order.itens.map((item: OrderItemUI, idx: number) => ({
           ...item,
           obs: item.obs || '',

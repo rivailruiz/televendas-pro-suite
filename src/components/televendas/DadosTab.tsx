@@ -11,17 +11,6 @@ import { ordersService } from '@/services/ordersService';
 export const DadosTab = () => {
   const { selectedOrders, orders, setOrders } = useStore();
   const selectedOrder = orders.find(o => selectedOrders.includes(o.id));
-  const sortItens = (itens: any[] = []) => {
-    return itens
-      .map((item, index) => ({ item, index }))
-      .sort((a, b) => {
-        const ao = Number(a.item?.ordem ?? 0) || 0;
-        const bo = Number(b.item?.ordem ?? 0) || 0;
-        if (ao === bo) return a.index - b.index;
-        return ao - bo;
-      })
-      .map(({ item }) => item);
-  };
 
   if (!selectedOrder) {
     return (
@@ -119,7 +108,7 @@ export const DadosTab = () => {
               </TableRow>
             </TableHeader>
           <TableBody>
-              {sortItens(selectedOrder.itens).map((item, idx) => (
+              {selectedOrder.itens.map((item, idx) => (
                 <TableRow key={idx}>
                   <TableCell>{item.produtoId}</TableCell>
                   <TableCell>{item.av}</TableCell>
