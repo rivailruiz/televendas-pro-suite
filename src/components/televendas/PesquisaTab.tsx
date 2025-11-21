@@ -624,7 +624,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
             </TableHeader>
             <TableBody>
               {orders.map((order) => {
-                const isPendente = !order.cancelado && !order.faturado;
+                const isPendente = order.situacao === 'Pendentes';
                 const baseClasses = selectedOrders.includes(order.id) ? 'bg-table-selected' : 'hover:bg-table-hover';
                 const pendenteClasses = isPendente ? 'bg-green-500/10 hover:bg-green-500/20' : '';
                 return (
