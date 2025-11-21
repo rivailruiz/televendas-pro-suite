@@ -75,6 +75,11 @@ export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
   const prazoMax = selectedTabela && typeof selectedTabela.prazoMedio === 'number' && selectedTabela.prazoMedio > 0
     ? selectedTabela.prazoMedio
     : undefined;
+  const getDefaultTabelaId = () => {
+    if (formData.tabela) return String(formData.tabela);
+    const principal = tabelas.find((t) => t.principal);
+    return principal ? String(principal.id) : undefined;
+  };
 
   // Formas de pagamento (metadata)
   const [formas, setFormas] = useState<FormaPagamento[]>([]);
@@ -406,8 +411,10 @@ export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
       // Define padrão nos itens do mesmo produto se ainda não houver seleção
       setItems((prev) => prev.map((it) => {
         if (it.produtoId !== productId || it.tabelaId) return it;
-        const prefer = tabs.find((t) => String(t.id) === String(formData.tabela));
-        const chosen = prefer || tabs[0];
+        const preferId = getDefaultTabelaId();
+        const prefer = tabs.find((t) => String(t.id) === String(preferId));
+        const principal = tabs.find((t) => t.principal);
+        const chosen = prefer || principal || tabs[0];
         return chosen ? { ...it, tabelaId: chosen.id } : it;
       }));
     } catch (e: any) {
@@ -566,7 +573,7 @@ export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
     const descontoPerc = newItem.descontoPerc || 0;
     const preco = newItem.preco || 0;
     const obs = newItem.obs;
-    const tabelaSelecionada = formData.tabela ? String(formData.tabela) : undefined;
+    const tabelaSelecionada = getDefaultTabelaId();
 
     setItems((prev) => {
       if (!produtoId || !quant) return prev;
