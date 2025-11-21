@@ -8,6 +8,7 @@ export interface OrderItemUI {
   av: number;
   un: string;
   c: number;
+  ordem?: number;
   quant: number;
   descontoPerc: number;
   preco: number;
@@ -20,6 +21,8 @@ export interface Order {
   id: number;
   data: string;
   operacao: string;
+  operacaoCodigo?: string;
+  operacaoDescricao?: string;
   clienteId: number;
   clienteNome: string;
   representanteId: string;
@@ -45,6 +48,62 @@ export interface Order {
   observacaoNF?: string;
   transmitido?: boolean;
 }
+
+const firstNonEmpty = (...values: any[]): string | null => {
+  for (const val of values) {
+    if (val === undefined || val === null) continue;
+    const text = String(val).trim();
+    if (text) return text;
+  }
+  return null;
+};
+
+const resolveOperacaoFields = (raw: any): { codigo?: string; descricao?: string } => {
+  const opObj = raw?.operacao && typeof raw.operacao === 'object' ? raw.operacao : null;
+  const descricao = firstNonEmpty(
+    raw?.operacaoDescricao,
+    raw?.operacao_descricao,
+    raw?.descricaoOperacao,
+    raw?.descricao_operacao,
+    raw?.operacaoNome,
+    opObj?.descricao,
+    opObj?.nome,
+    typeof raw?.operacao === 'string' ? raw.operacao : null,
+  );
+  const codigo = firstNonEmpty(
+    raw?.operacaoCodigo,
+    raw?.operacao_codigo,
+    raw?.operacaoCod,
+    raw?.operacao_cod,
+    opObj?.codigo,
+    opObj?.cod,
+    opObj?.id,
+    opObj?.sigla,
+    raw?.operacaoId,
+    raw?.operacao_id,
+    raw?.codigo_operacao,
+    raw?.codigo,
+  );
+
+  const codigoStr = codigo ? String(codigo).trim() : '';
+  const paddedCodigo =
+    codigoStr && /^\d+$/.test(codigoStr) ? codigoStr.padStart(3, '0') : codigoStr;
+
+  return {
+    codigo: paddedCodigo || undefined,
+    descricao: descricao || undefined,
+  };
+};
+
+const normalizeItens = (raw: any[]): OrderItemUI[] => {
+  const itens = Array.isArray(raw) ? raw : [];
+  const mapped = itens.map((it, idx) => ({
+    ...it,
+    ordem: Number(it?.ordem ?? it?.order ?? it?.ord ?? idx + 1) || idx + 1,
+  }));
+  mapped.sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+  return mapped as OrderItemUI[];
+};
 
 
 export const ordersService = {
@@ -94,35 +153,40 @@ export const ordersService = {
           : [];
 
       // Normalize API payload to UI Order type used across app
-      const normalized: Order[] = arr.map((p: any) => ({
-        id: p?.id ?? p?.pedido_id ?? p?.numero ?? 0,
-        data: p?.data ?? p?.createdAt ?? new Date().toISOString().split('T')[0],
-        operacao: p?.operacao ?? p?.operacaoNome ?? 'VENDA DE MERCADORIA',
-        clienteId: p?.clienteId ?? p?.cliente_id ?? p?.cliente ?? 0,
-        clienteNome: p?.clienteNome ?? p?.cliente_nome ?? p?.clienteRazao ?? '',
-        representanteId: p?.representanteId ?? p?.representante_id ?? '017',
-        representanteNome: p?.representanteNome ?? p?.representante_nome ?? 'REPRESENTANTE',
-        tabela: p?.tabela ?? p?.tabela_preco ?? 'TABELA 01',
-        formaPagamento: p?.formaPagamento ?? p?.forma_pagamento ?? 'BOLETO BANCARIO',
-        prazo: p?.prazo ?? p?.prazo_pagamento ?? '30 DIAS',
-        boleto: Boolean(p?.boleto ?? true),
-        rede: p?.rede ?? '',
-        especial: Boolean(p?.especial ?? false),
-        situacao: p?.situacao ?? p?.status ?? 'Pendentes',
-        valor: typeof p?.valor === 'number' ? p.valor : Number(p?.valor ?? p?.total ?? 0) || 0,
-        itens: Array.isArray(p?.itens) ? p.itens : [],
-        totais: p?.totais ?? {
-          bruto: Number(p?.bruto ?? 0) || 0,
-          descontos: Number(p?.descontos ?? 0) || 0,
-          descontosPerc: Number(p?.descontosPerc ?? 0) || 0,
-          icmsRepasse: Number(p?.icmsRepasse ?? 0) || 0,
-          liquido: typeof p?.valor === 'number' ? p.valor : Number(p?.valor ?? p?.total ?? 0) || 0,
-        },
-        observacaoCliente: p?.observacaoCliente ?? '',
-        observacaoPedido: p?.observacaoPedido ?? '',
-        observacaoNF: p?.observacaoNF ?? '',
-        transmitido: Boolean(p?.transmitido ?? false),
-      }));
+      const normalized: Order[] = arr.map((p: any) => {
+        const opFields = resolveOperacaoFields(p);
+        return {
+          id: p?.id ?? p?.pedido_id ?? p?.numero ?? 0,
+          data: p?.data ?? p?.createdAt ?? new Date().toISOString().split('T')[0],
+          operacao: opFields.descricao || opFields.codigo || 'VENDA DE MERCADORIA',
+          operacaoCodigo: opFields.codigo || undefined,
+          operacaoDescricao: opFields.descricao || undefined,
+          clienteId: p?.clienteId ?? p?.cliente_id ?? p?.cliente ?? 0,
+          clienteNome: p?.clienteNome ?? p?.cliente_nome ?? p?.clienteRazao ?? '',
+          representanteId: p?.representanteId ?? p?.representante_id ?? '017',
+          representanteNome: p?.representanteNome ?? p?.representante_nome ?? 'REPRESENTANTE',
+          tabela: p?.tabela ?? p?.tabela_preco ?? 'TABELA 01',
+          formaPagamento: p?.formaPagamento ?? p?.forma_pagamento ?? 'BOLETO BANCARIO',
+          prazo: p?.prazo ?? p?.prazo_pagamento ?? '30 DIAS',
+          boleto: Boolean(p?.boleto ?? true),
+          rede: p?.rede ?? '',
+          especial: Boolean(p?.especial ?? false),
+          situacao: p?.situacao ?? p?.status ?? 'Pendentes',
+          valor: typeof p?.valor === 'number' ? p.valor : Number(p?.valor ?? p?.total ?? 0) || 0,
+          itens: normalizeItens(p?.itens),
+          totais: p?.totais ?? {
+            bruto: Number(p?.bruto ?? 0) || 0,
+            descontos: Number(p?.descontos ?? 0) || 0,
+            descontosPerc: Number(p?.descontosPerc ?? 0) || 0,
+            icmsRepasse: Number(p?.icmsRepasse ?? 0) || 0,
+            liquido: typeof p?.valor === 'number' ? p.valor : Number(p?.valor ?? p?.total ?? 0) || 0,
+          },
+          observacaoCliente: p?.observacaoCliente ?? '',
+          observacaoPedido: p?.observacaoPedido ?? '',
+          observacaoNF: p?.observacaoNF ?? '',
+          transmitido: Boolean(p?.transmitido ?? false),
+        };
+      });
 
       return normalized;
     } catch (e) {
@@ -145,10 +209,13 @@ export const ordersService = {
         return Promise.reject(message);
       }
       const p: any = await res.json();
+      const opFields = resolveOperacaoFields(p);
       const order: Order = {
         id: p?.id ?? p?.pedido_id ?? id,
         data: p?.data ?? new Date().toISOString().split('T')[0],
-        operacao: p?.operacao ?? '',
+        operacao: opFields.descricao || opFields.codigo || '',
+        operacaoCodigo: opFields.codigo,
+        operacaoDescricao: opFields.descricao,
         clienteId: p?.clienteId ?? p?.cliente_id ?? 0,
         clienteNome: p?.clienteNome ?? p?.cliente_nome ?? '',
         representanteId: p?.representanteId ?? p?.representante_id ?? '',
@@ -161,7 +228,7 @@ export const ordersService = {
         especial: Boolean(p?.especial ?? false),
         situacao: p?.situacao ?? p?.status ?? 'Pendentes',
         valor: typeof p?.valor === 'number' ? p.valor : Number(p?.valor ?? p?.total ?? 0) || 0,
-        itens: Array.isArray(p?.itens) ? p.itens : [],
+        itens: normalizeItens(p?.itens),
         totais: p?.totais ?? {
           bruto: Number(p?.bruto ?? 0) || 0,
           descontos: Number(p?.descontos ?? 0) || 0,
@@ -264,9 +331,10 @@ export const ordersService = {
         ...order,
         id: Math.max(...pedidos.map(p => p.id)) + 1,
         transmitido: false,
-        itens: order.itens.map((item: OrderItemUI) => ({
+        itens: order.itens.map((item: OrderItemUI, idx: number) => ({
           ...item,
-          obs: item.obs || ''
+          obs: item.obs || '',
+          ordem: item.ordem ?? idx + 1,
         }))
       };
       pedidos.push(newOrder as any);

@@ -24,10 +24,11 @@ interface PesquisaTabProps {
 
 export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   const getTodayStr = () => new Date().toLocaleDateString('sv-SE');
+  const today = getTodayStr();
   const { orders, selectedOrders, setOrders, toggleOrderSelection, clearSelection, setCurrentOrder } = useStore();
   const [filters, setFilters] = useState({
-    dataInicio: '2022-01-01',
-    dataFim: getTodayStr(),
+    dataInicio: today,
+    dataFim: today,
     situacao: 'Pendentes',
     especial: false,
     operacoes: '',
@@ -39,6 +40,19 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewOrder, setPreviewOrder] = useState<Order | null>(null);
   const [clienteNome, setClienteNome] = useState<string>('');
+  const formatOperacao = (order: Order) => order.operacaoCodigo || order.operacao;
+  const sortItens = (itens?: Order['itens']) => {
+    if (!Array.isArray(itens)) return [];
+    return itens
+      .map((item, index) => ({ item, index }))
+      .sort((a, b) => {
+        const ao = Number(a.item?.ordem ?? 0) || 0;
+        const bo = Number(b.item?.ordem ?? 0) || 0;
+        if (ao === bo) return a.index - b.index;
+        return ao - bo;
+      })
+      .map(({ item }) => item);
+  };
   
   // Operações (metadata)
   const [operacoes, setOperacoes] = useState<Operacao[]>([]);
@@ -180,7 +194,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
 
   const handleLimparFiltros = () => {
     setFilters({
-      dataInicio: '2022-01-01',
+      dataInicio: getTodayStr(),
       dataFim: getTodayStr(),
       situacao: 'Pendentes',
       especial: false,
@@ -264,7 +278,9 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   };
 
   const buildPrintableHtml = (order: Order) => {
-    const rows = (order.itens || [])
+    const items = sortItens(order.itens);
+    const opLabel = formatOperacao(order);
+    const rows = items
       .map(
         (it) => `
           <tr>
@@ -303,7 +319,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
         <div class="meta">
           <div>Data: ${new Date(order.data).toLocaleDateString('pt-BR')}</div>
           <div>Cliente: ${order.clienteNome ?? ''} (${order.clienteId ?? ''})</div>
-          <div>Operação: ${order.operacao ?? ''}</div>
+          <div>Operação: ${opLabel ?? ''}</div>
           <div>Representante: ${order.representanteNome ?? ''}</div>
         </div>
         <table>
@@ -636,7 +652,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                 </TableCell>
                 <TableCell>{new Date(order.data).toLocaleDateString('pt-BR')}</TableCell>
                 <TableCell className="font-medium">{order.id}</TableCell>
-                <TableCell>{order.operacao}</TableCell>
+                <TableCell>{formatOperacao(order)}</TableCell>
                 <TableCell>{order.clienteId}</TableCell>
                 <TableCell>{order.clienteNome}</TableCell>
                 <TableCell className="text-right font-medium">{formatCurrency(order.valor)}</TableCell>
@@ -807,7 +823,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
               <div className="text-sm text-muted-foreground">
                 <div>Data: {new Date(previewOrder.data).toLocaleDateString('pt-BR')}</div>
                 <div>Cliente: {previewOrder.clienteNome} ({previewOrder.clienteId})</div>
-                <div>Operação: {previewOrder.operacao}</div>
+                <div>Operação: {formatOperacao(previewOrder)}</div>
                 <div>Representante: {previewOrder.representanteNome}</div>
               </div>
               <div className="overflow-x-auto scrollbar-thin">
@@ -824,7 +840,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {(previewOrder.itens || []).map((it, idx) => (
+                    {sortItens(previewOrder.itens).map((it, idx) => (
                       <TableRow key={idx}>
                         <TableCell>{it.produtoId}</TableCell>
                         <TableCell>{it.descricao}</TableCell>
