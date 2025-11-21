@@ -4,6 +4,7 @@ import { authService } from '@/services/authService';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { LogOut, Search, FileText, Route, Users, UserPlus } from 'lucide-react';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { PesquisaTab } from '@/components/televendas/PesquisaTab';
 import { DadosTab } from '@/components/televendas/DadosTab';
 import { ItinerariosTab } from '@/components/televendas/ItinerariosTab';
@@ -71,10 +72,13 @@ const Televendas = () => {
               <p className="text-xs sm:text-sm text-muted-foreground">{empresa.fantasia?.trim() || empresa.razao_social?.trim()}</p>
             )}
           </div>
-          <Button variant="outline" size="sm" onClick={handleLogout}>
-            <LogOut className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Sair</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button variant="outline" size="sm" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Sair</span>
+            </Button>
+          </div>
         </div>
       </header>
 
