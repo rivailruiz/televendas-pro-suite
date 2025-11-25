@@ -63,6 +63,28 @@ const createEmptyObservacoes = () => ({
   nf: ''
 });
 
+const extractFormaPagtoId = (data: any) =>
+  data?.formaPagtoId ??
+  data?.forma_pagto_id ??
+  data?.formaPagamentoId ??
+  data?.forma_pagamento_id ??
+  data?.forma_pagamentoId ??
+  data?.forma_pagtoId ??
+  data?.formaPagamento?.id ??
+  data?.forma_pagamento?.id ??
+  null;
+
+const extractPrazoPagtoId = (data: any) =>
+  data?.prazoPagtoId ??
+  data?.prazo_pagto_id ??
+  data?.prazoPagamentoId ??
+  data?.prazo_pagamento_id ??
+  data?.prazo_pagamentoId ??
+  data?.prazo_pagtoId ??
+  data?.prazoPagamento?.id ??
+  data?.prazo_pagamento?.id ??
+  null;
+
 export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
   const { orders, setOrders, currentOrder, setCurrentOrder } = useStore();
   const [formData, setFormData] = useState(createEmptyFormData);
@@ -220,6 +242,8 @@ export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
     const fill = async () => {
       try {
         const detail = await ordersService.getById(currentOrder.id);
+        const detailFormaId = extractFormaPagtoId(detail);
+        const detailPrazoId = extractPrazoPagtoId(detail);
         setFormData((prev) => ({
           ...prev,
           operacao: detail.operacao || detail.operacaoDescricao || detail.operacaoCodigo || prev.operacao,
@@ -229,11 +253,15 @@ export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
           representanteId: detail.representanteId || '',
           representanteNome: detail.representanteNome || '',
           tabela: detail.tabela || prev.tabela || '',
-          formaPagamento: detail.formaPagamento || '',
-          prazo: detail.prazo || '',
+          formaPagamento: detail.formaPagamento || prev.formaPagamento || '',
+          formaPagtoId: detailFormaId ?? prev.formaPagtoId ?? '',
+          prazo: detail.prazo || prev.prazo || '',
+          prazoPagtoId: detailPrazoId ?? prev.prazoPagtoId ?? '',
           boleto: '',
           rede: detail.rede || '',
         }));
+        if (detailFormaId != null) setPreferredFormaId(detailFormaId);
+        if (detailPrazoId != null) setPreferredPrazoId(detailPrazoId);
         const mapped = (detail.itens || []).map((it: any) => ({
           produtoId: it.produtoId,
           descricao: it.descricao,
@@ -253,6 +281,8 @@ export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
         });
       } catch {
         // Fallback: preenche com o que já temos
+        const fallbackFormaId = extractFormaPagtoId(currentOrder);
+        const fallbackPrazoId = extractPrazoPagtoId(currentOrder);
         setFormData((prev) => ({
           ...prev,
           operacao: currentOrder.operacao || prev.operacao,
@@ -261,11 +291,15 @@ export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
           representanteId: currentOrder.representanteId || '',
           representanteNome: currentOrder.representanteNome || '',
           tabela: currentOrder.tabela || prev.tabela || '',
-          formaPagamento: currentOrder.formaPagamento || '',
-          prazo: currentOrder.prazo || '',
+          formaPagamento: currentOrder.formaPagamento || prev.formaPagamento || '',
+          formaPagtoId: fallbackFormaId ?? prev.formaPagtoId ?? '',
+          prazo: currentOrder.prazo || prev.prazo || '',
+          prazoPagtoId: fallbackPrazoId ?? prev.prazoPagtoId ?? '',
           boleto: '',
           rede: currentOrder.rede || '',
         }));
+        if (fallbackFormaId != null) setPreferredFormaId(fallbackFormaId);
+        if (fallbackPrazoId != null) setPreferredPrazoId(fallbackPrazoId);
         const mapped = (currentOrder.itens || []).map((it: any) => ({
           produtoId: it.produtoId,
           descricao: it.descricao,
