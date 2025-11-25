@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Televendas from "./pages/Televendas";
 import EmpresaSelect from "./pages/EmpresaSelect";
 import NotFound from "./pages/NotFound";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 import { initNavigation } from "./utils/navigation";
 
 const queryClient = new QueryClient();
@@ -27,14 +28,28 @@ const App = () => {
           <Toaster />
           <Sonner />
           <BrowserRouter basename={import.meta.env.BASE_URL}>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/empresa" element={<EmpresaSelect />} />
-              <Route path="/televendas" element={<Televendas />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/login" element={<Login />} />
+            <Route 
+              path="/empresa" 
+              element={
+                <ProtectedRoute>
+                  <EmpresaSelect />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/televendas" 
+              element={
+                <ProtectedRoute requireEmpresa>
+                  <Televendas />
+                </ProtectedRoute>
+              } 
+            />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
           </BrowserRouter>
         </TooltipProvider>
       </ThemeProvider>
