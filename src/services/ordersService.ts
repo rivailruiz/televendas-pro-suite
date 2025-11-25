@@ -1,6 +1,7 @@
 import { pedidos } from '@/mocks/data';
 import { authService } from '@/services/authService';
 import { API_BASE } from '@/utils/env';
+import { apiClient } from '@/utils/apiClient';
 
 export interface OrderItemUI {
   produtoId: number;
@@ -158,8 +159,8 @@ export const ordersService = {
         if (filters.cliente) params.set('cliente', String(filters.cliente));
       }
       const url = `${API_BASE}/api/pedidos?${params.toString()}`;
-      const headers: Record<string, string> = { accept: 'application/json', Authorization: `Bearer ${token}` };
-      const res = await fetch(url, {
+      const headers: Record<string, string> = { accept: 'application/json' };
+      const res = await apiClient.fetch(url, {
         method: 'GET',
         headers,
       });
@@ -232,8 +233,8 @@ export const ordersService = {
     if (!token) return Promise.reject('Token ausente');
     try {
       const url = `${API_BASE}/api/pedidos/${encodeURIComponent(id)}?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
-      const headers: Record<string, string> = { accept: 'application/json', Authorization: `Bearer ${token}` };
-      const res = await fetch(url, { method: 'GET', headers });
+      const headers: Record<string, string> = { accept: 'application/json' };
+      const res = await apiClient.fetch(url, { method: 'GET', headers });
       if (!res.ok) {
         let message = 'Falha ao buscar pedido';
         try { const err = await res.json(); message = err?.message || err?.error || message; } catch {}
@@ -350,9 +351,8 @@ export const ordersService = {
       const headers: Record<string, string> = {
         accept: 'application/json',
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
       };
-      const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) });
+      const res = await apiClient.fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) });
       if (!res.ok) {
         let message = 'Falha ao criar pedido';
         try { const err = await res.json(); message = err?.message || err?.error || message; } catch {}
@@ -442,9 +442,8 @@ export const ordersService = {
       const headers: Record<string, string> = {
         accept: 'application/json',
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
       };
-      const res = await fetch(url, { method: 'PUT', headers, body: JSON.stringify(payload) });
+      const res = await apiClient.fetch(url, { method: 'PUT', headers, body: JSON.stringify(payload) });
       if (!res.ok) {
         let message = 'Falha ao atualizar pedido';
         try { const err = await res.json(); message = err?.message || err?.error || message; } catch {}

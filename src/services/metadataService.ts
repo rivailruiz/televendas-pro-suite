@@ -1,5 +1,6 @@
 import { authService } from '@/services/authService';
 import { API_BASE } from '@/utils/env';
+import { apiClient } from '@/utils/apiClient';
 
 export interface Operacao {
   id: number | string;
@@ -82,9 +83,8 @@ export const metadataService = {
       const url = `${API_BASE}/api/metadata/operacoes?${params.toString()}`;
       const headers: Record<string, string> = {
         accept: 'application/json',
-        Authorization: `Bearer ${token}`,
       };
-      const res = await fetch(url, { method: 'GET', headers });
+      const res = await apiClient.fetch(url, { method: 'GET', headers });
       if (!res.ok) {
         let message = 'Falha ao buscar operações';
         try {
@@ -151,9 +151,8 @@ export const metadataService = {
       const url = `${API_BASE}/api/metadata/tabelas?${params.toString()}`;
       const headers: Record<string, string> = {
         accept: 'application/json',
-        Authorization: `Bearer ${token}`,
       };
-      const res = await fetch(url, { method: 'GET', headers });
+      const res = await apiClient.fetch(url, { method: 'GET', headers });
       if (!res.ok) {
         let message = 'Falha ao buscar tabelas';
         try {
@@ -213,9 +212,8 @@ export const metadataService = {
       const url = `${API_BASE}/api/clientes/${encodeURIComponent(clienteId)}/tabelas-precos?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
       const headers: Record<string, string> = {
         accept: 'application/json',
-        Authorization: `Bearer ${token}`,
       };
-      const res = await fetch(url, { method: 'GET', headers });
+      const res = await apiClient.fetch(url, { method: 'GET', headers });
       if (!res.ok) {
         let message = 'Falha ao buscar tabelas do cliente';
         try {
@@ -256,9 +254,8 @@ export const metadataService = {
       const url = `${API_BASE}/api/metadata/formas-pagamento?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
       const headers: Record<string, string> = {
         accept: 'application/json',
-        Authorization: `Bearer ${token}`,
       };
-      const res = await fetch(url, { method: 'GET', headers });
+      const res = await apiClient.fetch(url, { method: 'GET', headers });
       if (!res.ok) {
         let message = 'Falha ao buscar formas de pagamento';
         try { const err = await res.json(); message = err?.message || err?.error || message; } catch {}
@@ -315,9 +312,8 @@ export const metadataService = {
       const url = `${API_BASE}/api/metadata/prazos?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
       const headers: Record<string, string> = {
         accept: 'application/json',
-        Authorization: `Bearer ${token}`,
       };
-      const res = await fetch(url, { method: 'GET', headers });
+      const res = await apiClient.fetch(url, { method: 'GET', headers });
       if (!res.ok) {
         let message = 'Falha ao buscar prazos';
         try { const err = await res.json(); message = err?.message || err?.error || message; } catch {}
@@ -396,9 +392,8 @@ export const metadataService = {
       const url = `${API_BASE}/api/produtos/${encodeURIComponent(produtoId)}/tabelas-precos?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
       const headers: Record<string, string> = {
         accept: 'application/json',
-        Authorization: `Bearer ${token}`,
       };
-      const res = await fetch(url, { method: 'GET', headers });
+      const res = await apiClient.fetch(url, { method: 'GET', headers });
       if (!res.ok) {
         let message = 'Falha ao buscar tabelas do produto';
         try { const err = await res.json(); message = err?.message || err?.error || message; } catch {}
