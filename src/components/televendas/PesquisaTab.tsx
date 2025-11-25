@@ -397,11 +397,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
               onChange={(e) => {
                 const newFilters = { ...filters, dataInicio: e.target.value };
                 setFilters(newFilters);
-                // Salva filtros de data no localStorage
-                localStorage.setItem('pesquisa-date-filters', JSON.stringify({
-                  dataInicio: newFilters.dataInicio,
-                  dataFim: newFilters.dataFim,
-                }));
+                saveFilters(newFilters);
               }}
             />
             <span className="self-center">a</span>
@@ -411,11 +407,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
               onChange={(e) => {
                 const newFilters = { ...filters, dataFim: e.target.value };
                 setFilters(newFilters);
-                // Salva filtros de data no localStorage
-                localStorage.setItem('pesquisa-date-filters', JSON.stringify({
-                  dataInicio: newFilters.dataInicio,
-                  dataFim: newFilters.dataFim,
-                }));
+                saveFilters(newFilters);
               }}
             />
           </div>
