@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { authService } from '@/services/authService';
 
 interface ProtectedRouteProps {
@@ -8,22 +8,32 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = ({ children, requireEmpresa = false }: ProtectedRouteProps) => {
+  const location = useLocation();
   const [isChecking, setIsChecking] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [hasEmpresa, setHasEmpresa] = useState(false);
 
   useEffect(() => {
+    // Force synchronous check to avoid race conditions
     const checkAuth = () => {
-      const authenticated = authService.isAuthenticated();
-      const empresa = authService.getEmpresa();
-      
-      setIsAuthenticated(authenticated);
-      setHasEmpresa(!!empresa);
-      setIsChecking(false);
+      try {
+        const authenticated = authService.isAuthenticated();
+        const token = authService.getToken();
+        const empresa = authService.getEmpresa();
+        
+        setIsAuthenticated(authenticated && !!token);
+        setHasEmpresa(!!empresa);
+      } catch (error) {
+        console.error('Auth check error:', error);
+        setIsAuthenticated(false);
+        setHasEmpresa(false);
+      } finally {
+        setIsChecking(false);
+      }
     };
 
     checkAuth();
-  }, []);
+  }, [location.pathname]);
 
   if (isChecking) {
     return (
