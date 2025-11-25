@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -33,36 +33,43 @@ interface DigitacaoTabProps {
   onClose?: () => void;
 }
 
-export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
-  const { orders, setOrders, currentOrder, setCurrentOrder } = useStore();
-  const [formData, setFormData] = useState({
-    operacao: '',
-    operacaoId: '' as string | number | '',
-    clienteId: 0,
-    clienteNome: '',
-    representanteId: '',
-    representanteNome: '',
-    tabela: '',
-    formaPagamento: '',
-    formaPagtoId: '' as string | number | '',
-    prazo: '',
-    prazoPagtoId: '' as string | number | '',
-    boleto: '',
-    rede: '',
-    especial: false,
-  });
-  
-  const [items, setItems] = useState<OrderItem[]>([]);
-  const [newItem, setNewItem] = useState<Partial<OrderItem>>({
+const createEmptyFormData = () => ({
+  operacao: '',
+  operacaoId: '' as string | number | '',
+  clienteId: 0,
+  clienteNome: '',
+  representanteId: '',
+  representanteNome: '',
+  tabela: '',
+  formaPagamento: '',
+  formaPagtoId: '' as string | number | '',
+  prazo: '',
+  prazoPagtoId: '' as string | number | '',
+  boleto: '',
+  rede: '',
+  especial: false,
+});
+
+const createEmptyNewItem = () =>
+  ({
     produtoId: 0,
     quant: 1,
     descontoPerc: 0,
-  });
-  const [observacoes, setObservacoes] = useState({
-    cliente: '',
-    pedido: '',
-    nf: ''
-  });
+  }) as Partial<OrderItem>;
+
+const createEmptyObservacoes = () => ({
+  cliente: '',
+  pedido: '',
+  nf: ''
+});
+
+export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
+  const { orders, setOrders, currentOrder, setCurrentOrder } = useStore();
+  const [formData, setFormData] = useState(createEmptyFormData);
+  
+  const [items, setItems] = useState<OrderItem[]>([]);
+  const [newItem, setNewItem] = useState<Partial<OrderItem>>(createEmptyNewItem);
+  const [observacoes, setObservacoes] = useState(createEmptyObservacoes);
 
   // Operações (metadata)
   const [operacoes, setOperacoes] = useState<Operacao[]>([]);
@@ -105,6 +112,17 @@ export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
   const [clientHasMore, setClientHasMore] = useState(true);
   // Guarda ID de forma de pagamento preferida do cliente selecionado para aplicar quando as formas carregarem
   const [preferredFormaId, setPreferredFormaId] = useState<string | number | null>(null);
+  const [preferredPrazoId, setPreferredPrazoId] = useState<string | number | null>(null);
+  const prevOrderIdRef = useRef<number | null>(null);
+
+  const resetFormState = useCallback(() => {
+    setFormData(createEmptyFormData());
+    setItems([]);
+    setNewItem(createEmptyNewItem());
+    setObservacoes(createEmptyObservacoes());
+    setPreferredFormaId(null);
+    setPreferredPrazoId(null);
+  }, []);
 
   const [representatives, setRepresentatives] = useState<Representative[]>([]);
   const [repSearchOpen, setRepSearchOpen] = useState(false);
@@ -269,6 +287,14 @@ export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
     };
     fill();
   }, [currentOrder]);
+
+  useEffect(() => {
+    const prevId = prevOrderIdRef.current;
+    if (!currentOrder && prevId !== null) {
+      resetFormState();
+    }
+    prevOrderIdRef.current = currentOrder?.id ?? null;
+  }, [currentOrder, resetFormState]);
 
   // Carrega formas de pagamento ao montar
   useEffect(() => {
@@ -485,8 +511,6 @@ export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
   }, [items]);
 
   const filteredRepresentatives = representatives; // server already filters by q
-
-  const [preferredPrazoId, setPreferredPrazoId] = useState<string | number | null>(null);
 
   const handleSelectClient = (client: Client) => {
     setFormData({
@@ -757,24 +781,7 @@ export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
       }
       
       // Reset form
-      setFormData({
-        operacao: '',
-        operacaoId: '',
-        clienteId: 0,
-        clienteNome: '',
-        representanteId: '',
-        representanteNome: '',
-        tabela: '',
-        formaPagamento: '',
-        formaPagtoId: '',
-        prazo: '',
-        prazoPagtoId: '',
-        boleto: '',
-        rede: '',
-        especial: false,
-      });
-      setItems([]);
-      setObservacoes({ cliente: '', pedido: '', nf: '' });
+      resetFormState();
       setCurrentOrder(null);
     } catch (error) {
       toast.error('Erro ao criar pedido');

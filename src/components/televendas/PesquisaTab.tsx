@@ -105,6 +105,11 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
     loadOrders();
   };
 
+  const handleNovoPedido = () => {
+    setCurrentOrder(null);
+    if (onNavigateToDigitacao) onNavigateToDigitacao();
+  };
+
   const REP_LIMIT = 100;
   const loadReps = async (reset = false) => {
     if (loadingReps) return;
@@ -578,7 +583,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
 
       {/* Botões de ação - filtros */}
       <div className="flex flex-col sm:flex-row gap-2 sm:justify-between">
-        <Button variant="outline" onClick={onNavigateToDigitacao} className="w-full sm:w-auto">
+        <Button variant="outline" onClick={handleNovoPedido} className="w-full sm:w-auto">
           <FileEdit className="h-4 w-4 mr-2" />
           Digitar Pedido
         </Button>
