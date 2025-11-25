@@ -31,6 +31,7 @@ type OrderItem = {
 
 interface DigitacaoTabProps {
   onClose?: () => void;
+  onSaveSuccess?: () => void;
 }
 
 const createEmptyFormData = () => ({
@@ -85,7 +86,7 @@ const extractPrazoPagtoId = (data: any) =>
   data?.prazo_pagamento?.id ??
   null;
 
-export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
+export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   const { orders, setOrders, currentOrder, setCurrentOrder } = useStore();
   const [formData, setFormData] = useState(createEmptyFormData);
   
@@ -802,15 +803,15 @@ export const DigitacaoTab = ({ onClose }: DigitacaoTabProps) => {
         // Atualiza array local
         setOrders(orders.map(o => (o.id === currentOrder.id ? { ...(o as any), ...saved } : o)) as any);
         toast.success(`Pedido ${currentOrder.id} atualizado com sucesso!`);
-        if (onClose) {
-          onClose();
+        if (onSaveSuccess) {
+          onSaveSuccess();
         }
       } else {
         saved = await ordersService.create(order as any);
         setOrders([saved, ...orders]);
         toast.success(`Pedido ${saved.id} criado com sucesso!`);
-        if (onClose) {
-          onClose();
+        if (onSaveSuccess) {
+          onSaveSuccess();
         }
       }
       
