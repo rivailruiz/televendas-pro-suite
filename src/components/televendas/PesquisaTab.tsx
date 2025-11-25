@@ -26,9 +26,28 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   const getTodayStr = () => new Date().toLocaleDateString('sv-SE');
   const today = getTodayStr();
   const { orders, selectedOrders, setOrders, toggleOrderSelection, clearSelection, setCurrentOrder } = useStore();
+  
+  // Recupera filtros de data salvos ou usa data de hoje
+  const getSavedDateFilters = () => {
+    try {
+      const saved = localStorage.getItem('pesquisa-date-filters');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          dataInicio: parsed.dataInicio || today,
+          dataFim: parsed.dataFim || today,
+        };
+      }
+    } catch (e) {
+      console.warn('Erro ao recuperar filtros de data:', e);
+    }
+    return { dataInicio: today, dataFim: today };
+  };
+
+  const savedDates = getSavedDateFilters();
   const [filters, setFilters] = useState({
-    dataInicio: today,
-    dataFim: today,
+    dataInicio: savedDates.dataInicio,
+    dataFim: savedDates.dataFim,
     situacao: '__ALL__',
     especial: false,
     operacoes: '',
@@ -186,9 +205,10 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   }, [clientSearch]);
 
   const handleLimparFiltros = () => {
+    const newToday = getTodayStr();
     setFilters({
-      dataInicio: getTodayStr(),
-      dataFim: getTodayStr(),
+      dataInicio: newToday,
+      dataFim: newToday,
       situacao: '__ALL__',
       especial: false,
       operacoes: '',
@@ -198,6 +218,8 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
     });
     setClienteNome('');
     clearSelection();
+    // Limpa os filtros de data do localStorage
+    localStorage.removeItem('pesquisa-date-filters');
   };
 
   const handleExcluir = async () => {
@@ -372,13 +394,29 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
             <Input
               type="date"
               value={filters.dataInicio}
-              onChange={(e) => setFilters({ ...filters, dataInicio: e.target.value })}
+              onChange={(e) => {
+                const newFilters = { ...filters, dataInicio: e.target.value };
+                setFilters(newFilters);
+                // Salva filtros de data no localStorage
+                localStorage.setItem('pesquisa-date-filters', JSON.stringify({
+                  dataInicio: newFilters.dataInicio,
+                  dataFim: newFilters.dataFim,
+                }));
+              }}
             />
             <span className="self-center">a</span>
             <Input
               type="date"
               value={filters.dataFim}
-              onChange={(e) => setFilters({ ...filters, dataFim: e.target.value })}
+              onChange={(e) => {
+                const newFilters = { ...filters, dataFim: e.target.value };
+                setFilters(newFilters);
+                // Salva filtros de data no localStorage
+                localStorage.setItem('pesquisa-date-filters', JSON.stringify({
+                  dataInicio: newFilters.dataInicio,
+                  dataFim: newFilters.dataFim,
+                }));
+              }}
             />
           </div>
         </div>
