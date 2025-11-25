@@ -27,38 +27,58 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   const today = getTodayStr();
   const { orders, selectedOrders, setOrders, toggleOrderSelection, clearSelection, setCurrentOrder } = useStore();
   
-  // Recupera filtros de data salvos ou usa data de hoje
-  const getSavedDateFilters = () => {
+  // Recupera todos os filtros salvos
+  const getSavedFilters = () => {
     try {
-      const saved = localStorage.getItem('pesquisa-date-filters');
+      const saved = localStorage.getItem('pesquisa-filters');
       if (saved) {
         const parsed = JSON.parse(saved);
         return {
-          dataInicio: parsed.dataInicio || today,
-          dataFim: parsed.dataFim || today,
+          filters: {
+            dataInicio: parsed.dataInicio || today,
+            dataFim: parsed.dataFim || today,
+            situacao: parsed.situacao || '__ALL__',
+            especial: parsed.especial || false,
+            operacoes: parsed.operacoes || '',
+            pedidoIds: parsed.pedidoIds || '',
+            representante: parsed.representante || '',
+            cliente: parsed.cliente || '',
+          },
+          clienteNome: parsed.clienteNome || '',
         };
       }
     } catch (e) {
-      console.warn('Erro ao recuperar filtros de data:', e);
+      console.warn('Erro ao recuperar filtros:', e);
     }
-    return { dataInicio: today, dataFim: today };
+    return {
+      filters: {
+        dataInicio: today,
+        dataFim: today,
+        situacao: '__ALL__',
+        especial: false,
+        operacoes: '',
+        pedidoIds: '',
+        representante: '',
+        cliente: '',
+      },
+      clienteNome: '',
+    };
   };
 
-  const savedDates = getSavedDateFilters();
-  const [filters, setFilters] = useState({
-    dataInicio: savedDates.dataInicio,
-    dataFim: savedDates.dataFim,
-    situacao: '__ALL__',
-    especial: false,
-    operacoes: '',
-    pedidoIds: '',
-    representante: '',
-    cliente: '',
-  });
+  const savedFilters = getSavedFilters();
+  const [filters, setFilters] = useState(savedFilters.filters);
   const [outputMode, setOutputMode] = useState<'video' | 'impressora'>('video');
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewOrder, setPreviewOrder] = useState<Order | null>(null);
-  const [clienteNome, setClienteNome] = useState<string>('');
+  const [clienteNome, setClienteNome] = useState<string>(savedFilters.clienteNome);
+  
+  // Função para salvar filtros no localStorage
+  const saveFilters = (newFilters: typeof filters, newClienteNome?: string) => {
+    localStorage.setItem('pesquisa-filters', JSON.stringify({
+      ...newFilters,
+      clienteNome: newClienteNome !== undefined ? newClienteNome : clienteNome,
+    }));
+  };
   const formatOperacao = (order: Order) => order.operacaoCodigo || order.operacao;
   
   // Operações (metadata)
@@ -218,8 +238,8 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
     });
     setClienteNome('');
     clearSelection();
-    // Limpa os filtros de data do localStorage
-    localStorage.removeItem('pesquisa-date-filters');
+    // Limpa os filtros do localStorage
+    localStorage.removeItem('pesquisa-filters');
   };
 
   const handleExcluir = async () => {
@@ -417,7 +437,11 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
 
         <div className="space-y-2">
           <Label>Situação</Label>
-          <Select value={filters.situacao} onValueChange={(v) => setFilters({ ...filters, situacao: v })}>
+          <Select value={filters.situacao} onValueChange={(v) => {
+            const newFilters = { ...filters, situacao: v };
+            setFilters(newFilters);
+            saveFilters(newFilters);
+          }}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -434,7 +458,11 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
           <Checkbox
             id="especial"
             checked={filters.especial}
-            onCheckedChange={(checked) => setFilters({ ...filters, especial: !!checked })}
+            onCheckedChange={(checked) => {
+              const newFilters = { ...filters, especial: !!checked };
+              setFilters(newFilters);
+              saveFilters(newFilters);
+            }}
           />
           <Label htmlFor="especial">Especial</Label>
         </div>
@@ -443,7 +471,11 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
           <Label>Operações</Label>
           <Select
             value={filters.operacoes}
-            onValueChange={(v) => setFilters({ ...filters, operacoes: v === '__ALL__' ? '' : v })}
+            onValueChange={(v) => {
+              const newFilters = { ...filters, operacoes: v === '__ALL__' ? '' : v };
+              setFilters(newFilters);
+              saveFilters(newFilters);
+            }}
             disabled={loadingOperacoes || !!operacoesError}
           >
             <SelectTrigger>
@@ -467,7 +499,11 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
           <Input
             placeholder="IDs separados por vírgula"
             value={filters.pedidoIds}
-            onChange={(e) => setFilters({ ...filters, pedidoIds: e.target.value })}
+            onChange={(e) => {
+              const newFilters = { ...filters, pedidoIds: e.target.value };
+              setFilters(newFilters);
+              saveFilters(newFilters);
+            }}
           />
         </div>
 
