@@ -4,6 +4,7 @@ export interface Empresa {
   fantasia: string;
 }
 import { API_BASE } from '@/utils/env';
+import { apiClient } from '@/utils/apiClient';
 
 export const authService = {
   login: async (usuario: string, senha: string) => {
@@ -89,8 +90,8 @@ export const authService = {
     if (!token) return Promise.reject('Token ausente');
 
     try {
-      const headers: Record<string, string> = { accept: '*/*', Authorization: `Bearer ${token}` };
-      const res = await fetch(`${API_BASE}/api/auth/empresas`, {
+      const headers: Record<string, string> = { accept: '*/*' };
+      const res = await apiClient.fetch(`${API_BASE}/api/auth/empresas`, {
         method: 'GET',
         headers,
       });
