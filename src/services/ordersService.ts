@@ -31,7 +31,9 @@ export interface Order {
   representanteNome: string;
   tabela: string;
   formaPagamento: string;
+  formaPagtoId?: number | string;
   prazo: string;
+  prazoPagtoId?: number | string;
   boleto: boolean;
   rede: string;
   especial: boolean;
@@ -132,6 +134,32 @@ const normalizeItens = (raw: any[]): OrderItemUI[] => {
   })) as OrderItemUI[];
 };
 
+const extractFormaPagtoId = (raw: any): number | string | undefined => {
+  const formaObj = raw?.formaPagamento || raw?.forma_pagamento;
+  const candidates = [
+    raw?.formaPagtoId,
+    raw?.forma_pagto_id,
+    raw?.forma_pagamento_id,
+    raw?.formaPagamentoId,
+    formaObj?.id,
+  ];
+  const val = candidates.find((v) => v !== undefined && v !== null && String(v).trim() !== '');
+  return val as any;
+};
+
+const extractPrazoPagtoId = (raw: any): number | string | undefined => {
+  const prazoObj = raw?.prazoPagamento || raw?.prazo_pagamento;
+  const candidates = [
+    raw?.prazoPagtoId,
+    raw?.prazo_pagto_id,
+    raw?.prazo_pagamento_id,
+    raw?.prazoPagamentoId,
+    prazoObj?.id,
+  ];
+  const val = candidates.find((v) => v !== undefined && v !== null && String(v).trim() !== '');
+  return val as any;
+};
+
 
 export const ordersService = {
   list: async (filters?: any, _page: number = 1, _limit: number = 100) => {
@@ -184,6 +212,8 @@ export const ordersService = {
       // Normalize API payload to UI Order type used across app
       const normalized: Order[] = arr.map((p: any) => {
         const opFields = resolveOperacaoFields(p);
+        const formaPagtoId = extractFormaPagtoId(p);
+        const prazoPagtoId = extractPrazoPagtoId(p);
         return {
           id: p?.id ?? p?.pedido_id ?? p?.numero ?? 0,
           data: p?.data ?? p?.createdAt ?? new Date().toISOString().split('T')[0],
@@ -197,7 +227,9 @@ export const ordersService = {
           representanteNome: p?.representanteNome ?? p?.representante_nome ?? 'REPRESENTANTE',
           tabela: p?.tabela ?? p?.tabela_preco ?? 'TABELA 01',
           formaPagamento: p?.formaPagamento ?? p?.forma_pagamento ?? 'BOLETO BANCARIO',
+          formaPagtoId,
           prazo: p?.prazo ?? p?.prazo_pagamento ?? '30 DIAS',
+          prazoPagtoId,
           boleto: Boolean(p?.boleto ?? true),
           rede: p?.rede ?? '',
           especial: Boolean(p?.especial ?? false),
@@ -242,6 +274,8 @@ export const ordersService = {
       }
       const p: any = await res.json();
       const opFields = resolveOperacaoFields(p);
+      const formaPagtoId = extractFormaPagtoId(p);
+      const prazoPagtoId = extractPrazoPagtoId(p);
       const order: Order = {
         id: p?.id ?? p?.pedido_id ?? id,
         data: p?.data ?? new Date().toISOString().split('T')[0],
@@ -255,7 +289,9 @@ export const ordersService = {
         representanteNome: p?.representanteNome ?? p?.representante_nome ?? '',
         tabela: p?.tabela ?? p?.tabela_preco ?? '',
         formaPagamento: p?.formaPagamento ?? p?.forma_pagamento ?? '',
+        formaPagtoId,
         prazo: p?.prazo ?? p?.prazo_pagamento ?? '',
+        prazoPagtoId,
         boleto: Boolean(p?.boleto ?? false),
         rede: p?.rede ?? '',
         especial: Boolean(p?.especial ?? false),
