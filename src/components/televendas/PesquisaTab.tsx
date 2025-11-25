@@ -548,8 +548,10 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                           <TableRow
                             key={r.id}
                             className="cursor-pointer"
-                            onClick={() => {
-                              setFilters({ ...filters, representante: r.nome });
+                           onClick={() => {
+                              const newFilters = { ...filters, representante: r.nome };
+                              setFilters(newFilters);
+                              saveFilters(newFilters);
                               setRepSearchOpen(false);
                               setRepSearch('');
                             }}
