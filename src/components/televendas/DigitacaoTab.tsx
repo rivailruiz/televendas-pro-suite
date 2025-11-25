@@ -596,6 +596,24 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formas]);
 
+  // Se o backend não enviou formaPagtoId, tenta inferir pelo nome/código quando as formas carregarem
+  useEffect(() => {
+    if (formData.formaPagtoId) return;
+    if (!formData.formaPagamento) return;
+    if (!formas || formas.length === 0) return;
+    const match =
+      formas.find((f) => f.descricao === formData.formaPagamento) ||
+      formas.find((f) => String(f.codigo || '').trim() === String(formData.formaPagamento).trim());
+    if (match) {
+      setFormData((prev) => ({
+        ...prev,
+        formaPagamento: match.descricao,
+        formaPagtoId: match.id,
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formas, formData.formaPagamento]);
+
   // Aplica prazo preferido quando a lista de prazos estiver carregada
   useEffect(() => {
     if (preferredPrazoId == null) return;
@@ -611,6 +629,24 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prazos]);
+
+  // Se o backend não enviou prazoPagtoId, tenta inferir pelo nome/código quando os prazos carregarem
+  useEffect(() => {
+    if (formData.prazoPagtoId) return;
+    if (!formData.prazo) return;
+    if (!prazos || prazos.length === 0) return;
+    const match =
+      prazos.find((p) => p.descricao === formData.prazo) ||
+      prazos.find((p) => String(p.codigo || '').trim() === String(formData.prazo).trim());
+    if (match) {
+      setFormData((prev) => ({
+        ...prev,
+        prazo: match.descricao,
+        prazoPagtoId: match.id,
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prazos, formData.prazo]);
 
   const handleSelectProduct = (product: Product) => {
     setNewItem({
