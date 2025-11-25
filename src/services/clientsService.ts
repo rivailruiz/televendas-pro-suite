@@ -1,5 +1,6 @@
 import { authService } from '@/services/authService';
 import { API_BASE } from '@/utils/env';
+import { apiClient } from '@/utils/apiClient';
 
 export interface Client {
   id: number;
@@ -84,8 +85,8 @@ async function fetchFromApi({ q, page = 1, limit = 100 }: { q?: string; page?: n
     if (page) params.set('page', String(page));
     if (limit) params.set('limit', String(limit));
     const url = `${API_BASE}/api/clientes?${params.toString()}`;
-    const headers: Record<string, string> = { accept: 'application/json', Authorization: `Bearer ${token}` };
-    const res = await fetch(url, {
+    const headers: Record<string, string> = { accept: 'application/json' };
+    const res = await apiClient.fetch(url, {
       method: 'GET',
       headers,
     });
@@ -133,8 +134,8 @@ export const clientsService = {
 
     try {
       const url = `${API_BASE}/api/clientes/${encodeURIComponent(id)}?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
-      const headers: Record<string, string> = { accept: 'application/json', Authorization: `Bearer ${token}` };
-      const res = await fetch(url, {
+      const headers: Record<string, string> = { accept: 'application/json' };
+      const res = await apiClient.fetch(url, {
         method: 'GET',
         headers,
       });
@@ -174,9 +175,8 @@ export const clientsService = {
       const headers: Record<string, string> = {
         accept: 'application/json',
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
       };
-      const res = await fetch(url, {
+      const res = await apiClient.fetch(url, {
         method: 'POST',
         headers,
         body: JSON.stringify({ empresaId: empresa.empresa_id, data }),
@@ -220,9 +220,8 @@ export const clientsService = {
       const headers: Record<string, string> = {
         accept: 'application/json',
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
       };
-      const res = await fetch(url, {
+      const res = await apiClient.fetch(url, {
         method: 'PUT',
         headers,
         body: JSON.stringify({ empresaId: empresa.empresa_id, data }),
@@ -246,8 +245,8 @@ export const clientsService = {
     if (!token) return Promise.reject('Token ausente');
     try {
       const url = `${API_BASE}/api/clientes/${encodeURIComponent(id)}?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
-      const headers: Record<string, string> = { accept: 'application/json', Authorization: `Bearer ${token}` };
-      const res = await fetch(url, {
+      const headers: Record<string, string> = { accept: 'application/json' };
+      const res = await apiClient.fetch(url, {
         method: 'DELETE',
         headers,
       });

@@ -1,5 +1,6 @@
 import { authService } from '@/services/authService';
 import { API_BASE } from '@/utils/env';
+import { apiClient } from '@/utils/apiClient';
 
 export interface Representative {
   id: string; // normalized as string for UI compatibility
@@ -34,10 +35,10 @@ async function fetchFromApi({ q, page = 1, limit = 100 }: { q?: string; page?: n
   if (limit) params.set('limit', String(limit));
 
   const url = `${API_BASE}/api/representantes?${params.toString()}`;
-  const headers: Record<string, string> = { accept: 'application/json', Authorization: `Bearer ${token}` };
+  const headers: Record<string, string> = { accept: 'application/json' };
 
   try {
-    const res = await fetch(url, { method: 'GET', headers });
+    const res = await apiClient.fetch(url, { method: 'GET', headers });
     if (!res.ok) {
       let message = 'Falha ao buscar representantes';
       try {
