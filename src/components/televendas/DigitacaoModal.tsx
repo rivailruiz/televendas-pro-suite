@@ -40,6 +40,11 @@ export const DigitacaoModal = ({ open, onOpenChange }: DigitacaoModalProps) => {
     setShowConfirmClose(false);
   };
 
+  const handleSaveSuccess = () => {
+    setCurrentOrder(null);
+    onOpenChange(false);
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -48,7 +53,10 @@ export const DigitacaoModal = ({ open, onOpenChange }: DigitacaoModalProps) => {
             <DialogTitle className="text-base sm:text-lg">Digitação de Pedido</DialogTitle>
           </DialogHeader>
           <div className="px-4 sm:px-6 pb-4 sm:pb-6 overflow-y-auto flex-1">
-            <DigitacaoTab onClose={() => setShowConfirmClose(true)} />
+            <DigitacaoTab 
+              onClose={() => setShowConfirmClose(true)} 
+              onSaveSuccess={handleSaveSuccess}
+            />
           </div>
         </DialogContent>
       </Dialog>
