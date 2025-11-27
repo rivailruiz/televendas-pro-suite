@@ -26,7 +26,7 @@ const Index = () => {
             <ShoppingCart className="h-12 w-12 text-primary" />
           </div>
         </div>
-        <h1 className="text-5xl font-bold text-foreground">Sistema de Ads Vendas</h1>
+        <h1 className="text-5xl font-bold text-foreground">Sistema ADS Vendas</h1>
         <p className="text-xl text-muted-foreground max-w-lg mx-auto">
           Gerencie pedidos, clientes e vendas de forma eficiente
         </p>

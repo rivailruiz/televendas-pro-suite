@@ -59,7 +59,7 @@ const Login = () => {
               <LogIn className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-xl sm:text-2xl font-bold">Sistema de Ads Vendas</CardTitle>
+          <CardTitle className="text-xl sm:text-2xl font-bold">Sistema ADS Vendas</CardTitle>
           <CardDescription className="text-sm">
             Entre com suas credenciais para acessar o sistema
           </CardDescription>
