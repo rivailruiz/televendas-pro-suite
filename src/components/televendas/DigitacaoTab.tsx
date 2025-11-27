@@ -593,8 +593,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       }));
       setPreferredFormaId(null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formas]);
+  }, [formas, preferredFormaId]);
 
   // Se o backend não enviou formaPagtoId, tenta inferir pelo nome/código quando as formas carregarem
   useEffect(() => {
@@ -627,8 +626,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       }));
       setPreferredPrazoId(null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prazos]);
+  }, [prazos, preferredPrazoId]);
 
   // Se o backend não enviou prazoPagtoId, tenta inferir pelo nome/código quando os prazos carregarem
   useEffect(() => {
