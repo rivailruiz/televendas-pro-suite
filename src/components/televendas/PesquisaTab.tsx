@@ -55,16 +55,40 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
     representante: '',
     cliente: '',
   });
-  const [outputMode, setOutputMode] = useState<'video' | 'impressora'>('video');
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewOrder, setPreviewOrder] = useState<Order | null>(null);
-  const [clienteNome, setClienteNome] = useState<string>('');
-  const formatOperacao = (order: Order) => order.operacaoCodigo || order.operacao;
-  
   // Operações (metadata)
   const [operacoes, setOperacoes] = useState<Operacao[]>([]);
   const [loadingOperacoes, setLoadingOperacoes] = useState(false);
   const [operacoesError, setOperacoesError] = useState<string | null>(null);
+
+  const [outputMode, setOutputMode] = useState<'video' | 'impressora'>('video');
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewOrder, setPreviewOrder] = useState<Order | null>(null);
+  const [clienteNome, setClienteNome] = useState<string>('');
+
+  const normalizeOperacaoCodigo = (codigo?: string | number | null) => {
+    const str = String(codigo ?? '').trim();
+    if (!str) return '';
+    if (/^\d+$/.test(str)) return String(Number(str));
+    return str;
+  };
+
+  const formatOperacao = (order: Order) => {
+    if (order.operacaoDescricao) return order.operacaoDescricao;
+
+    const normalizedOrderCode = normalizeOperacaoCodigo(order.operacaoCodigo || order.operacao);
+    const orderOperacaoId = order.operacaoId ? String(order.operacaoId) : '';
+
+    const match = operacoes.find((op) => {
+      const opCode = normalizeOperacaoCodigo(op.codigo);
+      const sameCode = opCode && normalizedOrderCode && opCode === normalizedOrderCode;
+      const sameId = orderOperacaoId && String(op.id) === orderOperacaoId;
+      return sameCode || sameId;
+    });
+
+    if (match?.descricao) return match.descricao;
+
+    return order.operacao || order.operacaoCodigo || '';
+  };
 
   // Representantes para busca
   const [repSearchOpen, setRepSearchOpen] = useState(false);
@@ -686,7 +710,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                 </TableCell>
                 <TableCell className="w-[110px]">{new Date(order.data).toLocaleDateString('pt-BR')}</TableCell>
                 <TableCell className="w-[90px] font-medium">{order.id}</TableCell>
-                <TableCell className="w-[120px]">{order.operacao}</TableCell>
+                <TableCell className="w-[120px]">{formatOperacao(order)}</TableCell>
                 <TableCell className="w-[90px]">{order.clienteId}</TableCell>
                 <TableCell>{order.clienteNome}</TableCell>
                 <TableCell className="w-[120px] text-right font-medium">{formatCurrency(order.valor)}</TableCell>
