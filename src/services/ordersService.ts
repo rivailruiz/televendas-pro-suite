@@ -497,13 +497,31 @@ export const ordersService = {
     }
   },
 
-  remove: (id: number) => {
-    const index = pedidos.findIndex(p => p.id === id);
-    if (index !== -1) {
-      pedidos.splice(index, 1);
-      return Promise.resolve(true);
+  remove: async (id: number) => {
+    const empresa = authService.getEmpresa();
+    if (!empresa) return Promise.reject('Empresa não selecionada');
+    const token = authService.getToken();
+    if (!token) return Promise.reject('Token ausente');
+
+    try {
+      const url = `${API_BASE}/api/pedidos/${encodeURIComponent(id)}?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
+      const headers: Record<string, string> = { accept: 'application/json' };
+      const res = await apiClient.fetch(url, { method: 'DELETE', headers });
+      if (!res.ok) {
+        let message = 'Falha ao excluir pedido';
+        try { const err = await res.json(); message = err?.message || err?.error || message; } catch {}
+        return Promise.reject(message);
+      }
+      return true;
+    } catch (e) {
+      // Fallback: remove do mock local para ambiente offline
+      const index = pedidos.findIndex(p => p.id === id);
+      if (index !== -1) {
+        pedidos.splice(index, 1);
+        return true;
+      }
+      return Promise.reject('Pedido não encontrado');
     }
-    return Promise.reject('Pedido não encontrado');
   },
 
   export: (id: number) => {
