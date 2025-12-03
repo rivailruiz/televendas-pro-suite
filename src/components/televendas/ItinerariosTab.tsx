@@ -23,10 +23,7 @@ export const ItinerariosTab = () => {
     let filtered = [...itinerarios];
 
     if (filters.representante && filters.representante !== 'all') {
-      const rep = representantes.find(r => r.nome === filters.representante);
-      if (rep) {
-        filtered = filtered.filter(i => i.representanteId === rep.id);
-      }
+      filtered = filtered.filter(i => i.representanteId === filters.representante);
     }
     if (filters.cidade) {
       filtered = filtered.filter(i => i.cidade.toLowerCase().includes(filters.cidade.toLowerCase()));
@@ -66,7 +63,7 @@ export const ItinerariosTab = () => {
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
                   {representantes.map(r => (
-                    <SelectItem key={r.id} value={r.nome}>{r.nome}</SelectItem>
+                    <SelectItem key={r.id} value={r.id}>{`${r.id} - ${r.nome}`}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

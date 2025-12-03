@@ -64,6 +64,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewOrder, setPreviewOrder] = useState<Order | null>(null);
   const [clienteNome, setClienteNome] = useState<string>('');
+  const [representanteNome, setRepresentanteNome] = useState<string>('');
 
   const normalizeOperacaoCodigo = (codigo?: string | number | null) => {
     const str = String(codigo ?? '').trim();
@@ -256,6 +257,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
       cliente: '',
     });
     setClienteNome('');
+    setRepresentanteNome('');
     clearSelection();
     // Limpa os filtros de data do localStorage
     localStorage.removeItem('pesquisa-date-filters');
@@ -528,7 +530,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
           <Label>Representante</Label>
           <Button variant="outline" className="w-full justify-start" onClick={() => setRepSearchOpen(true)}>
             <Search className="h-4 w-4 mr-2" />
-            {filters.representante || 'Buscar representante'}
+            {representanteNome || (filters.representante ? `Código ${filters.representante}` : 'Buscar representante')}
           </Button>
           <Dialog open={repSearchOpen} onOpenChange={setRepSearchOpen}>
             <DialogContent className="max-w-2xl">
@@ -562,11 +564,13 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                     </TableHeader>
                     <TableBody>
                       {representatives.map((r) => (
-                          <TableRow
-                            key={r.id}
-                            className="cursor-pointer"
+                        <TableRow
+                          key={r.id}
+                          className="cursor-pointer"
                           onClick={() => {
-                            setFilters({ ...filters, representante: r.nome });
+                            const codigo = r.codigoRepresentante ?? r.id;
+                            setFilters({ ...filters, representante: String(codigo) });
+                            setRepresentanteNome(r.nome);
                             setRepSearchOpen(false);
                             setRepSearch('');
                           }}

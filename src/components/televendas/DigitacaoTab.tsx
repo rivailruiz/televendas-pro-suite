@@ -251,7 +251,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           operacaoId: detail.operacaoId ?? prev.operacaoId ?? '',
           clienteId: detail.clienteId || 0,
           clienteNome: detail.clienteNome || '',
-          representanteId: detail.representanteId || '',
+          representanteId: detail.representanteCodigo ?? detail.representanteId ?? '',
           representanteNome: detail.representanteNome || '',
           tabela: detail.tabela || prev.tabela || '',
           formaPagamento: detail.formaPagamento || prev.formaPagamento || '',
@@ -289,7 +289,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           operacao: currentOrder.operacao || prev.operacao,
           clienteId: currentOrder.clienteId || 0,
           clienteNome: currentOrder.clienteNome || '',
-          representanteId: currentOrder.representanteId || '',
+          representanteId: currentOrder.representanteCodigo ?? currentOrder.representanteId ?? '',
           representanteNome: currentOrder.representanteNome || '',
           tabela: currentOrder.tabela || prev.tabela || '',
           formaPagamento: currentOrder.formaPagamento || prev.formaPagamento || '',
@@ -1009,7 +1009,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                                 onClick={() => {
                                   setFormData({
                                     ...formData,
-                                    representanteId: r.id,
+                                    representanteId: r.codigoRepresentante ?? r.id,
                                     representanteNome: r.nome,
                                   });
                                   setRepSearchOpen(false);
