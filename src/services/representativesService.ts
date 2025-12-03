@@ -4,20 +4,34 @@ import { apiClient } from '@/utils/apiClient';
 
 export interface Representative {
   id: string; // normalized as string for UI compatibility
+  codigoRepresentante?: string;
   nome: string;
 }
 
 function normalizeRepresentative(raw: any): Representative {
-  const id =
-    raw?.id ??
-    raw?.representante_id ??
+  const codigo =
+    raw?.codigo_representante ??
+    raw?.codigoRepresentante ??
     raw?.codigo ??
     raw?.cod ??
     raw?.matricula ??
+    raw?.representante_codigo ??
+    raw?.representanteCod ??
+    raw?.representante_cod ??
+    raw?.representanteId ??
+    raw?.representante_id ??
+    raw?.id ??
+    '';
+  const id =
+    raw?.id ??
+    raw?.representante_id ??
+    raw?.matricula ??
+    codigo ??
     '';
   const nome = raw?.nome ?? raw?.razao_social ?? raw?.fantasia ?? raw?.descricao ?? '';
   return {
     id: String(id ?? ''),
+    codigoRepresentante: codigo ? String(codigo).trim() : undefined,
     nome: String(nome ?? '').trim(),
   };
 }

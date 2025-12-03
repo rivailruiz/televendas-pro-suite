@@ -29,6 +29,7 @@ export interface Order {
   clienteCodigo?: string;
   clienteNome: string;
   representanteId: string;
+  representanteCodigo?: string;
   representanteNome: string;
   tabela: string;
   formaPagamento: string;
@@ -187,6 +188,32 @@ const extractClienteCodigo = (raw: any): string | undefined => {
   return undefined;
 };
 
+const extractRepresentanteCodigo = (raw: any): string | undefined => {
+  const repObj = raw?.representante && typeof raw.representante === 'object' ? raw.representante : null;
+  const candidates = [
+    raw?.representanteCodigo,
+    raw?.representante_codigo,
+    raw?.codigo_representante,
+    raw?.codigoRepresentante,
+    raw?.representanteCod,
+    raw?.representante_cod,
+    repObj?.codigo,
+    repObj?.codigo_representante,
+    repObj?.codigoRepresentante,
+    raw?.representanteId,
+    raw?.representante_id,
+    typeof raw?.representante === 'object' ? null : raw?.representante,
+  ];
+
+  for (const val of candidates) {
+    if (val === undefined || val === null) continue;
+    if (typeof val === 'object') continue;
+    const text = String(val).trim();
+    if (text) return text;
+  }
+  return undefined;
+};
+
 
 export const ordersService = {
   list: async (filters?: any, _page: number = 1, _limit: number = 100) => {
@@ -241,6 +268,8 @@ export const ordersService = {
         const opFields = resolveOperacaoFields(p);
         const formaPagtoId = extractFormaPagtoId(p);
         const prazoPagtoId = extractPrazoPagtoId(p);
+        const representanteId = p?.representanteId ?? p?.representante_id ?? '017';
+        const representanteCodigo = extractRepresentanteCodigo(p) ?? (representanteId ? String(representanteId) : undefined);
         const clienteId = p?.clienteId ?? p?.cliente_id ?? p?.cliente ?? 0;
         const clienteCodigo = extractClienteCodigo(p) ?? (clienteId ? String(clienteId) : undefined);
         return {
@@ -253,7 +282,8 @@ export const ordersService = {
           clienteId: clienteId ?? 0,
           clienteCodigo,
           clienteNome: p?.clienteNome ?? p?.cliente_nome ?? p?.clienteRazao ?? '',
-          representanteId: p?.representanteId ?? p?.representante_id ?? '017',
+          representanteId: representanteId ?? '017',
+          representanteCodigo,
           representanteNome: p?.representanteNome ?? p?.representante_nome ?? 'REPRESENTANTE',
           tabela: p?.tabela ?? p?.tabela_preco ?? 'TABELA 01',
           formaPagamento: p?.formaPagamento ?? p?.forma_pagamento ?? 'BOLETO BANCARIO',
@@ -306,6 +336,8 @@ export const ordersService = {
       const opFields = resolveOperacaoFields(p);
       const formaPagtoId = extractFormaPagtoId(p);
       const prazoPagtoId = extractPrazoPagtoId(p);
+      const representanteId = p?.representanteId ?? p?.representante_id ?? '';
+      const representanteCodigo = extractRepresentanteCodigo(p) ?? (representanteId ? String(representanteId) : undefined);
       const clienteId = p?.clienteId ?? p?.cliente_id ?? p?.cliente ?? 0;
       const clienteCodigo = extractClienteCodigo(p) ?? (clienteId ? String(clienteId) : undefined);
       const order: Order = {
@@ -318,7 +350,8 @@ export const ordersService = {
         clienteId: clienteId ?? 0,
         clienteCodigo,
         clienteNome: p?.clienteNome ?? p?.cliente_nome ?? '',
-        representanteId: p?.representanteId ?? p?.representante_id ?? '',
+        representanteId: representanteId ?? '',
+        representanteCodigo,
         representanteNome: p?.representanteNome ?? p?.representante_nome ?? '',
         tabela: p?.tabela ?? p?.tabela_preco ?? '',
         formaPagamento: p?.formaPagamento ?? p?.forma_pagamento ?? '',

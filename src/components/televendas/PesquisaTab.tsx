@@ -96,7 +96,14 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
     return val !== undefined && val !== null ? String(val) : '';
   };
 
+  const formatRepresentanteCodigo = (order?: Order | null) => {
+    if (!order) return '';
+    const val = order.representanteCodigo ?? order.representanteId;
+    return val !== undefined && val !== null ? String(val) : '';
+  };
+
   const previewClienteCodigo = formatClienteCodigo(previewOrder);
+  const previewRepresentanteCodigo = formatRepresentanteCodigo(previewOrder);
 
   // Representantes para busca
   const [repSearchOpen, setRepSearchOpen] = useState(false);
@@ -329,6 +336,10 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
     const opLabel = formatOperacao(order);
     const codigoCliente = formatClienteCodigo(order);
     const clienteCodigoLabel = codigoCliente ? ` (Cód.: ${codigoCliente})` : '';
+    const repCodigo = formatRepresentanteCodigo(order);
+    const representanteLabel = repCodigo
+      ? `${repCodigo} - ${order.representanteNome ?? ''}`
+      : (order.representanteNome ?? '');
     const rows = items
       .map(
         (it) => `
@@ -369,7 +380,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
           <div>Data: ${new Date(order.data).toLocaleDateString('pt-BR')}</div>
           <div>Cliente: ${order.clienteNome ?? ''}${clienteCodigoLabel}</div>
           <div>Operação: ${opLabel ?? ''}</div>
-          <div>Representante: ${order.representanteNome ?? ''}</div>
+          <div>Representante: ${representanteLabel}</div>
         </div>
         <table>
           <thead>
@@ -526,7 +537,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
               </DialogHeader>
               <div className="space-y-4">
                 <Input
-                  placeholder="Digite nome ou ID..."
+                  placeholder="Digite nome ou código..."
                   value={repSearch}
                   onChange={(e) => setRepSearch(e.target.value)}
                   autoFocus
@@ -541,29 +552,29 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                     <div className="py-6 text-center text-sm text-muted-foreground">Carregando representantes...</div>
                   ) : repsError ? (
                     <div className="py-6 text-center text-sm text-red-600">{repsError}</div>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>ID</TableHead>
-                          <TableHead>Nome</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {representatives.map((r) => (
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Código</TableHead>
+                        <TableHead>Nome</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {representatives.map((r) => (
                           <TableRow
                             key={r.id}
                             className="cursor-pointer"
-                            onClick={() => {
-                              setFilters({ ...filters, representante: r.nome });
-                              setRepSearchOpen(false);
-                              setRepSearch('');
-                            }}
-                          >
-                            <TableCell>{r.id}</TableCell>
-                            <TableCell>{r.nome}</TableCell>
-                          </TableRow>
-                        ))}
+                          onClick={() => {
+                            setFilters({ ...filters, representante: r.nome });
+                            setRepSearchOpen(false);
+                            setRepSearch('');
+                          }}
+                        >
+                          <TableCell>{r.codigoRepresentante ?? r.id}</TableCell>
+                          <TableCell>{r.nome}</TableCell>
+                        </TableRow>
+                      ))}
                         {representatives.length === 0 && (
                           <TableRow>
                             <TableCell colSpan={2} className="text-center text-sm text-muted-foreground">
@@ -901,7 +912,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                 <div>Data: {new Date(previewOrder.data).toLocaleDateString('pt-BR')}</div>
                 <div>Cliente: {previewOrder.clienteNome}{previewClienteCodigo ? ` (Cód.: ${previewClienteCodigo})` : ''}</div>
                 <div>Operação: {formatOperacao(previewOrder)}</div>
-                <div>Representante: {previewOrder.representanteNome}</div>
+                <div>Representante: {previewRepresentanteCodigo ? `${previewRepresentanteCodigo} - ` : ''}{previewOrder.representanteNome}</div>
               </div>
               <div className="overflow-x-auto scrollbar-thin">
                 <Table className="min-w-[800px]">

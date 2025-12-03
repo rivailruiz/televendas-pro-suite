@@ -37,6 +37,7 @@ export const DadosTab = () => {
   };
 
   const operacaoLabel = selectedOrder.operacaoCodigo || selectedOrder.operacao;
+  const representanteCodigo = selectedOrder.representanteCodigo ?? selectedOrder.representanteId;
 
   return (
     <div className="space-y-4">
@@ -60,7 +61,10 @@ export const DadosTab = () => {
             </div>
             <div>
               <span className="text-sm font-medium text-muted-foreground">Representante:</span>
-              <p className="text-sm">{selectedOrder.representanteNome || 'N/A'}</p>
+              <p className="text-sm">
+                {representanteCodigo ? `${representanteCodigo} - ` : ''}
+                {selectedOrder.representanteNome || 'N/A'}
+              </p>
             </div>
             <div>
               <span className="text-sm font-medium text-muted-foreground">Cliente:</span>

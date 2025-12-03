@@ -978,7 +978,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                   </DialogHeader>
                   <div className="space-y-4">
                     <Input
-                      placeholder="Digite nome ou ID..."
+                      placeholder="Digite nome ou código..."
                       value={repSearch}
                       onChange={(e) => setRepSearch(e.target.value)}
                       autoFocus
@@ -997,7 +997,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>ID</TableHead>
+                              <TableHead>Código</TableHead>
                               <TableHead>Nome</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -1016,7 +1016,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                                   setRepSearch('');
                                 }}
                               >
-                                <TableCell>{r.id}</TableCell>
+                                <TableCell>{r.codigoRepresentante ?? r.id}</TableCell>
                                 <TableCell>{r.nome}</TableCell>
                               </TableRow>
                             ))}
