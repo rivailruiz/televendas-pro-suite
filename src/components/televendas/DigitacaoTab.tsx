@@ -548,16 +548,55 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   const filteredRepresentatives = representatives; // server already filters by q
 
   const handleSelectClient = (client: Client) => {
-    setFormData({
-      ...formData,
+    const firstRep = Array.isArray(client.representantes) ? client.representantes[0] : null;
+    const repIdFromClient = client.representanteCodigo ?? client.representanteId ?? firstRep?.codigoRepresentante ?? firstRep?.id ?? '';
+    const repNomeFromClient = client.representanteNome ?? firstRep?.nome ?? '';
+    setFormData((prev) => ({
+      ...prev,
       clienteId: client.id,
       clienteNome: client.nome,
+      representanteId: repIdFromClient || prev.representanteId || '',
+      representanteNome: repNomeFromClient || prev.representanteNome || '',
       tabela: '',
       formaPagamento: '',
       formaPagtoId: client.formaPagtoId ?? '',
       prazo: '',
       prazoPagtoId: client.prazoPagtoId ?? '',
-    });
+    }));
+    // Se o cliente não trouxe representante, tenta buscar detalhes para preencher automaticamente
+    if (!repIdFromClient) {
+      clientsService.getDetail(client.id).then((detail) => {
+        if (!detail) return;
+        const repsArr = Array.isArray(detail?.representantes) ? detail.representantes : [];
+        const firstRepDetail = repsArr[0] || null;
+        const repObj = detail?.representante && typeof detail.representante === 'object' ? detail.representante : null;
+        const repId =
+          firstRepDetail?.codigoRepresentante ??
+          firstRepDetail?.codigo_representante ??
+          firstRepDetail?.codigo ??
+          firstRepDetail?.id ??
+          detail?.representanteCodigo ??
+          detail?.representante_codigo ??
+          detail?.codigo_representante ??
+          detail?.codigoRepresentante ??
+          detail?.representanteId ??
+          detail?.representante_id ??
+          repObj?.codigo ??
+          repObj?.id ??
+          null;
+        const repNome = detail?.representanteNome ?? firstRepDetail?.nome ?? repObj?.nome ?? '';
+        if (!repId && !repNome) return;
+        setFormData((prev) => {
+          // Garante que o cliente ainda é o selecionado
+          if (prev.clienteId !== client.id) return prev;
+          return {
+            ...prev,
+            representanteId: repId ? String(repId).trim() : prev.representanteId,
+            representanteNome: repNome ? String(repNome).trim() : prev.representanteNome,
+          };
+        });
+      }).catch(() => {});
+    }
     // Marca forma preferida e tenta aplicar imediatamente se já temos a lista
     const pf = client.formaPagtoId ?? null;
     setPreferredFormaId(pf);

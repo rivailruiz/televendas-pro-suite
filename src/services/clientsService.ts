@@ -13,6 +13,14 @@ export interface Client {
   contato?: string;
   formaPagtoId?: number | string | null;
   prazoPagtoId?: number | string | null;
+  representanteId?: string;
+  representanteNome?: string;
+  representanteCodigo?: string;
+  representantes?: Array<{
+    id: string;
+    codigoRepresentante?: string;
+    nome?: string;
+  }>;
 }
 
 function extractErrorMessage(err: any, fallback: string): string {
@@ -70,6 +78,43 @@ function normalizeClient(raw: any): Client {
   const contato = raw?.contato ?? raw?.responsavel ?? raw?.contact ?? '';
   const formaPagtoId = raw?.forma_pagto_id ?? raw?.formaPagtoId ?? raw?.forma_pagto ?? null;
   const prazoPagtoId = raw?.prazo_pagto_id ?? raw?.prazoPagtoId ?? null;
+  const repObj = raw?.representante && typeof raw.representante === 'object' ? raw.representante : null;
+  const representantesArr = Array.isArray(raw?.representantes) ? raw.representantes : [];
+  const representantes = representantesArr
+    .map((r: any) => {
+      if (!r) return null;
+      const rid = r.id ?? r.codigo_representante ?? r.codigo ?? r.cod ?? r.matricula ?? null;
+      return {
+        id: rid != null ? String(rid).trim() : '',
+        codigoRepresentante: r.codigo_representante ?? r.codigoRepresentante ?? r.codigo ?? r.cod ?? r.matricula ?? undefined,
+        nome: r.nome ? String(r.nome).trim() : undefined,
+      };
+    })
+    .filter(Boolean) as Client['representantes'];
+  const firstRep = representantes?.[0];
+  const representanteId =
+    raw?.representanteId ??
+    raw?.representante_id ??
+    raw?.representante ??
+    repObj?.id ??
+    repObj?.codigo ??
+    repObj?.cod ??
+    null;
+  const representanteCodigo =
+    raw?.codigo_representante ??
+    raw?.codigoRepresentante ??
+    raw?.representante_codigo ??
+    raw?.representanteCod ??
+    raw?.representante_cod ??
+    repObj?.codigo_representante ??
+    repObj?.codigoRepresentante ??
+    repObj?.codigo ??
+    repObj?.cod ??
+    firstRep?.codigoRepresentante ??
+    firstRep?.id ??
+    representanteId ??
+    null;
+  const representanteNome = raw?.representanteNome ?? repObj?.nome ?? '';
 
   return {
     id: Number(id) || 0,
@@ -82,6 +127,10 @@ function normalizeClient(raw: any): Client {
     contato: contato ? String(contato) : undefined,
     formaPagtoId: typeof formaPagtoId === 'number' ? formaPagtoId : (formaPagtoId != null ? String(formaPagtoId) : null),
     prazoPagtoId: typeof prazoPagtoId === 'number' ? prazoPagtoId : (prazoPagtoId != null ? String(prazoPagtoId) : null),
+    representanteId: representanteId != null ? String(representanteId).trim() : undefined,
+    representanteCodigo: representanteCodigo ? String(representanteCodigo).trim() : undefined,
+    representanteNome: representanteNome ? String(representanteNome).trim() : undefined,
+    representantes,
   };
 }
 
