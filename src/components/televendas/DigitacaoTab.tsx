@@ -113,6 +113,14 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     return principal ? String(principal.id) : undefined;
   };
 
+  const getPreferredTabelaForItem = (item?: Partial<OrderItem>) => {
+    if (item?.tabelaId != null && String(item.tabelaId).trim() !== '') {
+      return String(item.tabelaId);
+    }
+    const selectedTabela = getDefaultTabelaId();
+    return selectedTabela || '';
+  };
+
   // Formas de pagamento (metadata)
   const [formas, setFormas] = useState<FormaPagamento[]>([]);
   const [loadingFormas, setLoadingFormas] = useState(false);
@@ -478,6 +486,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   const [itemTabelasError, setItemTabelasError] = useState<Record<number, string | null>>({});
 
   const ensureItemTabelas = async (productId: number) => {
+    if (!productId) return;
     if (itemTabelas[productId] || itemTabelasLoading[productId]) return;
     setItemTabelasLoading((prev) => ({ ...prev, [productId]: true }));
     setItemTabelasError((prev) => ({ ...prev, [productId]: null }));
@@ -541,6 +550,14 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   useEffect(() => {
     items.forEach((it) => {
       if (it?.produtoId) ensureItemTabelas(it.produtoId);
+      // Preenche tabela do item recém-carregado se ainda não estiver setada
+      if (it?.produtoId && (it.tabelaId == null || String(it.tabelaId).trim() === '')) {
+        setItems((prev) =>
+          prev.map((p) =>
+            p === it ? { ...p, tabelaId: getPreferredTabelaForItem(it) } : p
+          )
+        );
+      }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items]);
@@ -720,7 +737,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     const descontoPerc = newItem.descontoPerc || 0;
     const preco = newItem.preco || 0;
     const obs = newItem.obs;
-    const tabelaSelecionada = getDefaultTabelaId();
+    const tabelaSelecionada = getPreferredTabelaForItem(newItem);
 
     setItems((prev) => {
       if (!produtoId || !quant) return prev;
@@ -1318,9 +1335,12 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                       const tabs = itemTabelas[item.produtoId] || [];
                       const loading = !!itemTabelasLoading[item.produtoId];
                       const error = itemTabelasError[item.produtoId];
+                      const valueTabela = item.tabelaId != null && String(item.tabelaId).trim() !== ''
+                        ? String(item.tabelaId)
+                        : getPreferredTabelaForItem(item);
                       return (
                         <Select
-                          value={item.tabelaId != null ? String(item.tabelaId) : ''}
+                          value={valueTabela}
                           onValueChange={(v) => handleChangeItemTabela(idx, v)}
                           disabled={loading || !!error}
                         >
