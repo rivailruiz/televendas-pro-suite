@@ -5,6 +5,7 @@ import { apiClient } from '@/utils/apiClient';
 
 export interface OrderItemUI {
   produtoId: number;
+  codigoProduto?: string;
   descricao: string;
   av: number;
   un: string;
@@ -132,6 +133,15 @@ const normalizeItens = (raw: any[]): OrderItemUI[] => {
   const itens = Array.isArray(raw) ? raw : [];
   return itens.map((it, idx) => ({
     ...it,
+    codigoProduto:
+      it?.codigoProduto ??
+      it?.codigo_produto ??
+      it?.produto_codigo ??
+      it?.produtoCod ??
+      it?.produto_cod ??
+      it?.produtoId ??
+      it?.produto_id ??
+      it?.id,
     ordem: Number(it?.ordem ?? it?.order ?? it?.ord ?? idx + 1) || idx + 1,
   })) as OrderItemUI[];
 };

@@ -4,6 +4,7 @@ import { apiClient } from '@/utils/apiClient';
 
 export interface Product {
   id: number;
+  codigoProduto?: string;
   descricao: string;
   un: string;
   preco: number;
@@ -18,6 +19,16 @@ interface ProductTabelaPrecoResponse {
 
 function normalizeProduct(raw: any): Product {
   const id = raw?.id ?? raw?.produto_id ?? raw?.codigo ?? raw?.cod ?? 0;
+  const codigoProduto =
+    raw?.codigo_produto ??
+    raw?.codigoProduto ??
+    raw?.produto_codigo ??
+    raw?.produtoCod ??
+    raw?.produto_cod ??
+    raw?.codigo ??
+    raw?.cod ??
+    raw?.id ??
+    null;
   const descricao =
     raw?.descricao ??
     raw?.descricao_produto ??
@@ -32,6 +43,7 @@ function normalizeProduct(raw: any): Product {
 
   return {
     id: Number(id) || 0,
+    codigoProduto: codigoProduto ? String(codigoProduto).trim() : undefined,
     descricao: String(descricao || '').trim(),
     un: String(un || '').trim() || 'UN',
     preco,

@@ -342,11 +342,13 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
     const representanteLabel = repCodigo
       ? `${repCodigo} - ${order.representanteNome ?? ''}`
       : (order.representanteNome ?? '');
+    const formatCodigoProduto = (it: any) =>
+      it?.codigoProduto ?? it?.codigo_produto ?? it?.produto_codigo ?? it?.produtoId ?? it?.produto_id ?? '';
     const rows = items
       .map(
         (it) => `
           <tr>
-            <td>${it.produtoId ?? ''}</td>
+            <td>${formatCodigoProduto(it)}</td>
             <td>${String(it.descricao ?? '')}</td>
             <td>${String(it.un ?? '')}</td>
             <td style="text-align:right;">${Number(it.quant ?? 0)}</td>
@@ -934,7 +936,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                   <TableBody>
                     {(previewOrder.itens || []).map((it, idx) => (
                       <TableRow key={idx}>
-                        <TableCell>{it.produtoId}</TableCell>
+                        <TableCell>{it.codigoProduto ?? it.produtoId}</TableCell>
                         <TableCell>{it.descricao}</TableCell>
                         <TableCell>{it.un}</TableCell>
                         <TableCell className="text-right">{it.quant}</TableCell>

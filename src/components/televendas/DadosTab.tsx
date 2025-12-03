@@ -114,7 +114,7 @@ export const DadosTab = () => {
           <TableBody>
               {selectedOrder.itens.map((item, idx) => (
                 <TableRow key={idx}>
-                  <TableCell>{item.produtoId}</TableCell>
+                  <TableCell>{item.codigoProduto ?? item.produtoId}</TableCell>
                   <TableCell>{item.av}</TableCell>
                   <TableCell>{item.descricao}</TableCell>
                   <TableCell>{item.un}</TableCell>
