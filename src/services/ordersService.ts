@@ -26,6 +26,7 @@ export interface Order {
   operacaoCodigo?: string;
   operacaoDescricao?: string;
   clienteId: number;
+  clienteCodigo?: string;
   clienteNome: string;
   representanteId: string;
   representanteNome: string;
@@ -160,6 +161,32 @@ const extractPrazoPagtoId = (raw: any): number | string | undefined => {
   return val as any;
 };
 
+const extractClienteCodigo = (raw: any): string | undefined => {
+  const clienteObj = raw?.cliente && typeof raw.cliente === 'object' ? raw.cliente : null;
+  const candidates = [
+    raw?.clienteCodigo,
+    raw?.cliente_codigo,
+    raw?.codigo_cliente,
+    raw?.codigoCliente,
+    raw?.clienteCod,
+    raw?.cliente_cod,
+    clienteObj?.codigo,
+    clienteObj?.codigo_cliente,
+    clienteObj?.codigoCliente,
+    raw?.clienteId,
+    raw?.cliente_id,
+    typeof raw?.cliente === 'object' ? null : raw?.cliente,
+  ];
+
+  for (const val of candidates) {
+    if (val === undefined || val === null) continue;
+    if (typeof val === 'object') continue;
+    const text = String(val).trim();
+    if (text) return text;
+  }
+  return undefined;
+};
+
 
 export const ordersService = {
   list: async (filters?: any, _page: number = 1, _limit: number = 100) => {
@@ -214,6 +241,8 @@ export const ordersService = {
         const opFields = resolveOperacaoFields(p);
         const formaPagtoId = extractFormaPagtoId(p);
         const prazoPagtoId = extractPrazoPagtoId(p);
+        const clienteId = p?.clienteId ?? p?.cliente_id ?? p?.cliente ?? 0;
+        const clienteCodigo = extractClienteCodigo(p) ?? (clienteId ? String(clienteId) : undefined);
         return {
           id: p?.id ?? p?.pedido_id ?? p?.numero ?? 0,
           data: p?.data ?? p?.createdAt ?? new Date().toISOString().split('T')[0],
@@ -221,7 +250,8 @@ export const ordersService = {
           operacaoId: opFields.id,
           operacaoCodigo: opFields.codigo || undefined,
           operacaoDescricao: opFields.descricao || undefined,
-          clienteId: p?.clienteId ?? p?.cliente_id ?? p?.cliente ?? 0,
+          clienteId: clienteId ?? 0,
+          clienteCodigo,
           clienteNome: p?.clienteNome ?? p?.cliente_nome ?? p?.clienteRazao ?? '',
           representanteId: p?.representanteId ?? p?.representante_id ?? '017',
           representanteNome: p?.representanteNome ?? p?.representante_nome ?? 'REPRESENTANTE',
@@ -276,6 +306,8 @@ export const ordersService = {
       const opFields = resolveOperacaoFields(p);
       const formaPagtoId = extractFormaPagtoId(p);
       const prazoPagtoId = extractPrazoPagtoId(p);
+      const clienteId = p?.clienteId ?? p?.cliente_id ?? p?.cliente ?? 0;
+      const clienteCodigo = extractClienteCodigo(p) ?? (clienteId ? String(clienteId) : undefined);
       const order: Order = {
         id: p?.id ?? p?.pedido_id ?? id,
         data: p?.data ?? new Date().toISOString().split('T')[0],
@@ -283,7 +315,8 @@ export const ordersService = {
         operacaoId: opFields.id,
         operacaoCodigo: opFields.codigo,
         operacaoDescricao: opFields.descricao,
-        clienteId: p?.clienteId ?? p?.cliente_id ?? 0,
+        clienteId: clienteId ?? 0,
+        clienteCodigo,
         clienteNome: p?.clienteNome ?? p?.cliente_nome ?? '',
         representanteId: p?.representanteId ?? p?.representante_id ?? '',
         representanteNome: p?.representanteNome ?? p?.representante_nome ?? '',

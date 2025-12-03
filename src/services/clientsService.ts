@@ -4,6 +4,7 @@ import { apiClient } from '@/utils/apiClient';
 
 export interface Client {
   id: number;
+  codigoCliente?: string;
   nome: string;
   cidade: string;
   uf: string;
@@ -44,6 +45,17 @@ function extractErrorMessage(err: any, fallback: string): string {
 function normalizeClient(raw: any): Client {
   // Try multiple common API field names and normalize to UI expectations
   const id = raw?.id ?? raw?.cliente_id ?? raw?.codigo ?? raw?.cod ?? 0;
+  const codigoCliente =
+    raw?.codigo_cliente ??
+    raw?.codigoCliente ??
+    raw?.codigo ??
+    raw?.cod ??
+    raw?.cliente_codigo ??
+    raw?.clienteCod ??
+    raw?.cliente_cod ??
+    raw?.id ??
+    raw?.cliente_id ??
+    null;
   const nome =
     raw?.nome ??
     raw?.razao_social ??
@@ -61,6 +73,7 @@ function normalizeClient(raw: any): Client {
 
   return {
     id: Number(id) || 0,
+    codigoCliente: codigoCliente ? String(codigoCliente).trim() : undefined,
     nome: String(nome || '').trim(),
     cidade: String(cidade || '').trim(),
     uf: String(uf || '').trim(),

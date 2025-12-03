@@ -42,11 +42,11 @@ export const ItinerariosTab = () => {
   }, [filters]);
 
   const handleReagendar = (id: number) => {
-    toast.info(`Reagendando visita para cliente ${id}`);
+    toast.info(`Reagendando visita para cliente (código ${id})`);
   };
 
   const handleNovoPedido = (clienteId: number) => {
-    toast.info(`Criando novo pedido para cliente ${clienteId}`);
+    toast.info(`Criando novo pedido para cliente (código ${clienteId})`);
   };
 
   return (
@@ -80,9 +80,9 @@ export const ItinerariosTab = () => {
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-2 block">Cliente ID</label>
+              <label className="text-sm font-medium mb-2 block">Código do Cliente</label>
               <Input 
-                placeholder="ID do cliente"
+                placeholder="Código do cliente"
                 value={filters.clienteId}
                 onChange={(e) => setFilters({...filters, clienteId: e.target.value})}
               />
@@ -108,7 +108,7 @@ export const ItinerariosTab = () => {
             <Table className="min-w-[900px]">
             <TableHeader>
               <TableRow>
-                <TableHead>ID</TableHead>
+                <TableHead>Código</TableHead>
                 <TableHead>Razão Social</TableHead>
                 <TableHead>Contato</TableHead>
                 <TableHead>Fone</TableHead>

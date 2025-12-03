@@ -63,6 +63,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   const [outputMode, setOutputMode] = useState<'video' | 'impressora'>('video');
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewOrder, setPreviewOrder] = useState<Order | null>(null);
+  const previewClienteCodigo = formatClienteCodigo(previewOrder);
   const [clienteNome, setClienteNome] = useState<string>('');
 
   const normalizeOperacaoCodigo = (codigo?: string | number | null) => {
@@ -88,6 +89,12 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
     if (match?.descricao) return match.descricao;
 
     return order.operacao || order.operacaoCodigo || '';
+  };
+
+  const formatClienteCodigo = (order?: Order | null) => {
+    if (!order) return '';
+    const val = order.clienteCodigo ?? order.clienteId;
+    return val !== undefined && val !== null ? String(val) : '';
   };
 
   // Representantes para busca
@@ -319,6 +326,8 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   const buildPrintableHtml = (order: Order) => {
     const items = Array.isArray(order.itens) ? order.itens : [];
     const opLabel = formatOperacao(order);
+    const codigoCliente = formatClienteCodigo(order);
+    const clienteCodigoLabel = codigoCliente ? ` (Cód.: ${codigoCliente})` : '';
     const rows = items
       .map(
         (it) => `
@@ -357,7 +366,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
         <h1>Pedido #${order.id}</h1>
         <div class="meta">
           <div>Data: ${new Date(order.data).toLocaleDateString('pt-BR')}</div>
-          <div>Cliente: ${order.clienteNome ?? ''} (${order.clienteId ?? ''})</div>
+          <div>Cliente: ${order.clienteNome ?? ''}${clienteCodigoLabel}</div>
           <div>Operação: ${opLabel ?? ''}</div>
           <div>Representante: ${order.representanteNome ?? ''}</div>
         </div>
@@ -571,10 +580,10 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
         </div>
 
         <div className="space-y-2">
-          <Label>Cliente</Label>
+          <Label>Código do cliente</Label>
           <Button variant="outline" className="w-full justify-start" onClick={() => setClientSearchOpen(true)}>
             <Search className="h-4 w-4 mr-2" />
-            {clienteNome || (filters.cliente ? `Cliente #${filters.cliente}` : 'Buscar cliente')}
+            {clienteNome || (filters.cliente ? `Código ${filters.cliente}` : 'Buscar cliente')}
           </Button>
           <Dialog open={clientSearchOpen} onOpenChange={setClientSearchOpen}>
             <DialogContent className="max-w-2xl">
@@ -583,7 +592,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
               </DialogHeader>
               <div className="space-y-4">
                 <Input
-                  placeholder="Digite nome ou ID..."
+                  placeholder="Digite nome ou código..."
                   value={clientSearch}
                   onChange={(e) => setClientSearch(e.target.value)}
                   autoFocus
@@ -602,7 +611,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>ID</TableHead>
+                          <TableHead>Código</TableHead>
                           <TableHead>Nome</TableHead>
                           <TableHead>Cidade</TableHead>
                         </TableRow>
@@ -613,13 +622,14 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                             key={client.id}
                             className="cursor-pointer"
                             onClick={() => {
-                              setFilters({ ...filters, cliente: String(client.id) });
+                              const codigo = client.codigoCliente ?? client.id;
+                              setFilters({ ...filters, cliente: String(codigo ?? '') });
                               setClienteNome(client.nome);
                               setClientSearchOpen(false);
                               setClientSearch('');
                             }}
                           >
-                            <TableCell>{client.id}</TableCell>
+                            <TableCell>{client.codigoCliente ?? client.id}</TableCell>
                             <TableCell>{client.nome}</TableCell>
                             <TableCell>{client.cidade}</TableCell>
                           </TableRow>
@@ -683,7 +693,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                 <TableHead className="w-[110px]">Data</TableHead>
                 <TableHead className="w-[90px]">Pedido</TableHead>
                 <TableHead className="w-[120px]">Operação</TableHead>
-                <TableHead className="w-[90px]">Cliente</TableHead>
+                <TableHead className="w-[110px]">Cód. Cliente</TableHead>
                 <TableHead>Nome</TableHead>
                 <TableHead className="w-[120px] text-right">Valor</TableHead>
                 <TableHead className="w-[240px] text-center">Ações</TableHead>
@@ -711,7 +721,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                 <TableCell className="w-[110px]">{new Date(order.data).toLocaleDateString('pt-BR')}</TableCell>
                 <TableCell className="w-[90px] font-medium">{order.id}</TableCell>
                 <TableCell className="w-[120px]">{formatOperacao(order)}</TableCell>
-                <TableCell className="w-[90px]">{order.clienteId}</TableCell>
+                <TableCell className="w-[110px]">{formatClienteCodigo(order)}</TableCell>
                 <TableCell>{order.clienteNome}</TableCell>
                 <TableCell className="w-[120px] text-right font-medium">{formatCurrency(order.valor)}</TableCell>
                 <TableCell className="w-[240px]">
@@ -888,7 +898,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
             <div className="space-y-4">
               <div className="text-sm text-muted-foreground">
                 <div>Data: {new Date(previewOrder.data).toLocaleDateString('pt-BR')}</div>
-                <div>Cliente: {previewOrder.clienteNome} ({previewOrder.clienteId})</div>
+                <div>Cliente: {previewOrder.clienteNome}{previewClienteCodigo ? ` (Cód.: ${previewClienteCodigo})` : ''}</div>
                 <div>Operação: {formatOperacao(previewOrder)}</div>
                 <div>Representante: {previewOrder.representanteNome}</div>
               </div>

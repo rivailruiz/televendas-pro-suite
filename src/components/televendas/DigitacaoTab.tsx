@@ -911,7 +911,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                   </DialogHeader>
                   <div className="space-y-4">
                     <Input 
-                      placeholder="Digite nome ou ID..."
+                      placeholder="Digite nome ou código..."
                       value={clientSearch}
                       onChange={(e) => setClientSearch(e.target.value)}
                       autoFocus
@@ -930,7 +930,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>ID</TableHead>
+                              <TableHead>Código</TableHead>
                               <TableHead>Nome</TableHead>
                               <TableHead>Cidade</TableHead>
                             </TableRow>
@@ -942,7 +942,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                                 className="cursor-pointer"
                                 onClick={() => handleSelectClient(client)}
                               >
-                                <TableCell>{client.id}</TableCell>
+                                <TableCell>{client.codigoCliente ?? client.id}</TableCell>
                                 <TableCell>{client.nome}</TableCell>
                                 <TableCell>{client.cidade}</TableCell>
                               </TableRow>

@@ -230,7 +230,7 @@ export const ClientesTab = () => {
             <div>
               <label className="text-sm font-medium mb-2 block">Pesquisa</label>
               <Input 
-                placeholder="Nome ou ID"
+                placeholder="Nome ou código"
                 value={filters.search}
                 onChange={(e) => setFilters({...filters, search: e.target.value})}
               />
@@ -313,7 +313,7 @@ export const ClientesTab = () => {
                     onCheckedChange={handleSelectAll}
                   />
                 </TableHead>
-                <TableHead>ID</TableHead>
+                <TableHead>Código</TableHead>
                 <TableHead>Nome</TableHead>
                 <TableHead>Cidade</TableHead>
                 <TableHead>UF</TableHead>
@@ -330,7 +330,7 @@ export const ClientesTab = () => {
                       onCheckedChange={(checked) => handleSelectClient(client.id, checked as boolean)}
                     />
                   </TableCell>
-                  <TableCell>{client.id}</TableCell>
+                  <TableCell>{client.codigoCliente ?? client.id}</TableCell>
                   <TableCell>{client.nome}</TableCell>
                   <TableCell>{client.cidade}</TableCell>
                   <TableCell>{client.uf}</TableCell>
