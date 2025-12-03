@@ -63,7 +63,6 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   const [outputMode, setOutputMode] = useState<'video' | 'impressora'>('video');
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewOrder, setPreviewOrder] = useState<Order | null>(null);
-  const previewClienteCodigo = formatClienteCodigo(previewOrder);
   const [clienteNome, setClienteNome] = useState<string>('');
 
   const normalizeOperacaoCodigo = (codigo?: string | number | null) => {
@@ -96,6 +95,8 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
     const val = order.clienteCodigo ?? order.clienteId;
     return val !== undefined && val !== null ? String(val) : '';
   };
+
+  const previewClienteCodigo = formatClienteCodigo(previewOrder);
 
   // Representantes para busca
   const [repSearchOpen, setRepSearchOpen] = useState(false);
