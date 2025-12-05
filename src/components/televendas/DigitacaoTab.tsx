@@ -282,7 +282,15 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           preco: it.preco,
           total: it.total,
           obs: it.obs,
-          tabelaId: it.tabela_preco_id ?? it.tabelaId, // se o backend retornar
+          tabelaId:
+            it.tabela_preco_id ??
+            it.tabela_precoId ??
+            it.tabela_preco ??
+            it.tabelaPrecoId ??
+            it.tabelaPreco_id ??
+            it.tabelaId ??
+            it.tabela_id ??
+            it.tabela,
         })) as OrderItem[];
         setItems(mapped);
         setObservacoes({
@@ -321,7 +329,15 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           preco: it.preco,
           total: it.total,
           obs: it.obs,
-          tabelaId: (it as any)?.tabela_preco_id ?? (it as any)?.tabelaId,
+          tabelaId:
+            (it as any)?.tabela_preco_id ??
+            (it as any)?.tabela_precoId ??
+            (it as any)?.tabela_preco ??
+            (it as any)?.tabelaPrecoId ??
+            (it as any)?.tabelaPreco_id ??
+            (it as any)?.tabelaId ??
+            (it as any)?.tabela_id ??
+            (it as any)?.tabela,
         })) as OrderItem[];
         setItems(mapped);
         setObservacoes({
@@ -553,17 +569,22 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   useEffect(() => {
     items.forEach((it) => {
       if (it?.produtoId) ensureItemTabelas(it.produtoId);
-      // Preenche tabela do item recém-carregado se ainda não estiver setada
-      if (it?.produtoId && (it.tabelaId == null || String(it.tabelaId).trim() === '')) {
-        setItems((prev) =>
-          prev.map((p) =>
-            p === it ? { ...p, tabelaId: getPreferredTabelaForItem(it) } : p
-          )
-        );
-      }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items]);
+
+  // Preenche itens carregados (edição) com tabela do pedido se backend não enviou
+  useEffect(() => {
+    if (!items || items.length === 0) return;
+    const selectedTabela = getDefaultTabelaId();
+    if (!selectedTabela) return;
+    setItems((prev) =>
+      prev.map((p) => {
+        if (p.tabelaId != null && String(p.tabelaId).trim() !== '') return p;
+        return { ...p, tabelaId: selectedTabela };
+      })
+    );
+  }, [items.length, formData.tabela]);
 
   const filteredRepresentatives = representatives; // server already filters by q
 
