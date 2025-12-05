@@ -504,9 +504,10 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   const [itemTabelasLoading, setItemTabelasLoading] = useState<Record<number, boolean>>({});
   const [itemTabelasError, setItemTabelasError] = useState<Record<number, string | null>>({});
 
-  const ensureItemTabelas = async (productId: number) => {
-    if (!productId) return;
-    if (itemTabelas[productId] || itemTabelasLoading[productId]) return;
+  const ensureItemTabelas = async (productId: number): Promise<Tabela[]> => {
+    if (!productId) return [];
+    if (itemTabelas[productId]) return itemTabelas[productId];
+    if (itemTabelasLoading[productId]) return itemTabelas[productId] || [];
     setItemTabelasLoading((prev) => ({ ...prev, [productId]: true }));
     setItemTabelasError((prev) => ({ ...prev, [productId]: null }));
     try {
@@ -521,8 +522,10 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
         const chosen = prefer || principal || tabs[0];
         return chosen ? { ...it, tabelaId: chosen.id } : it;
       }));
+      return tabs;
     } catch (e: any) {
       setItemTabelasError((prev) => ({ ...prev, [productId]: String(e) }));
+      return [];
     } finally {
       setItemTabelasLoading((prev) => ({ ...prev, [productId]: false }));
     }
@@ -745,7 +748,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     return item.preco * item.quant * (1 - desconto);
   };
 
-  const handleAddItem = () => {
+  const handleAddItem = async () => {
     if (!formData.operacao || !formData.clienteId || !formData.representanteId) {
       toast.error('Preencha operação, cliente e representante antes de adicionar itens');
       return;
@@ -763,6 +766,18 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     const preco = newItem.preco || 0;
     const obs = newItem.obs;
     const tabelaSelecionada = getPreferredTabelaForItem(newItem);
+    const tabs = await ensureItemTabelas(produtoId);
+    if (tabs && tabelaSelecionada && String(tabelaSelecionada).trim() !== '') {
+      const hasTabela = tabs.some((t) => String(t.id) === String(tabelaSelecionada));
+      if (!hasTabela) {
+        toast.error('Produto não existe na tabela selecionada. Selecione outra tabela.');
+        return;
+      }
+    }
+    if (tabs && tabs.length === 0) {
+      toast.error('Produto não possui tabela de preço disponível. Selecione outra tabela ou produto.');
+      return;
+    }
 
     setItems((prev) => {
       if (!produtoId || !quant) return prev;
