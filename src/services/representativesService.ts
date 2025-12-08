@@ -18,9 +18,6 @@ function normalizeRepresentative(raw: any): Representative {
     raw?.representante_codigo ??
     raw?.representanteCod ??
     raw?.representante_cod ??
-    raw?.representanteId ??
-    raw?.representante_id ??
-    raw?.id ??
     '';
   const id =
     raw?.id ??

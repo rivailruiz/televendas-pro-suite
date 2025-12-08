@@ -93,13 +93,13 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
 
   const formatClienteCodigo = (order?: Order | null) => {
     if (!order) return '';
-    const val = order.clienteCodigo ?? order.clienteId;
+    const val = order.clienteCodigo;
     return val !== undefined && val !== null ? String(val) : '';
   };
 
   const formatRepresentanteCodigo = (order?: Order | null) => {
     if (!order) return '';
-    const val = order.representanteCodigo ?? order.representanteId;
+    const val = order.representanteCodigo;
     return val !== undefined && val !== null ? String(val) : '';
   };
 
@@ -343,7 +343,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
       ? `${repCodigo} - ${order.representanteNome ?? ''}`
       : (order.representanteNome ?? '');
     const formatCodigoProduto = (it: any) =>
-      it?.codigoProduto ?? it?.codigo_produto ?? it?.produto_codigo ?? it?.produtoId ?? it?.produto_id ?? '';
+      it?.codigoProduto ?? it?.codigo_produto ?? it?.produto_codigo ?? '';
     const rows = items
       .map(
         (it) => `
@@ -577,7 +577,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                             setRepSearch('');
                           }}
                         >
-                          <TableCell>{r.codigoRepresentante ?? r.id}</TableCell>
+                          <TableCell>{r.codigoRepresentante ?? ''}</TableCell>
                           <TableCell>{r.nome}</TableCell>
                         </TableRow>
                       ))}
@@ -640,14 +640,14 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                             key={client.id}
                             className="cursor-pointer"
                             onClick={() => {
-                              const codigo = client.codigoCliente ?? client.id;
-                              setFilters({ ...filters, cliente: String(codigo ?? '') });
+                              const codigo = client.codigoCliente ?? '';
+                              setFilters({ ...filters, cliente: String(codigo) });
                               setClienteNome(client.nome);
                               setClientSearchOpen(false);
                               setClientSearch('');
                             }}
                           >
-                            <TableCell>{client.codigoCliente ?? client.id}</TableCell>
+                            <TableCell>{client.codigoCliente ?? ''}</TableCell>
                             <TableCell>{client.nome}</TableCell>
                             <TableCell>{client.cidade}</TableCell>
                           </TableRow>
@@ -936,7 +936,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                   <TableBody>
                     {(previewOrder.itens || []).map((it, idx) => (
                       <TableRow key={idx}>
-                        <TableCell>{it.codigoProduto ?? it.produtoId}</TableCell>
+                        <TableCell>{it.codigoProduto ?? ''}</TableCell>
                         <TableCell>{it.descricao}</TableCell>
                         <TableCell>{it.un}</TableCell>
                         <TableCell className="text-right">{it.quant}</TableCell>

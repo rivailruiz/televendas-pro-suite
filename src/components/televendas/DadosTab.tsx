@@ -37,7 +37,7 @@ export const DadosTab = () => {
   };
 
   const operacaoLabel = selectedOrder.operacaoCodigo || selectedOrder.operacao;
-  const representanteCodigo = selectedOrder.representanteCodigo ?? selectedOrder.representanteId;
+  const representanteCodigo = selectedOrder.representanteCodigo ?? '';
 
   return (
     <div className="space-y-4">
@@ -114,7 +114,7 @@ export const DadosTab = () => {
           <TableBody>
               {selectedOrder.itens.map((item, idx) => (
                 <TableRow key={idx}>
-                  <TableCell>{item.codigoProduto ?? item.produtoId}</TableCell>
+                  <TableCell>{item.codigoProduto ?? ''}</TableCell>
                   <TableCell>{item.av}</TableCell>
                   <TableCell>{item.descricao}</TableCell>
                   <TableCell>{item.un}</TableCell>

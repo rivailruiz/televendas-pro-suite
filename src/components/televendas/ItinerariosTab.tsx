@@ -38,12 +38,12 @@ export const ItinerariosTab = () => {
     setFilteredData(filtered);
   }, [filters]);
 
-  const handleReagendar = (id: number) => {
-    toast.info(`Reagendando visita para cliente (código ${id})`);
+  const handleReagendar = (codigoCliente: string) => {
+    toast.info(`Reagendando visita para cliente (código ${codigoCliente})`);
   };
 
-  const handleNovoPedido = (clienteId: number) => {
-    toast.info(`Criando novo pedido para cliente (código ${clienteId})`);
+  const handleNovoPedido = (codigoCliente: string) => {
+    toast.info(`Criando novo pedido para cliente (código ${codigoCliente})`);
   };
 
   return (
@@ -116,29 +116,32 @@ export const ItinerariosTab = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredData.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>{item.id}</TableCell>
-                  <TableCell>{item.razaoSocial}</TableCell>
-                  <TableCell>{item.contato}</TableCell>
-                  <TableCell>{item.fone}</TableCell>
-                  <TableCell>{item.horario}</TableCell>
-                  <TableCell>{new Date(item.dtBase).toLocaleDateString('pt-BR')}</TableCell>
-                  <TableCell>{item.visita}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex gap-2 justify-end">
-                      <Button size="sm" variant="outline" onClick={() => handleReagendar(item.id)}>
-                        <Calendar className="h-3 w-3 mr-1" />
-                        Re-agendar
-                      </Button>
-                      <Button size="sm" onClick={() => handleNovoPedido(item.id)}>
-                        <Plus className="h-3 w-3 mr-1" />
-                        Novo Pedido
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {filteredData.map((item) => {
+                const codigoCliente = (item as any).codigoCliente ?? '';
+                return (
+                  <TableRow key={item.id}>
+                    <TableCell>{codigoCliente}</TableCell>
+                    <TableCell>{item.razaoSocial}</TableCell>
+                    <TableCell>{item.contato}</TableCell>
+                    <TableCell>{item.fone}</TableCell>
+                    <TableCell>{item.horario}</TableCell>
+                    <TableCell>{new Date(item.dtBase).toLocaleDateString('pt-BR')}</TableCell>
+                    <TableCell>{item.visita}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex gap-2 justify-end">
+                        <Button size="sm" variant="outline" onClick={() => handleReagendar(codigoCliente)}>
+                          <Calendar className="h-3 w-3 mr-1" />
+                          Re-agendar
+                        </Button>
+                        <Button size="sm" onClick={() => handleNovoPedido(codigoCliente)}>
+                          <Plus className="h-3 w-3 mr-1" />
+                          Novo Pedido
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
           </div>

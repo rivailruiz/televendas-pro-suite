@@ -138,10 +138,7 @@ const normalizeItens = (raw: any[]): OrderItemUI[] => {
       it?.codigo_produto ??
       it?.produto_codigo ??
       it?.produtoCod ??
-      it?.produto_cod ??
-      it?.produtoId ??
-      it?.produto_id ??
-      it?.id,
+      it?.produto_cod,
     ordem: Number(it?.ordem ?? it?.order ?? it?.ord ?? idx + 1) || idx + 1,
   })) as OrderItemUI[];
 };
@@ -184,9 +181,6 @@ const extractClienteCodigo = (raw: any): string | undefined => {
     clienteObj?.codigo,
     clienteObj?.codigo_cliente,
     clienteObj?.codigoCliente,
-    raw?.clienteId,
-    raw?.cliente_id,
-    typeof raw?.cliente === 'object' ? null : raw?.cliente,
   ];
 
   for (const val of candidates) {
@@ -210,9 +204,6 @@ const extractRepresentanteCodigo = (raw: any): string | undefined => {
     repObj?.codigo,
     repObj?.codigo_representante,
     repObj?.codigoRepresentante,
-    raw?.representanteId,
-    raw?.representante_id,
-    typeof raw?.representante === 'object' ? null : raw?.representante,
   ];
 
   for (const val of candidates) {
@@ -279,9 +270,9 @@ export const ordersService = {
         const formaPagtoId = extractFormaPagtoId(p);
         const prazoPagtoId = extractPrazoPagtoId(p);
         const representanteId = p?.representanteId ?? p?.representante_id ?? '017';
-        const representanteCodigo = extractRepresentanteCodigo(p) ?? (representanteId ? String(representanteId) : undefined);
+        const representanteCodigo = extractRepresentanteCodigo(p);
         const clienteId = p?.clienteId ?? p?.cliente_id ?? p?.cliente ?? 0;
-        const clienteCodigo = extractClienteCodigo(p) ?? (clienteId ? String(clienteId) : undefined);
+        const clienteCodigo = extractClienteCodigo(p);
         return {
           id: p?.id ?? p?.pedido_id ?? p?.numero ?? 0,
           data: p?.data ?? p?.createdAt ?? new Date().toISOString().split('T')[0],
@@ -347,9 +338,9 @@ export const ordersService = {
       const formaPagtoId = extractFormaPagtoId(p);
       const prazoPagtoId = extractPrazoPagtoId(p);
       const representanteId = p?.representanteId ?? p?.representante_id ?? '';
-      const representanteCodigo = extractRepresentanteCodigo(p) ?? (representanteId ? String(representanteId) : undefined);
+      const representanteCodigo = extractRepresentanteCodigo(p);
       const clienteId = p?.clienteId ?? p?.cliente_id ?? p?.cliente ?? 0;
-      const clienteCodigo = extractClienteCodigo(p) ?? (clienteId ? String(clienteId) : undefined);
+      const clienteCodigo = extractClienteCodigo(p);
       const order: Order = {
         id: p?.id ?? p?.pedido_id ?? id,
         data: p?.data ?? new Date().toISOString().split('T')[0],

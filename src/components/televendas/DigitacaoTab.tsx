@@ -274,7 +274,13 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
         if (detailPrazoId != null) setPreferredPrazoId(detailPrazoId);
         const mapped = (detail.itens || []).map((it: any) => ({
           produtoId: it.produtoId,
-          codigoProduto: it.codigoProduto ?? it.codigo_produto ?? it.produto_codigo ?? it.produtoId ?? it.produto_id,
+          codigoProduto:
+            it.codigoProduto ??
+            it.codigo_produto ??
+            it.produto_codigo ??
+            it.produtoCod ??
+            it.produto_cod ??
+            '',
           descricao: it.descricao,
           un: it.un,
           quant: it.quant,
@@ -321,7 +327,13 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
         if (fallbackPrazoId != null) setPreferredPrazoId(fallbackPrazoId);
         const mapped = (currentOrder.itens || []).map((it: any) => ({
           produtoId: it.produtoId,
-          codigoProduto: it.codigoProduto ?? it.codigo_produto ?? it.produto_codigo ?? it.produtoId ?? it.produto_id,
+          codigoProduto:
+            it.codigoProduto ??
+            it.codigo_produto ??
+            it.produto_codigo ??
+            it.produtoCod ??
+            it.produto_cod ??
+            '',
           descricao: it.descricao,
           un: it.un,
           quant: it.quant,
@@ -733,7 +745,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     setNewItem({
       ...newItem,
       produtoId: product.id,
-      codigoProduto: product.codigoProduto ?? String(product.id),
+      codigoProduto: product.codigoProduto ?? '',
       descricao: product.descricao,
       un: product.un,
       preco: product.preco
@@ -791,7 +803,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       if (existingIndex === -1) {
         const base: OrderItem = {
           produtoId,
-          codigoProduto: newItem.codigoProduto ?? String(produtoId),
+          codigoProduto: newItem.codigoProduto ?? '',
           descricao,
           un,
           tabelaId: tabelaSelecionada,
@@ -1039,7 +1051,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                                 className="cursor-pointer"
                                 onClick={() => handleSelectClient(client)}
                               >
-                                <TableCell>{client.codigoCliente ?? client.id}</TableCell>
+                                <TableCell>{client.codigoCliente ?? ''}</TableCell>
                                 <TableCell>{client.nome}</TableCell>
                                 <TableCell>{client.cidade}</TableCell>
                               </TableRow>
@@ -1113,7 +1125,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                                   setRepSearch('');
                                 }}
                               >
-                                <TableCell>{r.codigoRepresentante ?? r.id}</TableCell>
+                                <TableCell>{r.codigoRepresentante ?? ''}</TableCell>
                                 <TableCell>{r.nome}</TableCell>
                               </TableRow>
                             ))}
@@ -1270,7 +1282,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                   </DialogHeader>
                   <div className="space-y-4">
                     <Input 
-                      placeholder="Digite descrição ou ID..."
+                      placeholder="Digite descrição ou código..."
                       value={productSearch}
                       onChange={(e) => setProductSearch(e.target.value)}
                       autoFocus
@@ -1302,7 +1314,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                                 className="cursor-pointer"
                                 onClick={() => handleSelectProduct(product)}
                               >
-                                <TableCell>{product.codigoProduto ?? product.id}</TableCell>
+                                <TableCell>{product.codigoProduto ?? ''}</TableCell>
                                 <TableCell>{product.descricao}</TableCell>
                                 <TableCell>{product.un}</TableCell>
                                 <TableCell>{formatCurrency(product.preco)}</TableCell>
@@ -1369,7 +1381,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
             <TableBody>
               {items.map((item, idx) => (
                 <TableRow key={idx}>
-                  <TableCell>{item.codigoProduto ?? item.produtoId}</TableCell>
+                  <TableCell>{item.codigoProduto ?? ''}</TableCell>
                   <TableCell>{item.descricao}</TableCell>
                   <TableCell>
                     {(() => {

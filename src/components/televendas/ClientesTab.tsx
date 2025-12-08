@@ -330,7 +330,7 @@ export const ClientesTab = () => {
                       onCheckedChange={(checked) => handleSelectClient(client.id, checked as boolean)}
                     />
                   </TableCell>
-                  <TableCell>{client.codigoCliente ?? client.id}</TableCell>
+                  <TableCell>{client.codigoCliente ?? ''}</TableCell>
                   <TableCell>{client.nome}</TableCell>
                   <TableCell>{client.cidade}</TableCell>
                   <TableCell>{client.uf}</TableCell>

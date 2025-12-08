@@ -25,9 +25,6 @@ function normalizeProduct(raw: any): Product {
     raw?.produto_codigo ??
     raw?.produtoCod ??
     raw?.produto_cod ??
-    raw?.codigo ??
-    raw?.cod ??
-    raw?.id ??
     null;
   const descricao =
     raw?.descricao ??

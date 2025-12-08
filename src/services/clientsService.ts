@@ -61,8 +61,6 @@ function normalizeClient(raw: any): Client {
     raw?.cliente_codigo ??
     raw?.clienteCod ??
     raw?.cliente_cod ??
-    raw?.id ??
-    raw?.cliente_id ??
     null;
   const nome =
     raw?.nome ??
