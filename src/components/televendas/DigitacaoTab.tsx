@@ -770,6 +770,9 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       return;
     }
 
+    const normalizeCodigo = (val?: string | null) => String(val ?? '').trim();
+    const newCodigoNorm = normalizeCodigo(newItem.codigoProduto);
+
     const produtoId = typeof newItem.produtoId === 'number' ? newItem.produtoId : Number(newItem.produtoId);
     const quant = Math.max(0, Number(newItem.quant) || 0);
     const descricao = newItem.descricao || '';
@@ -791,16 +794,19 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       return;
     }
 
-    setItems((prev) => {
-      if (!produtoId || !quant) return prev;
-
-      const existingIndex = prev.findIndex((it) => {
-        if (it.produtoId !== produtoId) return false;
-        const itemTabela = it.tabelaId != null ? String(it.tabelaId) : undefined;
-        return itemTabela === tabelaSelecionada;
+    const findSameProductIndex = (list: OrderItem[]) =>
+      list.findIndex((it) => {
+        const sameId = produtoId && Number(it.produtoId) === produtoId;
+        const sameCodigo =
+          newCodigoNorm &&
+          normalizeCodigo(it.codigoProduto) === newCodigoNorm;
+        return sameId || sameCodigo;
       });
 
-      if (existingIndex === -1) {
+    const existingIndex = findSameProductIndex(items);
+    if (existingIndex === -1) {
+      setItems((prev) => {
+        if (!produtoId || !quant) return prev;
         const base: OrderItem = {
           produtoId,
           codigoProduto: newItem.codigoProduto ?? '',
@@ -816,18 +822,54 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
         const total = calculateItemTotal(base);
         const withTotal = { ...base, total };
         return [...prev, withTotal];
+      });
+    } else {
+      const currentItem = items[existingIndex];
+      const tabelaSelecionadaStr = tabelaSelecionada ? String(tabelaSelecionada) : '';
+      const currentTabelaStr = currentItem.tabelaId != null ? String(currentItem.tabelaId) : '';
+      let tabelaToApply = currentTabelaStr || tabelaSelecionadaStr;
+      let tabelaChanged = false;
+      if (tabelaSelecionadaStr && tabelaSelecionadaStr !== currentTabelaStr) {
+        tabelaToApply = tabelaSelecionadaStr;
+        tabelaChanged = true;
       }
 
-      const updated = [...prev];
-      const current = updated[existingIndex];
-      const merged: OrderItem = {
-        ...current,
-        quant: (current.quant || 0) + quant,
-      };
-      const total = calculateItemTotal(merged);
-      updated[existingIndex] = { ...merged, total };
-      return updated;
-    });
+      let precoToApply = currentItem.preco;
+      if (tabelaChanged && tabelaToApply) {
+        try {
+          precoToApply = await productsService.getPrecoByTabela(
+            produtoId,
+            Number(tabelaToApply),
+          );
+        } catch (e: any) {
+          toast.error(
+            String(e) ||
+              'Não foi possível atualizar o preço para a tabela selecionada',
+          );
+        }
+      }
+
+      setItems((prev) => {
+        const matchIndex = findSameProductIndex(prev);
+        if (matchIndex === -1) return prev;
+        const current = prev[matchIndex];
+        const mergedQuant = (current.quant || 0) + quant;
+        const codigoProduto = current.codigoProduto || newItem.codigoProduto || '';
+        const merged: OrderItem = {
+          ...current,
+          quant: mergedQuant,
+          tabelaId: tabelaToApply || current.tabelaId,
+          preco: tabelaChanged ? precoToApply : current.preco,
+          codigoProduto,
+          descricao: current.descricao || descricao,
+          un: current.un || un,
+        };
+        const total = calculateItemTotal(merged);
+        const next = [...prev];
+        next[matchIndex] = { ...merged, total };
+        return next;
+      });
+    }
 
     if (typeof newItem.produtoId === 'number' && newItem.produtoId > 0) {
       ensureItemTabelas(newItem.produtoId);
