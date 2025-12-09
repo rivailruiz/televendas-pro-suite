@@ -141,7 +141,13 @@ async function fetchFromApi({ q, page = 1, limit = 100 }: { q?: string; page?: n
   try {
     const params = new URLSearchParams();
     params.set('empresaId', String(empresa.empresa_id));
-    if (q) params.set('q', q);
+    const qTrim = typeof q === 'string' ? q.trim() : '';
+    if (qTrim) {
+      params.set('q', qTrim);
+      // Backend espera filtro por codigo_cliente para buscas por código (não pelo id)
+      const looksLikeCodigo = /^[0-9A-Za-z]+$/.test(qTrim);
+      if (looksLikeCodigo) params.set('codigoCliente', qTrim);
+    }
     if (page) params.set('page', String(page));
     if (limit) params.set('limit', String(limit));
     const url = `${API_BASE}/api/clientes?${params.toString()}`;

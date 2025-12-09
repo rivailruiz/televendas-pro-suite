@@ -794,6 +794,36 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       return;
     }
 
+    const resolvedTabelaId = (() => {
+      if (tabs && tabs.length > 0) {
+        const selectedStr = String(tabelaSelecionada || '').trim();
+        if (selectedStr && tabs.some((t) => String(t.id) === selectedStr)) return selectedStr;
+        const defaultTabela = getDefaultTabelaId();
+        if (defaultTabela && tabs.some((t) => String(t.id) === String(defaultTabela))) {
+          return String(defaultTabela);
+        }
+        const principal = tabs.find((t) => t.principal);
+        if (principal) return String(principal.id);
+        return String(tabs[0].id);
+      }
+      return String(tabelaSelecionada || '').trim();
+    })();
+
+    let precoTabela = preco;
+    if (resolvedTabelaId) {
+      try {
+        precoTabela = await productsService.getPrecoByTabela(
+          produtoId,
+          Number(resolvedTabelaId),
+        );
+      } catch (e: any) {
+        toast.error(
+          String(e) ||
+            'Não foi possível buscar o preço para a tabela selecionada',
+        );
+      }
+    }
+
     const findSameProductIndex = (list: OrderItem[]) =>
       list.findIndex((it) => {
         const sameId = produtoId && Number(it.produtoId) === produtoId;
@@ -812,10 +842,10 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           codigoProduto: newItem.codigoProduto ?? '',
           descricao,
           un,
-          tabelaId: tabelaSelecionada,
+          tabelaId: resolvedTabelaId || tabelaSelecionada,
           quant,
           descontoPerc,
-          preco,
+          preco: precoTabela,
           total: 0,
           obs,
         };
@@ -827,10 +857,11 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       const currentItem = items[existingIndex];
       const tabelaSelecionadaStr = tabelaSelecionada ? String(tabelaSelecionada) : '';
       const currentTabelaStr = currentItem.tabelaId != null ? String(currentItem.tabelaId) : '';
-      let tabelaToApply = currentTabelaStr || tabelaSelecionadaStr;
+      const resolvedTabelaStr = resolvedTabelaId ? String(resolvedTabelaId) : '';
+      let tabelaToApply = currentTabelaStr || tabelaSelecionadaStr || resolvedTabelaStr;
       let tabelaChanged = false;
-      if (tabelaSelecionadaStr && tabelaSelecionadaStr !== currentTabelaStr) {
-        tabelaToApply = tabelaSelecionadaStr;
+      if (resolvedTabelaStr && resolvedTabelaStr !== currentTabelaStr) {
+        tabelaToApply = resolvedTabelaStr;
         tabelaChanged = true;
       }
 
