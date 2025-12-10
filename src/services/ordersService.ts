@@ -2,6 +2,7 @@ import { pedidos } from '@/mocks/data';
 import { authService } from '@/services/authService';
 import { API_BASE } from '@/utils/env';
 import { apiClient } from '@/utils/apiClient';
+import { productsService } from '@/services/productsService';
 
 export interface OrderItemUI {
   produtoId: number;
@@ -17,6 +18,7 @@ export interface OrderItemUI {
   liquido: number;
   total: number;
   obs?: string;
+  estoque?: number;
 }
 
 export interface Order {
@@ -449,6 +451,19 @@ export const ordersService = {
       itens: buildItens(order?.itens),
     };
 
+    const reserveItens = async (itens: any[]) => {
+      const tasks = (Array.isArray(itens) ? itens : [])
+        .map((it) => {
+          const produtoId = Number(it?.produtoId) || 0;
+          const quantidade = Number(it?.quant) || 0;
+          if (!produtoId || quantidade <= 0) return null;
+          return productsService.reserveEstoque(produtoId, quantidade);
+        })
+        .filter(Boolean) as Promise<void>[];
+      if (tasks.length === 0) return;
+      await Promise.all(tasks);
+    };
+
     try {
       const url = `${API_BASE}/api/pedidos`;
       const headers: Record<string, string> = {
@@ -461,7 +476,13 @@ export const ordersService = {
         try { const err = await res.json(); message = err?.message || err?.error || message; } catch {}
         return Promise.reject(message);
       }
-      return res.json();
+      const created = await res.json();
+      try {
+        await reserveItens(payload.itens);
+      } catch (e: any) {
+        return Promise.reject(String(e) || 'Falha ao reservar estoque');
+      }
+      return created;
     } catch (e) {
       // Fallback para mock em caso de ambiente offline
       const newOrder: Order = {

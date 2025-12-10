@@ -22,6 +22,7 @@ type OrderItem = {
   codigoProduto?: string;
   descricao: string;
   un: string;
+  estoque?: number;
   tabelaId?: string | number;
   quant: number;
   descontoPerc: number;
@@ -286,6 +287,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           quant: it.quant,
           descontoPerc: it.descontoPerc,
           preco: it.preco,
+          estoque: typeof it.estoque === 'number' ? it.estoque : undefined,
           total: it.total,
           obs: it.obs,
           tabelaId:
@@ -339,6 +341,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           quant: it.quant,
           descontoPerc: it.descontoPerc,
           preco: it.preco,
+          estoque: typeof (it as any)?.estoque === 'number' ? (it as any).estoque : undefined,
           total: it.total,
           obs: it.obs,
           tabelaId:
@@ -748,7 +751,8 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       codigoProduto: product.codigoProduto ?? '',
       descricao: product.descricao,
       un: product.un,
-      preco: product.preco
+      preco: product.preco,
+      estoque: typeof product.estoque === 'number' ? product.estoque : undefined,
     });
     setProductSearchOpen(false);
     setProductSearch('');
@@ -794,6 +798,23 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       return;
     }
 
+    const findSameProductIndex = (list: OrderItem[]) =>
+      list.findIndex((it) => {
+        const sameId = produtoId && Number(it.produtoId) === produtoId;
+        const sameCodigo =
+          newCodigoNorm &&
+          normalizeCodigo(it.codigoProduto) === newCodigoNorm;
+        return sameId || sameCodigo;
+      });
+
+    const existingIndexForStock = findSameProductIndex(items);
+    const existingQtd = existingIndexForStock !== -1 ? items[existingIndexForStock].quant || 0 : 0;
+    const estoqueDisponivel = newItem.estoque ?? (existingIndexForStock !== -1 ? items[existingIndexForStock].estoque : undefined);
+    if (estoqueDisponivel != null && quant + existingQtd > estoqueDisponivel) {
+      toast.error('Quantidade solicitada excede o estoque disponível');
+      return;
+    }
+
     const resolvedTabelaId = (() => {
       if (tabs && tabs.length > 0) {
         const selectedStr = String(tabelaSelecionada || '').trim();
@@ -824,15 +845,6 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       }
     }
 
-    const findSameProductIndex = (list: OrderItem[]) =>
-      list.findIndex((it) => {
-        const sameId = produtoId && Number(it.produtoId) === produtoId;
-        const sameCodigo =
-          newCodigoNorm &&
-          normalizeCodigo(it.codigoProduto) === newCodigoNorm;
-        return sameId || sameCodigo;
-      });
-
     const existingIndex = findSameProductIndex(items);
     if (existingIndex === -1) {
       setItems((prev) => {
@@ -842,6 +854,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           codigoProduto: newItem.codigoProduto ?? '',
           descricao,
           un,
+          estoque: newItem.estoque,
           tabelaId: resolvedTabelaId || tabelaSelecionada,
           quant,
           descontoPerc,
@@ -894,6 +907,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           codigoProduto,
           descricao: current.descricao || descricao,
           un: current.un || un,
+          estoque: current.estoque ?? newItem.estoque,
         };
         const total = calculateItemTotal(merged);
         const next = [...prev];
@@ -912,6 +926,10 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     setItems((prev) => {
       const updated = [...prev];
       const current = { ...updated[index], ...patch } as OrderItem;
+      if (current.estoque != null && current.quant > current.estoque) {
+        toast.error('Quantidade solicitada excede o estoque disponível');
+        return prev;
+      }
       const total = calculateItemTotal(current);
       updated[index] = { ...current, total };
       return updated;

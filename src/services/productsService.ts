@@ -8,6 +8,7 @@ export interface Product {
   descricao: string;
   un: string;
   preco: number;
+  estoque?: number;
   categoria?: string;
 }
 
@@ -36,6 +37,8 @@ function normalizeProduct(raw: any): Product {
   const un = raw?.un ?? raw?.unidade ?? raw?.unidad ?? raw?.uom ?? '';
   const precoRaw = raw?.preco ?? raw?.preco_tabela ?? raw?.precoTabela ?? raw?.price ?? raw?.valor;
   const preco = typeof precoRaw === 'number' ? precoRaw : Number(precoRaw || 0) || 0;
+  const estoqueRaw = raw?.estoque ?? raw?.quantidade_estoque ?? raw?.saldo ?? raw?.saldo_estoque;
+  const estoque = typeof estoqueRaw === 'number' ? estoqueRaw : estoqueRaw != null ? Number(estoqueRaw) : undefined;
   const categoria = raw?.categoria ?? raw?.categoria_codigo ?? raw?.categoriaCodigo ?? undefined;
 
   return {
@@ -44,6 +47,7 @@ function normalizeProduct(raw: any): Product {
     descricao: String(descricao || '').trim(),
     un: String(un || '').trim() || 'UN',
     preco,
+    estoque: typeof estoque === 'number' ? estoque : undefined,
     categoria: categoria ? String(categoria) : undefined,
   };
 }
@@ -151,5 +155,31 @@ export const productsService = {
   ): Promise<number> => {
     const data = await fetchPrecoByTabela({ produtoId, tabelaPrecoId });
     return data.preco;
+  },
+
+  reserveEstoque: async (produtoId: number, quantidade: number): Promise<void> => {
+    const empresa = authService.getEmpresa();
+    if (!empresa) return Promise.reject('Empresa não selecionada');
+    const token = authService.getToken();
+    if (!token) return Promise.reject('Token ausente');
+
+    const url = `${API_BASE}/api/produtos/${encodeURIComponent(produtoId)}/estoque/reservar?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
+    const headers: Record<string, string> = {
+      accept: 'application/json',
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    };
+
+    const body = JSON.stringify({ quantidade_reservada: quantidade });
+    const res = await apiClient.fetch(url, { method: 'POST', headers, body });
+    if (!res.ok) {
+      let message = 'Falha ao reservar estoque';
+      try {
+        const err = await res.json();
+        message = err?.message || err?.error || message;
+      } catch {}
+      return Promise.reject(message);
+    }
+    await res.json();
   },
 };
