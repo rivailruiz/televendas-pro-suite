@@ -811,8 +811,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     const existingQtd = existingIndexForStock !== -1 ? items[existingIndexForStock].quant || 0 : 0;
     const estoqueDisponivel = newItem.estoque ?? (existingIndexForStock !== -1 ? items[existingIndexForStock].estoque : undefined);
     if (estoqueDisponivel != null && quant + existingQtd > estoqueDisponivel) {
-      toast.error('Quantidade solicitada excede o estoque disponível');
-      return;
+      toast.warning('Quantidade solicitada excede o estoque disponível');
     }
 
     const resolvedTabelaId = (() => {
@@ -927,8 +926,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       const updated = [...prev];
       const current = { ...updated[index], ...patch } as OrderItem;
       if (current.estoque != null && current.quant > current.estoque) {
-        toast.error('Quantidade solicitada excede o estoque disponível');
-        return prev;
+        toast.warning('Quantidade solicitada excede o estoque disponível');
       }
       const total = calculateItemTotal(current);
       updated[index] = { ...current, total };
@@ -1395,6 +1393,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                               <TableHead>Código</TableHead>
                               <TableHead>Descrição</TableHead>
                               <TableHead>UN</TableHead>
+                              <TableHead>Estoque</TableHead>
                               <TableHead>Preço</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -1408,6 +1407,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                                 <TableCell>{product.codigoProduto ?? ''}</TableCell>
                                 <TableCell>{product.descricao}</TableCell>
                                 <TableCell>{product.un}</TableCell>
+                                <TableCell>{product.estoque ?? '-'}</TableCell>
                                 <TableCell>{formatCurrency(product.preco)}</TableCell>
                               </TableRow>
                             ))}
