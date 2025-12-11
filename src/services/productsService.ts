@@ -37,8 +37,38 @@ function normalizeProduct(raw: any): Product {
   const un = raw?.un ?? raw?.unidade ?? raw?.unidad ?? raw?.uom ?? '';
   const precoRaw = raw?.preco ?? raw?.preco_tabela ?? raw?.precoTabela ?? raw?.price ?? raw?.valor;
   const preco = typeof precoRaw === 'number' ? precoRaw : Number(precoRaw || 0) || 0;
-  const estoqueRaw = raw?.estoque ?? raw?.quantidade_estoque ?? raw?.saldo ?? raw?.saldo_estoque;
-  const estoque = typeof estoqueRaw === 'number' ? estoqueRaw : estoqueRaw != null ? Number(estoqueRaw) : undefined;
+  const estoqueRaw =
+    raw?.estoque ??
+    raw?.estoque_disponivel ??
+    raw?.estoqueDisponivel ??
+    raw?.quantidade_estoque ??
+    raw?.quantidadeEstoque ??
+    raw?.qtd_estoque ??
+    raw?.qtdEstoque ??
+    raw?.saldo ??
+    raw?.saldo_estoque ??
+    raw?.disponivel;
+  const estoque = (() => {
+    if (typeof estoqueRaw === 'number') return estoqueRaw;
+    if (typeof estoqueRaw === 'string') {
+      const n = Number(estoqueRaw);
+      if (!Number.isNaN(n)) return n;
+    }
+    if (estoqueRaw && typeof estoqueRaw === 'object') {
+      const objCandidate =
+        (estoqueRaw as any).disponivel ??
+        (estoqueRaw as any).estoque ??
+        (estoqueRaw as any).quantidade ??
+        (estoqueRaw as any).saldo ??
+        (estoqueRaw as any).saldo_disponivel;
+      if (typeof objCandidate === 'number') return objCandidate;
+      if (typeof objCandidate === 'string') {
+        const n = Number(objCandidate);
+        if (!Number.isNaN(n)) return n;
+      }
+    }
+    return undefined;
+  })();
   const categoria = raw?.categoria ?? raw?.categoria_codigo ?? raw?.categoriaCodigo ?? undefined;
 
   return {
