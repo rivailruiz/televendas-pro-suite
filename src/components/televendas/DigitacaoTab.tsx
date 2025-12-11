@@ -261,7 +261,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           operacaoId: detail.operacaoId ?? prev.operacaoId ?? '',
           clienteId: detail.clienteId || 0,
           clienteNome: detail.clienteNome || '',
-          representanteId: detail.representanteCodigo ?? detail.representanteId ?? '',
+          representanteId: detail.representanteId ?? detail.representanteCodigo ?? '',
           representanteNome: detail.representanteNome || '',
           tabela: detail.tabela || prev.tabela || '',
           formaPagamento: detail.formaPagamento || prev.formaPagamento || '',
@@ -315,7 +315,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           operacao: currentOrder.operacao || prev.operacao,
           clienteId: currentOrder.clienteId || 0,
           clienteNome: currentOrder.clienteNome || '',
-          representanteId: currentOrder.representanteCodigo ?? currentOrder.representanteId ?? '',
+          representanteId: currentOrder.representanteId ?? currentOrder.representanteCodigo ?? '',
           representanteNome: currentOrder.representanteNome || '',
           tabela: currentOrder.tabela || prev.tabela || '',
           formaPagamento: currentOrder.formaPagamento || prev.formaPagamento || '',
@@ -608,7 +608,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
 
   const handleSelectClient = (client: Client) => {
     const firstRep = Array.isArray(client.representantes) ? client.representantes[0] : null;
-    const repIdFromClient = client.representanteCodigo ?? client.representanteId ?? firstRep?.codigoRepresentante ?? firstRep?.id ?? '';
+    const repIdFromClient = client.representanteId ?? client.representanteCodigo ?? firstRep?.id ?? firstRep?.codigoRepresentante ?? '';
     const repNomeFromClient = client.representanteNome ?? firstRep?.nome ?? '';
     setFormData((prev) => ({
       ...prev,
@@ -1209,7 +1209,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                                 onClick={() => {
                                   setFormData({
                                     ...formData,
-                                    representanteId: r.codigoRepresentante ?? r.id,
+                                    representanteId: r.id,
                                     representanteNome: r.nome,
                                   });
                                   setRepSearchOpen(false);
@@ -1439,8 +1439,12 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
               <label className="text-sm font-medium mb-2 block">%Desc</label>
               <Input 
                 type="number"
+                inputMode="decimal"
                 value={newItem.descontoPerc || ''}
                 onChange={(e) => setNewItem({...newItem, descontoPerc: parseFloat(e.target.value) || 0})}
+                min={0}
+                max={100}
+                step="any"
               />
             </div>
             <div>
