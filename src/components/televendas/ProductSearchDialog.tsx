@@ -11,7 +11,7 @@ import { Search, CalendarIcon, X, Filter, ChevronDown, ChevronUp } from 'lucide-
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { productsService, type Product } from '@/services/productsService';
+import { productsService, type Product, type ProductFiltersParams } from '@/services/productsService';
 import { metadataService, type Tabela } from '@/services/metadataService';
 import { formatCurrency } from '@/utils/format';
 import { cn } from '@/lib/utils';
@@ -89,16 +89,25 @@ export const ProductSearchDialog = ({
     loadTabelas();
   }, []);
 
-  // Build query from filters
-  const buildQuery = useCallback(() => {
-    const parts: string[] = [];
-    if (filters.descricao.trim()) parts.push(filters.descricao.trim());
-    if (filters.marca.trim()) parts.push(filters.marca.trim());
-    if (filters.codFabrica.trim()) parts.push(filters.codFabrica.trim());
-    if (filters.ean13.trim()) parts.push(filters.ean13.trim());
-    if (filters.dun14.trim()) parts.push(filters.dun14.trim());
-    if (filters.pAtivo.trim()) parts.push(filters.pAtivo.trim());
-    return parts.join(' ');
+  // Build filters object for API
+  const buildFiltersParams = useCallback((): ProductFiltersParams => {
+    const params: ProductFiltersParams = {};
+    if (filters.descricao.trim()) params.descricao = filters.descricao.trim();
+    if (filters.marca.trim()) params.marca = filters.marca.trim();
+    if (filters.tabela) params.tabela = filters.tabela;
+    if (filters.codFabrica.trim()) params.codFabrica = filters.codFabrica.trim();
+    if (filters.fornecedor) params.fornecedor = filters.fornecedor;
+    if (filters.ean13.trim()) params.ean13 = filters.ean13.trim();
+    if (filters.divisao) params.divisao = filters.divisao;
+    if (filters.dun14.trim()) params.dun14 = filters.dun14.trim();
+    if (filters.pAtivo.trim()) params.pAtivo = filters.pAtivo.trim();
+    if (filters.comEstoque) params.comEstoque = true;
+    if (filters.estoqueZerado) params.estoqueZerado = true;
+    if (filters.lancamentos) params.lancamentos = true;
+    if (filters.ultimasComprasDesde) {
+      params.ultimasComprasDesde = format(filters.ultimasComprasDesde, 'yyyy-MM-dd');
+    }
+    return params;
   }, [filters]);
 
   const loadProducts = useCallback(async (reset = false) => {
@@ -107,21 +116,11 @@ export const ProductSearchDialog = ({
     setError(null);
     try {
       const nextPage = reset ? 1 : page + 1;
-      const query = buildQuery();
-      const data = await productsService.find(query || undefined, nextPage, PRODUCT_LIMIT);
-      
-      // Client-side filtering for additional criteria
-      let filtered = data;
-      
-      if (filters.comEstoque) {
-        filtered = filtered.filter(p => (p.estoque ?? 0) > 0);
-      }
-      if (filters.estoqueZerado) {
-        filtered = filtered.filter(p => p.estoque === 0);
-      }
+      const filtersParams = buildFiltersParams();
+      const data = await productsService.find(filtersParams, nextPage, PRODUCT_LIMIT);
       
       setProducts((prev) => {
-        const combined = reset ? filtered : [...prev, ...filtered];
+        const combined = reset ? data : [...prev, ...data];
         const seen = new Set<number>();
         return combined.filter((p) => (seen.has(p.id) ? false : (seen.add(p.id), true)));
       });
@@ -132,7 +131,7 @@ export const ProductSearchDialog = ({
     } finally {
       setLoading(false);
     }
-  }, [loading, page, buildQuery, filters.comEstoque, filters.estoqueZerado]);
+  }, [loading, page, buildFiltersParams]);
 
   // Load products when dialog opens
   useEffect(() => {
