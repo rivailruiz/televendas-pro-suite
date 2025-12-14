@@ -16,6 +16,7 @@ import { representativesService, type Representative } from '@/services/represen
 import { formatCurrency } from '@/utils/format';
 import { ordersService } from '@/services/ordersService';
 import { useStore } from '@/store/useStore';
+import { ProductSearchDialog } from './ProductSearchDialog';
 
 type OrderItem = {
   produtoId: number;
@@ -136,7 +137,6 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   const [clientSearchOpen, setClientSearchOpen] = useState(false);
   const [productSearchOpen, setProductSearchOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
-  const [productSearch, setProductSearch] = useState('');
 
   const [clients, setClients] = useState<Client[]>([]);
   const [loadingClients, setLoadingClients] = useState(false);
@@ -508,12 +508,6 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
 
   const filteredClients = clients; // server already filters by q
 
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loadingProducts, setLoadingProducts] = useState(false);
-  const [productsError, setProductsError] = useState<string | null>(null);
-  const [productPage, setProductPage] = useState(1);
-  const [productHasMore, setProductHasMore] = useState(true);
-
   // Cache de tabelas por produto para dropdown por item
   const [itemTabelas, setItemTabelas] = useState<Record<number, Tabela[]>>({});
   const [itemTabelasLoading, setItemTabelasLoading] = useState<Record<number, boolean>>({});
@@ -546,42 +540,6 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     }
   };
 
-  const PRODUCT_LIMIT = 100;
-  const loadProducts = async (reset = false) => {
-    if (loadingProducts) return;
-    setLoadingProducts(true);
-    setProductsError(null);
-    try {
-      const nextPage = reset ? 1 : productPage + 1;
-      const data = await productsService.find(productSearch || undefined, nextPage, PRODUCT_LIMIT);
-      setProducts((prev) => {
-        const combined = reset ? data : [...prev, ...data];
-        const seen = new Set<number>();
-        return combined.filter((p) => (seen.has(p.id) ? false : (seen.add(p.id), true)));
-      });
-      setProductPage(nextPage);
-      setProductHasMore(Array.isArray(data) && data.length === PRODUCT_LIMIT);
-    } catch (e: any) {
-      setProductsError(String(e));
-    } finally {
-      setLoadingProducts(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!productSearchOpen) return;
-    loadProducts(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productSearchOpen]);
-
-  useEffect(() => {
-    if (!productSearchOpen) return;
-    const t = setTimeout(() => {
-      loadProducts(true);
-    }, 300);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productSearch]);
 
   // Garante cache de tabelas por produto para todos itens atuais
   useEffect(() => {
@@ -755,7 +713,6 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       estoque: typeof product.estoque === 'number' ? product.estoque : undefined,
     });
     setProductSearchOpen(false);
-    setProductSearch('');
   };
 
   const calculateItemTotal = (item: Partial<OrderItem>) => {
@@ -1358,73 +1315,17 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4 items-end">
             <div className="sm:col-span-2 lg:col-span-2">
               <label className="text-sm font-medium mb-2 block">Produto (F3)</label>
-              <Dialog open={productSearchOpen} onOpenChange={setProductSearchOpen}>
-                <DialogTrigger asChild>
+              <ProductSearchDialog
+                open={productSearchOpen}
+                onOpenChange={setProductSearchOpen}
+                onSelectProduct={handleSelectProduct}
+                trigger={
                   <Button variant="outline" className="w-full justify-start">
                     <Search className="h-4 w-4 mr-2" />
                     {newItem.descricao || 'Buscar produto'}
                   </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-3xl">
-                  <DialogHeader>
-                    <DialogTitle>Buscar Produto</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <Input 
-                      placeholder="Digite descrição ou código..."
-                      value={productSearch}
-                      onChange={(e) => setProductSearch(e.target.value)}
-                      autoFocus
-                    />
-                    <div className="max-h-96 overflow-auto" onScroll={(e) => {
-                      const el = e.currentTarget;
-                      if (productHasMore && !loadingProducts && el.scrollTop + el.clientHeight >= el.scrollHeight - 24) {
-                        loadProducts(false);
-                      }
-                    }}>
-                      {loadingProducts && products.length === 0 ? (
-                        <div className="py-6 text-center text-sm text-muted-foreground">Carregando produtos...</div>
-                      ) : productsError ? (
-                        <div className="py-6 text-center text-sm text-red-600">{productsError}</div>
-                      ) : (
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Código</TableHead>
-                              <TableHead>Descrição</TableHead>
-                              <TableHead>UN</TableHead>
-                              <TableHead>Estoque</TableHead>
-                              <TableHead>Preço</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {products.map((product) => (
-                              <TableRow
-                                key={product.id}
-                                className="cursor-pointer"
-                                onClick={() => handleSelectProduct(product)}
-                              >
-                                <TableCell>{product.codigoProduto ?? ''}</TableCell>
-                                <TableCell>{product.descricao}</TableCell>
-                                <TableCell>{product.un}</TableCell>
-                                <TableCell>{product.estoque ?? '-'}</TableCell>
-                                <TableCell>{formatCurrency(product.preco)}</TableCell>
-                              </TableRow>
-                            ))}
-                            {products.length === 0 && !loadingProducts && (
-                              <TableRow>
-                                <TableCell colSpan={4} className="text-center text-sm text-muted-foreground">
-                                  Nenhum produto encontrado
-                                </TableCell>
-                              </TableRow>
-                            )}
-                          </TableBody>
-                        </Table>
-                      )}
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
+                }
+              />
             </div>
             
             <div>
