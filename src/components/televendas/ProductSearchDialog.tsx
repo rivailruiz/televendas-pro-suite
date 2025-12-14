@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Search, CalendarIcon, X } from 'lucide-react';
+import { Search, CalendarIcon, X, Filter, ChevronDown, ChevronUp } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { productsService, type Product } from '@/services/productsService';
@@ -68,6 +69,7 @@ export const ProductSearchDialog = ({
   const [hasMore, setHasMore] = useState(true);
   const [tabelas, setTabelas] = useState<Tabela[]>([]);
   const [loadingTabelas, setLoadingTabelas] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(true);
 
   const PRODUCT_LIMIT = 100;
 
@@ -167,205 +169,220 @@ export const ProductSearchDialog = ({
           <DialogTitle>Pesquisa Produtos</DialogTitle>
         </DialogHeader>
         
-        {/* Filters Section */}
-        <div className="border rounded-lg p-4 bg-muted/30 flex-shrink-0">
-          <div className="flex flex-col gap-3">
-            {/* Left side - Form fields */}
-            <div className="flex gap-6">
-              {/* Column 1 */}
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium w-20 text-right">Descrição</label>
-                  <Input
-                    value={filters.descricao}
-                    onChange={(e) => setFilters(prev => ({ ...prev, descricao: e.target.value }))}
-                    className="h-8 w-40"
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium w-20 text-right">Cód.Fabrica</label>
-                  <Input
-                    value={filters.codFabrica}
-                    onChange={(e) => setFilters(prev => ({ ...prev, codFabrica: e.target.value }))}
-                    className="h-8 w-40"
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium w-20 text-right">Ean13</label>
-                  <Input
-                    value={filters.ean13}
-                    onChange={(e) => setFilters(prev => ({ ...prev, ean13: e.target.value }))}
-                    className="h-8 w-40"
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium w-20 text-right">Dun14</label>
-                  <Input
-                    value={filters.dun14}
-                    onChange={(e) => setFilters(prev => ({ ...prev, dun14: e.target.value }))}
-                    className="h-8 w-40"
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  />
-                </div>
-              </div>
+        {/* Quick search + Filter toggle */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex-1 flex items-center gap-2">
+            <Input
+              placeholder="Buscar por descrição..."
+              value={filters.descricao}
+              onChange={(e) => setFilters(prev => ({ ...prev, descricao: e.target.value }))}
+              className="h-9 max-w-md"
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            />
+            <Button
+              size="sm"
+              onClick={handleSearch}
+              className="h-9"
+              disabled={loading}
+            >
+              <Search className="h-4 w-4 mr-1" />
+              Buscar
+            </Button>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setFiltersOpen(!filtersOpen)}
+            className="h-9"
+          >
+            <Filter className="h-4 w-4 mr-1" />
+            Filtros
+            {filtersOpen ? <ChevronUp className="h-4 w-4 ml-1" /> : <ChevronDown className="h-4 w-4 ml-1" />}
+          </Button>
+        </div>
 
-              {/* Column 2 */}
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium w-20 text-right">Marca</label>
-                  <Input
-                    value={filters.marca}
-                    onChange={(e) => setFilters(prev => ({ ...prev, marca: e.target.value }))}
-                    className="h-8 w-40"
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  />
+        {/* Collapsible Filters Section */}
+        <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <CollapsibleContent>
+            <div className="border rounded-lg p-4 bg-muted/30 flex-shrink-0 overflow-x-auto">
+              <div className="flex gap-4 min-w-max">
+                {/* Column 1 */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium w-20 text-right">Cód.Fabrica</label>
+                    <Input
+                      value={filters.codFabrica}
+                      onChange={(e) => setFilters(prev => ({ ...prev, codFabrica: e.target.value }))}
+                      className="h-8 w-32"
+                      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium w-20 text-right">Ean13</label>
+                    <Input
+                      value={filters.ean13}
+                      onChange={(e) => setFilters(prev => ({ ...prev, ean13: e.target.value }))}
+                      className="h-8 w-32"
+                      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium w-20 text-right">Dun14</label>
+                    <Input
+                      value={filters.dun14}
+                      onChange={(e) => setFilters(prev => ({ ...prev, dun14: e.target.value }))}
+                      className="h-8 w-32"
+                      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    />
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium w-20 text-right">Fornecedor</label>
-                  <Select
-                    value={filters.fornecedor}
-                    onValueChange={(v) => setFilters(prev => ({ ...prev, fornecedor: v === '_all' ? '' : v }))}
+
+                {/* Column 2 */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium w-16 text-right">Marca</label>
+                    <Input
+                      value={filters.marca}
+                      onChange={(e) => setFilters(prev => ({ ...prev, marca: e.target.value }))}
+                      className="h-8 w-32"
+                      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium w-16 text-right">Fornec.</label>
+                    <Select
+                      value={filters.fornecedor}
+                      onValueChange={(v) => setFilters(prev => ({ ...prev, fornecedor: v === '_all' ? '' : v }))}
+                    >
+                      <SelectTrigger className="h-8 w-32">
+                        <SelectValue placeholder="Todos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_all">Todos</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium w-16 text-right">P. Ativo</label>
+                    <Input
+                      value={filters.pAtivo}
+                      onChange={(e) => setFilters(prev => ({ ...prev, pAtivo: e.target.value }))}
+                      className="h-8 w-32"
+                      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    />
+                  </div>
+                </div>
+
+                {/* Column 3 */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium w-14 text-right">Tabela</label>
+                    <Select
+                      value={filters.tabela}
+                      onValueChange={(v) => setFilters(prev => ({ ...prev, tabela: v === '_all' ? '' : v }))}
+                    >
+                      <SelectTrigger className="h-8 w-28">
+                        <SelectValue placeholder={loadingTabelas ? '...' : 'Todas'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_all">Todas</SelectItem>
+                        {tabelas.map((t) => (
+                          <SelectItem key={String(t.id)} value={String(t.id)}>
+                            {t.codigo ? `${t.codigo}` : t.descricao}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium w-14 text-right">Divisão</label>
+                    <Select
+                      value={filters.divisao}
+                      onValueChange={(v) => setFilters(prev => ({ ...prev, divisao: v === '_all' ? '' : v }))}
+                    >
+                      <SelectTrigger className="h-8 w-28">
+                        <SelectValue placeholder="Todas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_all">Todas</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Column 4 - Checkboxes */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="comEstoque"
+                      checked={filters.comEstoque}
+                      onCheckedChange={(checked) => setFilters(prev => ({ ...prev, comEstoque: !!checked, estoqueZerado: false }))}
+                    />
+                    <label htmlFor="comEstoque" className="text-sm cursor-pointer whitespace-nowrap">Com estoque</label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="estoqueZerado"
+                      checked={filters.estoqueZerado}
+                      onCheckedChange={(checked) => setFilters(prev => ({ ...prev, estoqueZerado: !!checked, comEstoque: false }))}
+                    />
+                    <label htmlFor="estoqueZerado" className="text-sm cursor-pointer whitespace-nowrap">Estoque zerado</label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="lancamentos"
+                      checked={filters.lancamentos}
+                      onCheckedChange={(checked) => setFilters(prev => ({ ...prev, lancamentos: !!checked }))}
+                    />
+                    <label htmlFor="lancamentos" className="text-sm cursor-pointer whitespace-nowrap">Lançamentos</label>
+                  </div>
+                </div>
+
+                {/* Column 5 - Date and actions */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium whitespace-nowrap">Últ. compras:</label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className={cn(
+                            "h-8 justify-start text-left font-normal px-2",
+                            !filters.ultimasComprasDesde && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-1 h-4 w-4" />
+                          {filters.ultimasComprasDesde
+                            ? format(filters.ultimasComprasDesde, 'dd/MM/yyyy', { locale: ptBR })
+                            : 'Selecionar'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={filters.ultimasComprasDesde}
+                          onSelect={(date) => setFilters(prev => ({ ...prev, ultimasComprasDesde: date }))}
+                          locale={ptBR}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleClearFilters}
+                    className="h-8"
                   >
-                    <SelectTrigger className="h-8 w-40">
-                      <SelectValue placeholder="Todos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="_all">Todos</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    <X className="h-4 w-4 mr-1" />
+                    Limpar
+                  </Button>
                 </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium w-20 text-right">Divisão</label>
-                  <Select
-                    value={filters.divisao}
-                    onValueChange={(v) => setFilters(prev => ({ ...prev, divisao: v === '_all' ? '' : v }))}
-                  >
-                    <SelectTrigger className="h-8 w-40">
-                      <SelectValue placeholder="Todas" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="_all">Todas</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium w-20 text-right">P. Ativo</label>
-                  <Input
-                    value={filters.pAtivo}
-                    onChange={(e) => setFilters(prev => ({ ...prev, pAtivo: e.target.value }))}
-                    className="h-8 w-40"
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  />
-                </div>
-              </div>
-
-              {/* Column 3 - Tabela */}
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium w-14 text-right">Tabela</label>
-                  <Select
-                    value={filters.tabela}
-                    onValueChange={(v) => setFilters(prev => ({ ...prev, tabela: v === '_all' ? '' : v }))}
-                  >
-                    <SelectTrigger className="h-8 w-28">
-                      <SelectValue placeholder={loadingTabelas ? '...' : 'Todas'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="_all">Todas</SelectItem>
-                      {tabelas.map((t) => (
-                        <SelectItem key={String(t.id)} value={String(t.id)}>
-                          {t.codigo ? `${t.codigo}` : t.descricao}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Column 4 - Checkboxes and date */}
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="comEstoque"
-                    checked={filters.comEstoque}
-                    onCheckedChange={(checked) => setFilters(prev => ({ ...prev, comEstoque: !!checked, estoqueZerado: false }))}
-                  />
-                  <label htmlFor="comEstoque" className="text-sm cursor-pointer whitespace-nowrap">Com estoque</label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="estoqueZerado"
-                    checked={filters.estoqueZerado}
-                    onCheckedChange={(checked) => setFilters(prev => ({ ...prev, estoqueZerado: !!checked, comEstoque: false }))}
-                  />
-                  <label htmlFor="estoqueZerado" className="text-sm cursor-pointer whitespace-nowrap">Estoque zerado</label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium whitespace-nowrap">Últ. compras desde:</label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className={cn(
-                          "h-8 justify-start text-left font-normal px-2",
-                          !filters.ultimasComprasDesde && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-1 h-4 w-4" />
-                        {filters.ultimasComprasDesde
-                          ? format(filters.ultimasComprasDesde, 'dd/MM/yyyy', { locale: ptBR })
-                          : 'Selecionar'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={filters.ultimasComprasDesde}
-                        onSelect={(date) => setFilters(prev => ({ ...prev, ultimasComprasDesde: date }))}
-                        locale={ptBR}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-
-              {/* Column 5 - More checkboxes and buttons */}
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="lancamentos"
-                    checked={filters.lancamentos}
-                    onCheckedChange={(checked) => setFilters(prev => ({ ...prev, lancamentos: !!checked }))}
-                  />
-                  <label htmlFor="lancamentos" className="text-sm cursor-pointer whitespace-nowrap">Lançamentos</label>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleClearFilters}
-                  className="h-8"
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Limpar filtros
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleSearch}
-                  className="h-8"
-                  disabled={loading}
-                >
-                  <Search className="h-4 w-4 mr-1" />
-                  Buscar
-                </Button>
               </div>
             </div>
-          </div>
-        </div>
+          </CollapsibleContent>
+        </Collapsible>
 
         {/* Products Table */}
         <div className="flex-1 overflow-auto min-h-[250px] border rounded-lg" onScroll={handleScroll}>
