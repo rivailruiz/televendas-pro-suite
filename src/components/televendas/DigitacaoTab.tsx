@@ -1080,9 +1080,9 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
               <div className="flex gap-1">
                 <Dialog open={clientSearchOpen} onOpenChange={setClientSearchOpen}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" className="flex-1 justify-start">
-                      <Search className="h-4 w-4 mr-2" />
-                      {formData.clienteNome || 'Buscar cliente (F3)'}
+                    <Button variant="outline" className="flex-1 justify-start min-w-0 overflow-hidden">
+                      <Search className="h-4 w-4 mr-2 shrink-0" />
+                      <span className="truncate">{formData.clienteNome || 'Buscar cliente (F3)'}</span>
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-2xl">
