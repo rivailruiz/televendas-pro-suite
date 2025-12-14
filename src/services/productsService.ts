@@ -147,31 +147,30 @@ function normalizeProduct(raw: any): Product {
   };
 }
 
-type ProductSearchFilters = {
-  query?: string;
+export interface ProductFiltersParams {
   descricao?: string;
-  codigoProduto?: string;
-  codigoFabrica?: string;
-  ean13?: string;
-  dun14?: string;
   marca?: string;
-  principioAtivo?: string;
-  fornecedorId?: number | string;
-  divisaoId?: number | string;
+  tabela?: string;
+  codFabrica?: string;
+  fornecedor?: string;
+  ean13?: string;
+  divisao?: string;
+  dun14?: string;
+  pAtivo?: string;
   comEstoque?: boolean;
   estoqueZerado?: boolean;
-  lancamento?: boolean;
-  tabelaPrecoId?: number | string;
-};
+  lancamentos?: boolean;
+  ultimasComprasDesde?: string;
+}
 
-async function fetchFromApi({
-  filters,
-  page = 1,
-  limit = 100,
-}: {
-  filters?: ProductSearchFilters;
-  page?: number;
-  limit?: number;
+async function fetchFromApi({ 
+  filters, 
+  page = 1, 
+  limit = 100 
+}: { 
+  filters?: ProductFiltersParams; 
+  page?: number; 
+  limit?: number; 
 }): Promise<Product[]> {
   const empresa = authService.getEmpresa();
   if (!empresa) return Promise.reject('Empresa não selecionada');
@@ -181,49 +180,24 @@ async function fetchFromApi({
   try {
     const params = new URLSearchParams();
     params.set('empresaId', String(empresa.empresa_id));
-    const clean = filters || {};
-    const setParam = (key: keyof ProductSearchFilters, value: any) => {
-      if (value === undefined || value === null) return;
-      const text = String(value).trim();
-      if (text === '') return;
-      params.set(key as string, text);
-    };
-
-    const qTrim = typeof clean.query === 'string' ? clean.query.trim() : '';
-    const hasExplicitTextFilter =
-      !!clean.descricao ||
-      !!clean.codigoProduto ||
-      !!clean.codigoFabrica ||
-      !!clean.ean13 ||
-      !!clean.dun14 ||
-      !!clean.marca ||
-      !!clean.principioAtivo;
-    if (qTrim && !hasExplicitTextFilter) {
-      const looksLikeCode = /^[0-9A-Za-z]+$/.test(qTrim);
-      if (looksLikeCode) {
-        setParam('codigoProduto', qTrim);
-      } else {
-        setParam('descricao', qTrim);
-      }
-    }
-
-    setParam('descricao', clean.descricao);
-    setParam('codigoProduto', clean.codigoProduto);
-    setParam('codigoFabrica', clean.codigoFabrica);
-    setParam('ean13', clean.ean13);
-    setParam('dun14', clean.dun14);
-    setParam('marca', clean.marca);
-    setParam('principioAtivo', clean.principioAtivo);
-    setParam('fornecedorId', clean.fornecedorId);
-    setParam('divisaoId', clean.divisaoId);
-    setParam('tabelaPrecoId', clean.tabelaPrecoId);
-    if (clean.comEstoque === true) params.set('comEstoque', 'true');
-    if (clean.estoqueZerado === true) params.set('estoqueZerado', 'true');
-    if (clean.lancamento === true) params.set('lancamento', 'true');
-    if (clean.lancamento === false) params.set('lancamento', 'false');
-
     if (page) params.set('page', String(page));
     if (limit) params.set('limit', String(limit));
+    
+    // Add individual filter parameters
+    if (filters?.descricao) params.set('descricao', filters.descricao);
+    if (filters?.marca) params.set('marca', filters.marca);
+    if (filters?.tabela) params.set('tabelaPrecoId', filters.tabela);
+    if (filters?.codFabrica) params.set('codigoFabrica', filters.codFabrica);
+    if (filters?.fornecedor) params.set('fornecedorId', filters.fornecedor);
+    if (filters?.ean13) params.set('ean13', filters.ean13);
+    if (filters?.divisao) params.set('divisaoId', filters.divisao);
+    if (filters?.dun14) params.set('dun14', filters.dun14);
+    if (filters?.pAtivo) params.set('principioAtivo', filters.pAtivo);
+    if (filters?.comEstoque) params.set('comEstoque', 'true');
+    if (filters?.estoqueZerado) params.set('estoqueZerado', 'true');
+    if (filters?.lancamentos) params.set('lancamentos', 'true');
+    if (filters?.ultimasComprasDesde) params.set('ultimasComprasDesde', filters.ultimasComprasDesde);
+    
     const url = `${API_BASE}/api/produtos?${params.toString()}`;
     const headers: Record<string, string> = { accept: 'application/json' };
     const res = await apiClient.fetch(url, {
@@ -299,22 +273,14 @@ async function fetchPrecoByTabela({
 }
 
 export const productsService = {
-  find: async (
-    queryOrFilters?: string | ProductSearchFilters,
-    page = 1,
-    limit = 100,
-  ): Promise<Product[]> => {
-    const filters =
-      typeof queryOrFilters === 'string'
-        ? { query: queryOrFilters }
-        : queryOrFilters;
+  find: async (filters?: ProductFiltersParams, page = 1, limit = 100): Promise<Product[]> => {
     return fetchFromApi({ filters, page, limit });
   },
-  search: async (query?: string, page = 1, limit = 100): Promise<Product[]> => {
-    return fetchFromApi({ filters: { query }, page, limit });
+  search: async (filters?: ProductFiltersParams, page = 1, limit = 100): Promise<Product[]> => {
+    return fetchFromApi({ filters, page, limit });
   },
   getById: async (id: number): Promise<Product | undefined> => {
-    const list = await fetchFromApi({ q: String(id), page: 1, limit: 1 });
+    const list = await fetchFromApi({ filters: { descricao: String(id) }, page: 1, limit: 1 });
     return list.find((p) => p.id === id);
   },
   getPrecoByTabela: async (
