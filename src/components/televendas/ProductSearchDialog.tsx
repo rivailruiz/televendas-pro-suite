@@ -25,7 +25,7 @@ interface ProductFilters {
   ean13: string;
   divisao: string;
   dun14: string;
-  pAtivo: string;
+  pAtivo: boolean;
   comEstoque: boolean;
   lancamentos: boolean;
   estoqueZerado: boolean;
@@ -41,7 +41,7 @@ const emptyFilters: ProductFilters = {
   ean13: '',
   divisao: '',
   dun14: '',
-  pAtivo: '',
+  pAtivo: false,
   comEstoque: false,
   lancamentos: false,
   estoqueZerado: false,
@@ -100,7 +100,7 @@ export const ProductSearchDialog = ({
     if (filters.ean13.trim()) params.ean13 = filters.ean13.trim();
     if (filters.divisao) params.divisao = filters.divisao;
     if (filters.dun14.trim()) params.dun14 = filters.dun14.trim();
-    if (filters.pAtivo.trim()) params.pAtivo = filters.pAtivo.trim();
+    if (filters.pAtivo) params.pAtivo = true;
     if (filters.comEstoque) params.comEstoque = true;
     if (filters.estoqueZerado) params.estoqueZerado = true;
     if (filters.lancamentos) params.lancamentos = true;
@@ -261,14 +261,13 @@ export const ProductSearchDialog = ({
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium w-16 text-right">P. Ativo</label>
-                    <Input
-                      value={filters.pAtivo}
-                      onChange={(e) => setFilters(prev => ({ ...prev, pAtivo: e.target.value }))}
-                      className="h-8 w-32"
-                      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="pAtivo"
+                      checked={filters.pAtivo}
+                      onCheckedChange={(checked) => setFilters(prev => ({ ...prev, pAtivo: !!checked }))}
                     />
+                    <label htmlFor="pAtivo" className="text-sm cursor-pointer whitespace-nowrap">P. Ativo</label>
                   </div>
                 </div>
 
