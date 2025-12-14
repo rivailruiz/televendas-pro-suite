@@ -156,7 +156,7 @@ export interface ProductFiltersParams {
   ean13?: string;
   divisao?: string;
   dun14?: string;
-  pAtivo?: string;
+  pAtivo?: boolean;
   comEstoque?: boolean;
   estoqueZerado?: boolean;
   lancamentos?: boolean;
@@ -192,7 +192,7 @@ async function fetchFromApi({
     if (filters?.ean13) params.set('ean13', filters.ean13);
     if (filters?.divisao) params.set('divisaoId', filters.divisao);
     if (filters?.dun14) params.set('dun14', filters.dun14);
-    if (filters?.pAtivo) params.set('principioAtivo', filters.pAtivo);
+    if (filters?.pAtivo) params.set('principioAtivo', 'true');
     if (filters?.comEstoque) params.set('comEstoque', 'true');
     if (filters?.estoqueZerado) params.set('estoqueZerado', 'true');
     if (filters?.lancamentos) params.set('lancamentos', 'true');
