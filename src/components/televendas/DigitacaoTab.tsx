@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Save, Undo, Search, Plus, Trash2, Info } from 'lucide-react';
+import { Save, Undo, Search, Plus, Trash2, Info, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
 import { metadataService, type Operacao, type Tabela, type FormaPagamento, type PrazoPagto } from '@/services/metadataService';
 import { clientsService, type Client } from '@/services/clientsService';
@@ -18,6 +18,7 @@ import { ordersService } from '@/services/ordersService';
 import { useStore } from '@/store/useStore';
 import { ProductSearchDialog } from './ProductSearchDialog';
 import { ClientInfoModal } from './ClientInfoModal';
+import { ClientReceivablesModal } from './ClientReceivablesModal';
 
 type OrderItem = {
   produtoId: number;
@@ -137,6 +138,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
 
   const [clientSearchOpen, setClientSearchOpen] = useState(false);
   const [clientInfoOpen, setClientInfoOpen] = useState(false);
+  const [clientReceivablesOpen, setClientReceivablesOpen] = useState(false);
   const [productSearchOpen, setProductSearchOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
 
@@ -1128,6 +1130,15 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                 >
                   <Info className="h-4 w-4" />
                 </Button>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={() => setClientReceivablesOpen(true)}
+                  disabled={!formData.clienteId}
+                  title="Contas a Receber"
+                >
+                  <DollarSign className="h-4 w-4" />
+                </Button>
               </div>
             </div>
 
@@ -1524,6 +1535,12 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       <ClientInfoModal 
         open={clientInfoOpen} 
         onOpenChange={setClientInfoOpen} 
+        clienteId={formData.clienteId} 
+      />
+
+      <ClientReceivablesModal 
+        open={clientReceivablesOpen} 
+        onOpenChange={setClientReceivablesOpen} 
         clienteId={formData.clienteId} 
       />
     </div>
