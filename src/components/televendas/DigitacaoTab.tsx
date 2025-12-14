@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Save, Undo, Search, Plus, Trash2, Info, DollarSign } from 'lucide-react';
+import { Save, Undo, Search, Plus, Trash2, Info, DollarSign, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { metadataService, type Operacao, type Tabela, type FormaPagamento, type PrazoPagto } from '@/services/metadataService';
 import { clientsService, type Client } from '@/services/clientsService';
@@ -19,6 +19,8 @@ import { useStore } from '@/store/useStore';
 import { ProductSearchDialog } from './ProductSearchDialog';
 import { ClientInfoModal } from './ClientInfoModal';
 import { ClientReceivablesModal } from './ClientReceivablesModal';
+import { ClientPurchasesModal } from './ClientPurchasesModal';
+import type { PurchaseOrder } from '@/services/purchasesService';
 
 type OrderItem = {
   produtoId: number;
@@ -139,6 +141,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   const [clientSearchOpen, setClientSearchOpen] = useState(false);
   const [clientInfoOpen, setClientInfoOpen] = useState(false);
   const [clientReceivablesOpen, setClientReceivablesOpen] = useState(false);
+  const [clientPurchasesOpen, setClientPurchasesOpen] = useState(false);
   const [productSearchOpen, setProductSearchOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
 
@@ -159,6 +162,23 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     setObservacoes(createEmptyObservacoes());
     setPreferredFormaId(null);
     setPreferredPrazoId(null);
+  }, []);
+
+  const handleDuplicateOrder = useCallback((purchaseOrder: PurchaseOrder) => {
+    // Map purchase order items to order items format
+    const mappedItems: OrderItem[] = (purchaseOrder.itens || []).map((item) => ({
+      produtoId: item.produtoId,
+      codigoProduto: item.codigoProduto || '',
+      descricao: item.descricao,
+      un: item.un || '',
+      quant: item.quant,
+      descontoPerc: item.descontoPerc || 0,
+      preco: item.preco,
+      total: item.total,
+    }));
+    
+    setItems(mappedItems);
+    toast.success(`${mappedItems.length} itens carregados do pedido ${purchaseOrder.pedido}`);
   }, []);
 
   const [representatives, setRepresentatives] = useState<Representative[]>([]);
@@ -1139,6 +1159,15 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                 >
                   <DollarSign className="h-4 w-4" />
                 </Button>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={() => setClientPurchasesOpen(true)}
+                  disabled={!formData.clienteId}
+                  title="Últimas Compras"
+                >
+                  <History className="h-4 w-4" />
+                </Button>
               </div>
             </div>
 
@@ -1542,6 +1571,14 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
         open={clientReceivablesOpen} 
         onOpenChange={setClientReceivablesOpen} 
         clienteId={formData.clienteId} 
+      />
+
+      <ClientPurchasesModal 
+        open={clientPurchasesOpen} 
+        onOpenChange={setClientPurchasesOpen} 
+        clienteId={formData.clienteId}
+        clienteNome={formData.clienteNome}
+        onDuplicateOrder={handleDuplicateOrder}
       />
     </div>
   );
