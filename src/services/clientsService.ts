@@ -132,7 +132,33 @@ function normalizeClient(raw: any): Client {
   };
 }
 
-async function fetchFromApi({ q, page = 1, limit = 100 }: { q?: string; page?: number; limit?: number; }): Promise<Client[]> {
+type ClientSearchFilters = {
+  query?: string;
+  nome?: string;
+  codigoCliente?: string;
+  fantasia?: string;
+  email?: string;
+  emailDanfe?: string;
+  fone?: string;
+  whatsapp?: string;
+  celular?: string;
+  compradorNome?: string;
+  compradorFone?: string;
+  clienteId?: string | number;
+  uf?: string;
+  cidade?: string;
+  bairro?: string;
+};
+
+async function fetchFromApi({
+  filters,
+  page = 1,
+  limit = 100,
+}: {
+  filters?: ClientSearchFilters;
+  page?: number;
+  limit?: number;
+}): Promise<Client[]> {
   const empresa = authService.getEmpresa();
   if (!empresa) return Promise.reject('Empresa não selecionada');
   const token = authService.getToken();
@@ -141,14 +167,33 @@ async function fetchFromApi({ q, page = 1, limit = 100 }: { q?: string; page?: n
   try {
     const params = new URLSearchParams();
     params.set('empresaId', String(empresa.empresa_id));
-    const qTrim = typeof q === 'string' ? q.trim() : '';
+    const clean = filters || {};
+    const qTrim = typeof clean.query === 'string' ? clean.query.trim() : '';
     const qUpper = qTrim ? qTrim.toUpperCase() : '';
-    if (qUpper) {
-      params.set('q', qUpper);
-      // Backend espera filtro por codigo_cliente para buscas por código (não pelo id)
-      const looksLikeCodigo = /^[0-9A-Za-z]+$/.test(qUpper);
-      if (looksLikeCodigo) params.set('codigoCliente', qUpper);
-    }
+    if (qUpper) params.set('q', qUpper);
+
+    const setParam = (key: keyof ClientSearchFilters, value: any) => {
+      if (value === undefined || value === null) return;
+      const text = String(value).trim();
+      if (text === '') return;
+      params.set(key as string, text);
+    };
+
+    setParam('nome', clean.nome);
+    setParam('codigoCliente', clean.codigoCliente);
+    setParam('fantasia', clean.fantasia);
+    setParam('email', clean.email);
+    setParam('emailDanfe', clean.emailDanfe);
+    setParam('fone', clean.fone);
+    setParam('whatsapp', clean.whatsapp);
+    setParam('celular', clean.celular);
+    setParam('compradorNome', clean.compradorNome);
+    setParam('compradorFone', clean.compradorFone);
+    setParam('clienteId', clean.clienteId);
+    setParam('uf', clean.uf);
+    setParam('cidade', clean.cidade);
+    setParam('bairro', clean.bairro);
+
     if (page) params.set('page', String(page));
     if (limit) params.set('limit', String(limit));
     const url = `${API_BASE}/api/clientes?${params.toString()}`;
@@ -177,18 +222,35 @@ async function fetchFromApi({ q, page = 1, limit = 100 }: { q?: string; page?: n
 
 export const clientsService = {
   // Server-side search with pagination
-  find: async (query?: string, page = 1, limit = 100): Promise<Client[]> => {
-    return fetchFromApi({ q: query, page, limit });
+  find: async (
+    queryOrFilters?: string | ClientSearchFilters,
+    page = 1,
+    limit = 100,
+  ): Promise<Client[]> => {
+    const filters =
+      typeof queryOrFilters === 'string'
+        ? { query: queryOrFilters }
+        : queryOrFilters;
+    return fetchFromApi({ filters, page, limit });
   },
 
   // Backwards-compatible search signature used elsewhere in the app
-  search: async (query?: string, _filters?: any, page = 1, limit = 100): Promise<Client[]> => {
-    return fetchFromApi({ q: query, page, limit });
+  search: async (
+    queryOrFilters?: string | ClientSearchFilters,
+    _filters?: any,
+    page = 1,
+    limit = 100,
+  ): Promise<Client[]> => {
+    const filters =
+      typeof queryOrFilters === 'string'
+        ? { query: queryOrFilters }
+        : queryOrFilters;
+    return fetchFromApi({ filters, page, limit });
   },
 
   // Convenience to get a single client by id using a server search
   getById: async (id: number): Promise<Client | undefined> => {
-    const list = await fetchFromApi({ q: String(id), page: 1, limit: 1 });
+    const list = await fetchFromApi({ filters: { query: String(id) }, page: 1, limit: 1 });
     return list.find((c) => c.id === id);
   },
 

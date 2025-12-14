@@ -10,6 +10,29 @@ export interface Product {
   preco: number;
   estoque?: number;
   categoria?: string;
+  codigoFabrica?: string;
+  ean13?: string;
+  dun14?: string;
+  apresentacao?: string;
+  marca?: string;
+  fornecedorId?: number;
+  divisaoId?: number;
+  fatorCompra?: number;
+  fatorVenda?: number;
+  multiploDeVendas?: number;
+  pesoBruto?: number;
+  pesoLiquido?: number;
+  controlaLote?: boolean;
+  permiteVendaB2b?: boolean;
+  permiteVendaB2c?: boolean;
+  possuiFoto?: boolean;
+  principioAtivo?: string;
+  precoNacionalConsumidor?: number;
+  precoFabrica?: number;
+  descricaoComplementar?: string;
+  codigoSiteB2c?: string;
+  lancamento?: boolean;
+  inativo?: boolean;
 }
 
 interface ProductTabelaPrecoResponse {
@@ -71,6 +94,25 @@ function normalizeProduct(raw: any): Product {
   })();
   const categoria = raw?.categoria ?? raw?.categoria_codigo ?? raw?.categoriaCodigo ?? undefined;
 
+  const boolOrUndefined = (val: any): boolean | undefined => {
+    if (val === undefined || val === null) return undefined;
+    if (typeof val === 'boolean') return val;
+    if (typeof val === 'string') {
+      const text = val.trim().toLowerCase();
+      if (text === 'true' || text === '1' || text === 'yes' || text === 'sim') return true;
+      if (text === 'false' || text === '0' || text === 'no' || text === 'nao' || text === 'não') return false;
+    }
+    if (typeof val === 'number') return val !== 0;
+    return undefined;
+  };
+
+  const numberOrUndefined = (val: any): number | undefined => {
+    if (val === undefined || val === null) return undefined;
+    if (typeof val === 'number') return val;
+    const num = Number(val);
+    return Number.isNaN(num) ? undefined : num;
+  };
+
   return {
     id: Number(id) || 0,
     codigoProduto: codigoProduto ? String(codigoProduto).trim() : undefined,
@@ -79,10 +121,58 @@ function normalizeProduct(raw: any): Product {
     preco,
     estoque: typeof estoque === 'number' ? estoque : undefined,
     categoria: categoria ? String(categoria) : undefined,
+    codigoFabrica: raw?.codigo_fabrica ?? raw?.codigoFabrica,
+    ean13: raw?.ean13 ?? raw?.ean_13 ?? raw?.ean,
+    dun14: raw?.dun14 ?? raw?.dun_14 ?? raw?.dun,
+    apresentacao: raw?.apresentacao,
+    marca: raw?.marca,
+    fornecedorId: numberOrUndefined(raw?.fornecedor_id ?? raw?.fornecedorId),
+    divisaoId: numberOrUndefined(raw?.divisao_id ?? raw?.divisaoId),
+    fatorCompra: numberOrUndefined(raw?.fator_compra ?? raw?.fatorCompra),
+    fatorVenda: numberOrUndefined(raw?.fator_venda ?? raw?.fatorVenda),
+    multiploDeVendas: numberOrUndefined(raw?.multiplo_de_vendas ?? raw?.multiploVendas ?? raw?.multiploVenda),
+    pesoBruto: numberOrUndefined(raw?.peso_bruto ?? raw?.pesoBruto),
+    pesoLiquido: numberOrUndefined(raw?.peso_liquido ?? raw?.pesoLiquido),
+    controlaLote: boolOrUndefined(raw?.controla_lote ?? raw?.controlaLote),
+    permiteVendaB2b: boolOrUndefined(raw?.permite_venda_b2b ?? raw?.permiteVendaB2b),
+    permiteVendaB2c: boolOrUndefined(raw?.permite_venda_b2c ?? raw?.permiteVendaB2c),
+    possuiFoto: boolOrUndefined(raw?.possui_foto ?? raw?.possuiFoto),
+    principioAtivo: raw?.principio_ativo ?? raw?.principioAtivo,
+    precoNacionalConsumidor: numberOrUndefined(raw?.preco_nacional_consumidor ?? raw?.precoNacionalConsumidor),
+    precoFabrica: numberOrUndefined(raw?.preco_fabrica ?? raw?.precoFabrica),
+    descricaoComplementar: raw?.descricao_complementar ?? raw?.descricaoComplementar,
+    codigoSiteB2c: raw?.codigo_site_b2c ?? raw?.codigoSiteB2c,
+    lancamento: boolOrUndefined(raw?.lancamento),
+    inativo: boolOrUndefined(raw?.inativo),
   };
 }
 
-async function fetchFromApi({ q, page = 1, limit = 100 }: { q?: string; page?: number; limit?: number; }): Promise<Product[]> {
+type ProductSearchFilters = {
+  query?: string;
+  descricao?: string;
+  codigoProduto?: string;
+  codigoFabrica?: string;
+  ean13?: string;
+  dun14?: string;
+  marca?: string;
+  principioAtivo?: string;
+  fornecedorId?: number | string;
+  divisaoId?: number | string;
+  comEstoque?: boolean;
+  estoqueZerado?: boolean;
+  lancamento?: boolean;
+  tabelaPrecoId?: number | string;
+};
+
+async function fetchFromApi({
+  filters,
+  page = 1,
+  limit = 100,
+}: {
+  filters?: ProductSearchFilters;
+  page?: number;
+  limit?: number;
+}): Promise<Product[]> {
   const empresa = authService.getEmpresa();
   if (!empresa) return Promise.reject('Empresa não selecionada');
   const token = authService.getToken();
@@ -91,7 +181,47 @@ async function fetchFromApi({ q, page = 1, limit = 100 }: { q?: string; page?: n
   try {
     const params = new URLSearchParams();
     params.set('empresaId', String(empresa.empresa_id));
-    if (q) params.set('q', q);
+    const clean = filters || {};
+    const setParam = (key: keyof ProductSearchFilters, value: any) => {
+      if (value === undefined || value === null) return;
+      const text = String(value).trim();
+      if (text === '') return;
+      params.set(key as string, text);
+    };
+
+    const qTrim = typeof clean.query === 'string' ? clean.query.trim() : '';
+    const hasExplicitTextFilter =
+      !!clean.descricao ||
+      !!clean.codigoProduto ||
+      !!clean.codigoFabrica ||
+      !!clean.ean13 ||
+      !!clean.dun14 ||
+      !!clean.marca ||
+      !!clean.principioAtivo;
+    if (qTrim && !hasExplicitTextFilter) {
+      const looksLikeCode = /^[0-9A-Za-z]+$/.test(qTrim);
+      if (looksLikeCode) {
+        setParam('codigoProduto', qTrim);
+      } else {
+        setParam('descricao', qTrim);
+      }
+    }
+
+    setParam('descricao', clean.descricao);
+    setParam('codigoProduto', clean.codigoProduto);
+    setParam('codigoFabrica', clean.codigoFabrica);
+    setParam('ean13', clean.ean13);
+    setParam('dun14', clean.dun14);
+    setParam('marca', clean.marca);
+    setParam('principioAtivo', clean.principioAtivo);
+    setParam('fornecedorId', clean.fornecedorId);
+    setParam('divisaoId', clean.divisaoId);
+    setParam('tabelaPrecoId', clean.tabelaPrecoId);
+    if (clean.comEstoque === true) params.set('comEstoque', 'true');
+    if (clean.estoqueZerado === true) params.set('estoqueZerado', 'true');
+    if (clean.lancamento === true) params.set('lancamento', 'true');
+    if (clean.lancamento === false) params.set('lancamento', 'false');
+
     if (page) params.set('page', String(page));
     if (limit) params.set('limit', String(limit));
     const url = `${API_BASE}/api/produtos?${params.toString()}`;
@@ -169,11 +299,19 @@ async function fetchPrecoByTabela({
 }
 
 export const productsService = {
-  find: async (query?: string, page = 1, limit = 100): Promise<Product[]> => {
-    return fetchFromApi({ q: query, page, limit });
+  find: async (
+    queryOrFilters?: string | ProductSearchFilters,
+    page = 1,
+    limit = 100,
+  ): Promise<Product[]> => {
+    const filters =
+      typeof queryOrFilters === 'string'
+        ? { query: queryOrFilters }
+        : queryOrFilters;
+    return fetchFromApi({ filters, page, limit });
   },
   search: async (query?: string, page = 1, limit = 100): Promise<Product[]> => {
-    return fetchFromApi({ q: query, page, limit });
+    return fetchFromApi({ filters: { query }, page, limit });
   },
   getById: async (id: number): Promise<Product | undefined> => {
     const list = await fetchFromApi({ q: String(id), page: 1, limit: 1 });
