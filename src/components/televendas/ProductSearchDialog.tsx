@@ -139,15 +139,9 @@ export const ProductSearchDialog = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // Debounced search on filter change
-  useEffect(() => {
-    if (!open) return;
-    const t = setTimeout(() => {
-      loadProducts(true);
-    }, 300);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.descricao, filters.marca, filters.codFabrica, filters.ean13, filters.dun14, filters.pAtivo, filters.comEstoque, filters.estoqueZerado, filters.tabela]);
+  const handleSearch = () => {
+    loadProducts(true);
+  };
 
   const handleClearFilters = () => {
     setFilters(emptyFilters);
@@ -168,38 +162,40 @@ export const ProductSearchDialog = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>Pesquisa Produtos</DialogTitle>
         </DialogHeader>
         
         {/* Filters Section */}
-        <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
+        <div className="border rounded-lg p-3 space-y-2 bg-muted/30 flex-shrink-0">
           {/* Row 1 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium whitespace-nowrap min-w-[70px]">Descrição</label>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+            <div className="col-span-2 flex items-center gap-1">
+              <label className="text-xs font-medium whitespace-nowrap w-16">Descrição</label>
               <Input
                 value={filters.descricao}
                 onChange={(e) => setFilters(prev => ({ ...prev, descricao: e.target.value }))}
-                className="h-8"
+                className="h-7 text-sm"
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               />
             </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium whitespace-nowrap min-w-[50px]">Marca</label>
+            <div className="flex items-center gap-1">
+              <label className="text-xs font-medium whitespace-nowrap w-12">Marca</label>
               <Input
                 value={filters.marca}
                 onChange={(e) => setFilters(prev => ({ ...prev, marca: e.target.value }))}
-                className="h-8"
+                className="h-7 text-sm"
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               />
             </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium whitespace-nowrap min-w-[50px]">Tabela</label>
+            <div className="flex items-center gap-1">
+              <label className="text-xs font-medium whitespace-nowrap w-12">Tabela</label>
               <Select
                 value={filters.tabela}
                 onValueChange={(v) => setFilters(prev => ({ ...prev, tabela: v === '_all' ? '' : v }))}
               >
-                <SelectTrigger className="h-8">
+                <SelectTrigger className="h-7 text-sm">
                   <SelectValue placeholder={loadingTabelas ? '...' : 'Todas'} />
                 </SelectTrigger>
                 <SelectContent>
@@ -212,43 +208,55 @@ export const ProductSearchDialog = ({
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center space-x-2">
+            <div className="col-span-2 flex items-center gap-3 flex-wrap">
+              <div className="flex items-center space-x-1">
                 <Checkbox
                   id="comEstoque"
                   checked={filters.comEstoque}
                   onCheckedChange={(checked) => setFilters(prev => ({ ...prev, comEstoque: !!checked, estoqueZerado: false }))}
+                  className="h-4 w-4"
                 />
-                <label htmlFor="comEstoque" className="text-sm cursor-pointer">Com estoque</label>
+                <label htmlFor="comEstoque" className="text-xs cursor-pointer whitespace-nowrap">Com estoque</label>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-1">
                 <Checkbox
                   id="lancamentos"
                   checked={filters.lancamentos}
                   onCheckedChange={(checked) => setFilters(prev => ({ ...prev, lancamentos: !!checked }))}
+                  className="h-4 w-4"
                 />
-                <label htmlFor="lancamentos" className="text-sm cursor-pointer">Lançamentos</label>
+                <label htmlFor="lancamentos" className="text-xs cursor-pointer whitespace-nowrap">Lançamentos</label>
+              </div>
+              <div className="flex items-center space-x-1">
+                <Checkbox
+                  id="estoqueZerado"
+                  checked={filters.estoqueZerado}
+                  onCheckedChange={(checked) => setFilters(prev => ({ ...prev, estoqueZerado: !!checked, comEstoque: false }))}
+                  className="h-4 w-4"
+                />
+                <label htmlFor="estoqueZerado" className="text-xs cursor-pointer whitespace-nowrap">Estoque zerado</label>
               </div>
             </div>
           </div>
 
           {/* Row 2 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium whitespace-nowrap min-w-[70px]">Cód.Fabrica</label>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+            <div className="flex items-center gap-1">
+              <label className="text-xs font-medium whitespace-nowrap w-16">Cód.Fab</label>
               <Input
                 value={filters.codFabrica}
                 onChange={(e) => setFilters(prev => ({ ...prev, codFabrica: e.target.value }))}
-                className="h-8"
+                className="h-7 text-sm"
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               />
             </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium whitespace-nowrap min-w-[70px]">Fornecedor</label>
+            <div className="flex items-center gap-1">
+              <label className="text-xs font-medium whitespace-nowrap w-16">Fornec.</label>
               <Select
                 value={filters.fornecedor}
                 onValueChange={(v) => setFilters(prev => ({ ...prev, fornecedor: v === '_all' ? '' : v }))}
               >
-                <SelectTrigger className="h-8">
+                <SelectTrigger className="h-7 text-sm">
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
@@ -256,32 +264,67 @@ export const ProductSearchDialog = ({
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="estoqueZerado"
-                  checked={filters.estoqueZerado}
-                  onCheckedChange={(checked) => setFilters(prev => ({ ...prev, estoqueZerado: !!checked, comEstoque: false }))}
-                />
-                <label htmlFor="estoqueZerado" className="text-sm cursor-pointer">Estoque zerado</label>
-              </div>
+            <div className="flex items-center gap-1">
+              <label className="text-xs font-medium whitespace-nowrap w-12">Ean13</label>
+              <Input
+                value={filters.ean13}
+                onChange={(e) => setFilters(prev => ({ ...prev, ean13: e.target.value }))}
+                className="h-7 text-sm"
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              />
             </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium whitespace-nowrap text-xs">Últimas compras a partir de:</label>
+            <div className="flex items-center gap-1">
+              <label className="text-xs font-medium whitespace-nowrap w-12">Divisão</label>
+              <Select
+                value={filters.divisao}
+                onValueChange={(v) => setFilters(prev => ({ ...prev, divisao: v === '_all' ? '' : v }))}
+              >
+                <SelectTrigger className="h-7 text-sm">
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_all">Todas</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-1">
+              <label className="text-xs font-medium whitespace-nowrap w-12">Dun14</label>
+              <Input
+                value={filters.dun14}
+                onChange={(e) => setFilters(prev => ({ ...prev, dun14: e.target.value }))}
+                className="h-7 text-sm"
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              />
+            </div>
+            <div className="flex items-center gap-1">
+              <label className="text-xs font-medium whitespace-nowrap w-12">P. Ativo</label>
+              <Input
+                value={filters.pAtivo}
+                onChange={(e) => setFilters(prev => ({ ...prev, pAtivo: e.target.value }))}
+                className="h-7 text-sm"
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              />
+            </div>
+          </div>
+
+          {/* Row 3 - Date and Actions */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-1">
+              <label className="text-xs font-medium whitespace-nowrap">Últ. compras desde:</label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     size="sm"
                     className={cn(
-                      "h-8 justify-start text-left font-normal",
+                      "h-7 text-xs justify-start text-left font-normal px-2",
                       !filters.ultimasComprasDesde && "text-muted-foreground"
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    <CalendarIcon className="mr-1 h-3 w-3" />
                     {filters.ultimasComprasDesde
                       ? format(filters.ultimasComprasDesde, 'dd/MM/yyyy', { locale: ptBR })
-                      : <span>Selecionar</span>}
+                      : 'Selecionar'}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -295,117 +338,82 @@ export const ProductSearchDialog = ({
                 </PopoverContent>
               </Popover>
             </div>
-          </div>
-
-          {/* Row 3 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium whitespace-nowrap min-w-[70px]">Ean13</label>
-              <Input
-                value={filters.ean13}
-                onChange={(e) => setFilters(prev => ({ ...prev, ean13: e.target.value }))}
-                className="h-8"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium whitespace-nowrap min-w-[70px]">Divisão</label>
-              <Select
-                value={filters.divisao}
-                onValueChange={(v) => setFilters(prev => ({ ...prev, divisao: v === '_all' ? '' : v }))}
-              >
-                <SelectTrigger className="h-8">
-                  <SelectValue placeholder="Todas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_all">Todas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="lg:col-span-2 flex justify-end">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleClearFilters}
-                className="h-8"
+                className="h-7 text-xs"
               >
-                <X className="h-4 w-4 mr-1" />
-                Limpar filtros
+                <X className="h-3 w-3 mr-1" />
+                Limpar
               </Button>
-            </div>
-          </div>
-
-          {/* Row 4 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium whitespace-nowrap min-w-[70px]">Dun14</label>
-              <Input
-                value={filters.dun14}
-                onChange={(e) => setFilters(prev => ({ ...prev, dun14: e.target.value }))}
-                className="h-8"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium whitespace-nowrap min-w-[70px]">P. Ativo</label>
-              <Input
-                value={filters.pAtivo}
-                onChange={(e) => setFilters(prev => ({ ...prev, pAtivo: e.target.value }))}
-                className="h-8"
-              />
+              <Button
+                size="sm"
+                onClick={handleSearch}
+                className="h-7 text-xs"
+                disabled={loading}
+              >
+                <Search className="h-3 w-3 mr-1" />
+                Buscar
+              </Button>
             </div>
           </div>
         </div>
 
         {/* Products Table */}
-        <div className="flex-1 overflow-auto min-h-[300px] border rounded-lg" onScroll={handleScroll}>
+        <div className="flex-1 overflow-auto min-h-[250px] border rounded-lg" onScroll={handleScroll}>
           {loading && products.length === 0 ? (
             <div className="py-6 text-center text-sm text-muted-foreground">Carregando produtos...</div>
           ) : error ? (
             <div className="py-6 text-center text-sm text-destructive">{error}</div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[80px]">Código</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead className="w-[120px]">Apresentação</TableHead>
-                  <TableHead className="w-[60px]">UN</TableHead>
-                  <TableHead className="w-[80px] text-right">Estoque</TableHead>
-                  <TableHead className="w-[100px] text-right">Preço</TableHead>
-                  <TableHead className="w-[120px]">Cód.Fab</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {products.map((product) => (
-                  <TableRow
-                    key={product.id}
-                    className="cursor-pointer hover:bg-primary/10"
-                    onClick={() => handleSelectProduct(product)}
-                  >
-                    <TableCell className="font-mono">{product.codigoProduto ?? product.id}</TableCell>
-                    <TableCell>{product.descricao}</TableCell>
-                    <TableCell>{/* Apresentação - to be mapped from API if available */}</TableCell>
-                    <TableCell>{product.un}</TableCell>
-                    <TableCell className="text-right">{product.estoque ?? '-'}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(product.preco)}</TableCell>
-                    <TableCell>{product.codigoProduto ?? ''}</TableCell>
-                  </TableRow>
-                ))}
-                {products.length === 0 && !loading && (
+            <div className="overflow-x-auto">
+              <Table className="min-w-[700px]">
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">
-                      Nenhum produto encontrado
-                    </TableCell>
+                    <TableHead className="w-[70px] text-xs">Código</TableHead>
+                    <TableHead className="text-xs min-w-[200px]">Descrição</TableHead>
+                    <TableHead className="w-[100px] text-xs">Apresentação</TableHead>
+                    <TableHead className="w-[50px] text-xs">UN</TableHead>
+                    <TableHead className="w-[70px] text-xs text-right">Estoque</TableHead>
+                    <TableHead className="w-[80px] text-xs text-right">Preço</TableHead>
+                    <TableHead className="w-[90px] text-xs">Cód.Fab</TableHead>
                   </TableRow>
-                )}
-                {loading && products.length > 0 && (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center text-sm text-muted-foreground">
-                      Carregando mais...
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {products.map((product) => (
+                    <TableRow
+                      key={product.id}
+                      className="cursor-pointer hover:bg-primary/10"
+                      onClick={() => handleSelectProduct(product)}
+                    >
+                      <TableCell className="font-mono text-xs py-2">{product.codigoProduto ?? product.id}</TableCell>
+                      <TableCell className="text-xs py-2">{product.descricao}</TableCell>
+                      <TableCell className="text-xs py-2">{/* Apresentação */}</TableCell>
+                      <TableCell className="text-xs py-2">{product.un}</TableCell>
+                      <TableCell className="text-xs text-right py-2">{product.estoque ?? '-'}</TableCell>
+                      <TableCell className="text-xs text-right py-2">{formatCurrency(product.preco)}</TableCell>
+                      <TableCell className="text-xs py-2">{product.codigoProduto ?? ''}</TableCell>
+                    </TableRow>
+                  ))}
+                  {products.length === 0 && !loading && (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">
+                        Nenhum produto encontrado
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {loading && products.length > 0 && (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center text-sm text-muted-foreground">
+                        Carregando mais...
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </div>
       </DialogContent>
