@@ -168,195 +168,201 @@ export const ProductSearchDialog = ({
         </DialogHeader>
         
         {/* Filters Section */}
-        <div className="border rounded-lg p-3 space-y-2 bg-muted/30 flex-shrink-0">
-          {/* Row 1 */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-            <div className="col-span-2 flex items-center gap-1">
-              <label className="text-xs font-medium whitespace-nowrap w-16">Descrição</label>
-              <Input
-                value={filters.descricao}
-                onChange={(e) => setFilters(prev => ({ ...prev, descricao: e.target.value }))}
-                className="h-7 text-sm"
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              />
-            </div>
-            <div className="flex items-center gap-1">
-              <label className="text-xs font-medium whitespace-nowrap w-12">Marca</label>
-              <Input
-                value={filters.marca}
-                onChange={(e) => setFilters(prev => ({ ...prev, marca: e.target.value }))}
-                className="h-7 text-sm"
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              />
-            </div>
-            <div className="flex items-center gap-1">
-              <label className="text-xs font-medium whitespace-nowrap w-12">Tabela</label>
-              <Select
-                value={filters.tabela}
-                onValueChange={(v) => setFilters(prev => ({ ...prev, tabela: v === '_all' ? '' : v }))}
-              >
-                <SelectTrigger className="h-7 text-sm">
-                  <SelectValue placeholder={loadingTabelas ? '...' : 'Todas'} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_all">Todas</SelectItem>
-                  {tabelas.map((t) => (
-                    <SelectItem key={String(t.id)} value={String(t.id)}>
-                      {t.codigo ? `${t.codigo} - ${t.descricao}` : t.descricao}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="col-span-2 flex items-center gap-3 flex-wrap">
-              <div className="flex items-center space-x-1">
-                <Checkbox
-                  id="comEstoque"
-                  checked={filters.comEstoque}
-                  onCheckedChange={(checked) => setFilters(prev => ({ ...prev, comEstoque: !!checked, estoqueZerado: false }))}
-                  className="h-4 w-4"
-                />
-                <label htmlFor="comEstoque" className="text-xs cursor-pointer whitespace-nowrap">Com estoque</label>
-              </div>
-              <div className="flex items-center space-x-1">
-                <Checkbox
-                  id="lancamentos"
-                  checked={filters.lancamentos}
-                  onCheckedChange={(checked) => setFilters(prev => ({ ...prev, lancamentos: !!checked }))}
-                  className="h-4 w-4"
-                />
-                <label htmlFor="lancamentos" className="text-xs cursor-pointer whitespace-nowrap">Lançamentos</label>
-              </div>
-              <div className="flex items-center space-x-1">
-                <Checkbox
-                  id="estoqueZerado"
-                  checked={filters.estoqueZerado}
-                  onCheckedChange={(checked) => setFilters(prev => ({ ...prev, estoqueZerado: !!checked, comEstoque: false }))}
-                  className="h-4 w-4"
-                />
-                <label htmlFor="estoqueZerado" className="text-xs cursor-pointer whitespace-nowrap">Estoque zerado</label>
-              </div>
-            </div>
-          </div>
-
-          {/* Row 2 */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-            <div className="flex items-center gap-1">
-              <label className="text-xs font-medium whitespace-nowrap w-16">Cód.Fab</label>
-              <Input
-                value={filters.codFabrica}
-                onChange={(e) => setFilters(prev => ({ ...prev, codFabrica: e.target.value }))}
-                className="h-7 text-sm"
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              />
-            </div>
-            <div className="flex items-center gap-1">
-              <label className="text-xs font-medium whitespace-nowrap w-16">Fornec.</label>
-              <Select
-                value={filters.fornecedor}
-                onValueChange={(v) => setFilters(prev => ({ ...prev, fornecedor: v === '_all' ? '' : v }))}
-              >
-                <SelectTrigger className="h-7 text-sm">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_all">Todos</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center gap-1">
-              <label className="text-xs font-medium whitespace-nowrap w-12">Ean13</label>
-              <Input
-                value={filters.ean13}
-                onChange={(e) => setFilters(prev => ({ ...prev, ean13: e.target.value }))}
-                className="h-7 text-sm"
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              />
-            </div>
-            <div className="flex items-center gap-1">
-              <label className="text-xs font-medium whitespace-nowrap w-12">Divisão</label>
-              <Select
-                value={filters.divisao}
-                onValueChange={(v) => setFilters(prev => ({ ...prev, divisao: v === '_all' ? '' : v }))}
-              >
-                <SelectTrigger className="h-7 text-sm">
-                  <SelectValue placeholder="Todas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_all">Todas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center gap-1">
-              <label className="text-xs font-medium whitespace-nowrap w-12">Dun14</label>
-              <Input
-                value={filters.dun14}
-                onChange={(e) => setFilters(prev => ({ ...prev, dun14: e.target.value }))}
-                className="h-7 text-sm"
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              />
-            </div>
-            <div className="flex items-center gap-1">
-              <label className="text-xs font-medium whitespace-nowrap w-12">P. Ativo</label>
-              <Input
-                value={filters.pAtivo}
-                onChange={(e) => setFilters(prev => ({ ...prev, pAtivo: e.target.value }))}
-                className="h-7 text-sm"
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              />
-            </div>
-          </div>
-
-          {/* Row 3 - Date and Actions */}
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-1">
-              <label className="text-xs font-medium whitespace-nowrap">Últ. compras desde:</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={cn(
-                      "h-7 text-xs justify-start text-left font-normal px-2",
-                      !filters.ultimasComprasDesde && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-1 h-3 w-3" />
-                    {filters.ultimasComprasDesde
-                      ? format(filters.ultimasComprasDesde, 'dd/MM/yyyy', { locale: ptBR })
-                      : 'Selecionar'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={filters.ultimasComprasDesde}
-                    onSelect={(date) => setFilters(prev => ({ ...prev, ultimasComprasDesde: date }))}
-                    locale={ptBR}
-                    initialFocus
+        <div className="border rounded-lg p-4 bg-muted/30 flex-shrink-0">
+          <div className="flex flex-col gap-3">
+            {/* Left side - Form fields */}
+            <div className="flex gap-6">
+              {/* Column 1 */}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium w-20 text-right">Descrição</label>
+                  <Input
+                    value={filters.descricao}
+                    onChange={(e) => setFilters(prev => ({ ...prev, descricao: e.target.value }))}
+                    className="h-8 w-40"
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                   />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleClearFilters}
-                className="h-7 text-xs"
-              >
-                <X className="h-3 w-3 mr-1" />
-                Limpar
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleSearch}
-                className="h-7 text-xs"
-                disabled={loading}
-              >
-                <Search className="h-3 w-3 mr-1" />
-                Buscar
-              </Button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium w-20 text-right">Cód.Fabrica</label>
+                  <Input
+                    value={filters.codFabrica}
+                    onChange={(e) => setFilters(prev => ({ ...prev, codFabrica: e.target.value }))}
+                    className="h-8 w-40"
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium w-20 text-right">Ean13</label>
+                  <Input
+                    value={filters.ean13}
+                    onChange={(e) => setFilters(prev => ({ ...prev, ean13: e.target.value }))}
+                    className="h-8 w-40"
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium w-20 text-right">Dun14</label>
+                  <Input
+                    value={filters.dun14}
+                    onChange={(e) => setFilters(prev => ({ ...prev, dun14: e.target.value }))}
+                    className="h-8 w-40"
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  />
+                </div>
+              </div>
+
+              {/* Column 2 */}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium w-20 text-right">Marca</label>
+                  <Input
+                    value={filters.marca}
+                    onChange={(e) => setFilters(prev => ({ ...prev, marca: e.target.value }))}
+                    className="h-8 w-40"
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium w-20 text-right">Fornecedor</label>
+                  <Select
+                    value={filters.fornecedor}
+                    onValueChange={(v) => setFilters(prev => ({ ...prev, fornecedor: v === '_all' ? '' : v }))}
+                  >
+                    <SelectTrigger className="h-8 w-40">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_all">Todos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium w-20 text-right">Divisão</label>
+                  <Select
+                    value={filters.divisao}
+                    onValueChange={(v) => setFilters(prev => ({ ...prev, divisao: v === '_all' ? '' : v }))}
+                  >
+                    <SelectTrigger className="h-8 w-40">
+                      <SelectValue placeholder="Todas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_all">Todas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium w-20 text-right">P. Ativo</label>
+                  <Input
+                    value={filters.pAtivo}
+                    onChange={(e) => setFilters(prev => ({ ...prev, pAtivo: e.target.value }))}
+                    className="h-8 w-40"
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  />
+                </div>
+              </div>
+
+              {/* Column 3 - Tabela */}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium w-14 text-right">Tabela</label>
+                  <Select
+                    value={filters.tabela}
+                    onValueChange={(v) => setFilters(prev => ({ ...prev, tabela: v === '_all' ? '' : v }))}
+                  >
+                    <SelectTrigger className="h-8 w-28">
+                      <SelectValue placeholder={loadingTabelas ? '...' : 'Todas'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_all">Todas</SelectItem>
+                      {tabelas.map((t) => (
+                        <SelectItem key={String(t.id)} value={String(t.id)}>
+                          {t.codigo ? `${t.codigo}` : t.descricao}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Column 4 - Checkboxes and date */}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="comEstoque"
+                    checked={filters.comEstoque}
+                    onCheckedChange={(checked) => setFilters(prev => ({ ...prev, comEstoque: !!checked, estoqueZerado: false }))}
+                  />
+                  <label htmlFor="comEstoque" className="text-sm cursor-pointer whitespace-nowrap">Com estoque</label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="estoqueZerado"
+                    checked={filters.estoqueZerado}
+                    onCheckedChange={(checked) => setFilters(prev => ({ ...prev, estoqueZerado: !!checked, comEstoque: false }))}
+                  />
+                  <label htmlFor="estoqueZerado" className="text-sm cursor-pointer whitespace-nowrap">Estoque zerado</label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium whitespace-nowrap">Últ. compras desde:</label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={cn(
+                          "h-8 justify-start text-left font-normal px-2",
+                          !filters.ultimasComprasDesde && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-1 h-4 w-4" />
+                        {filters.ultimasComprasDesde
+                          ? format(filters.ultimasComprasDesde, 'dd/MM/yyyy', { locale: ptBR })
+                          : 'Selecionar'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={filters.ultimasComprasDesde}
+                        onSelect={(date) => setFilters(prev => ({ ...prev, ultimasComprasDesde: date }))}
+                        locale={ptBR}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+
+              {/* Column 5 - More checkboxes and buttons */}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="lancamentos"
+                    checked={filters.lancamentos}
+                    onCheckedChange={(checked) => setFilters(prev => ({ ...prev, lancamentos: !!checked }))}
+                  />
+                  <label htmlFor="lancamentos" className="text-sm cursor-pointer whitespace-nowrap">Lançamentos</label>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClearFilters}
+                  className="h-8"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Limpar filtros
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSearch}
+                  className="h-8"
+                  disabled={loading}
+                >
+                  <Search className="h-4 w-4 mr-1" />
+                  Buscar
+                </Button>
+              </div>
             </div>
           </div>
         </div>
