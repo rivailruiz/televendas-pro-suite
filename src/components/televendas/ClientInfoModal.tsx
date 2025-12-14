@@ -1,0 +1,354 @@
+import { useEffect, useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
+import { clientsService } from '@/services/clientsService';
+
+interface ClientInfoModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  clienteId: number;
+}
+
+interface ClientDetail {
+  // Identificação
+  codigo?: string;
+  inativo?: boolean;
+  cnpjCpf?: string;
+  inscEstadual?: string;
+  inscMunicipal?: string;
+  rg?: string;
+  nome?: string;
+  fantasia?: string;
+  endereco?: string;
+  uf?: string;
+  cidade?: string;
+  bairro?: string;
+  complemento?: string;
+  cep?: string;
+  telefone?: string;
+  fax?: string;
+  email?: string;
+  site?: string;
+  rota?: string;
+  
+  // Comercial
+  contatos?: Array<{ nome?: string; celular?: string; aniversario?: string }>;
+  classe?: string;
+  checkouts?: number;
+  nielsen?: string;
+  rede?: string;
+  tabelas?: string;
+  descontoFinanceiroBoleto?: number;
+  observacaoComercial?: string;
+  
+  // Financeiro
+  credito?: string;
+  boleto?: boolean;
+  prazo?: string;
+  limite?: number;
+  aberto?: number;
+  disponivel?: number;
+  observacaoFinanceiro?: string;
+  
+  // Itinerário
+  representantes?: Array<{ id?: string | number; nome?: string }>;
+}
+
+const ReadOnlyField = ({ label, value, className = '' }: { label: string; value?: string | number | null; className?: string }) => (
+  <div className={className}>
+    <label className="text-xs font-medium text-muted-foreground mb-1 block">{label}</label>
+    <Input 
+      readOnly 
+      value={value ?? ''} 
+      className="h-8 text-sm bg-muted/30 cursor-default" 
+    />
+  </div>
+);
+
+export const ClientInfoModal = ({ open, onOpenChange, clienteId }: ClientInfoModalProps) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<ClientDetail | null>(null);
+
+  useEffect(() => {
+    if (!open || !clienteId) return;
+    
+    const fetchDetail = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const raw = await clientsService.getDetail(clienteId);
+        // Normalize data from API
+        const detail: ClientDetail = {
+          // Identificação
+          codigo: raw?.codigo ?? raw?.codigo_cliente ?? raw?.codigoCliente ?? '',
+          inativo: raw?.inativo ?? raw?.status === 'inativo' ? true : false,
+          cnpjCpf: raw?.cnpj_cpf ?? raw?.cnpjCpf ?? raw?.cnpj ?? raw?.cpf ?? '',
+          inscEstadual: raw?.insc_estadual ?? raw?.inscEstadual ?? raw?.inscricaoEstadual ?? '',
+          inscMunicipal: raw?.insc_municipal ?? raw?.inscMunicipal ?? raw?.inscricaoMunicipal ?? '',
+          rg: raw?.rg ?? '',
+          nome: raw?.nome ?? raw?.razao_social ?? raw?.razaoSocial ?? '',
+          fantasia: raw?.fantasia ?? raw?.nome_fantasia ?? raw?.nomeFantasia ?? '',
+          endereco: raw?.endereco ?? raw?.logradouro ?? '',
+          uf: raw?.uf ?? raw?.estado ?? '',
+          cidade: raw?.cidade ?? raw?.municipio ?? '',
+          bairro: raw?.bairro ?? '',
+          complemento: raw?.complemento ?? '',
+          cep: raw?.cep ?? '',
+          telefone: raw?.telefone ?? raw?.fone ?? raw?.phone ?? '',
+          fax: raw?.fax ?? '',
+          email: raw?.email ?? '',
+          site: raw?.site ?? raw?.website ?? '',
+          rota: raw?.rota ?? raw?.rotaNome ?? raw?.rota_nome ?? '',
+          
+          // Comercial
+          contatos: Array.isArray(raw?.contatos) ? raw.contatos.map((c: any) => ({
+            nome: c?.nome ?? c?.contato ?? '',
+            celular: c?.celular ?? c?.telefone ?? c?.fone ?? '',
+            aniversario: c?.aniversario ?? c?.dataNascimento ?? c?.data_nascimento ?? '',
+          })) : [],
+          classe: raw?.classe ?? raw?.segmento ?? raw?.segmentoNome ?? '',
+          checkouts: raw?.checkouts ?? raw?.checkout ?? 0,
+          nielsen: raw?.nielsen ?? '',
+          rede: raw?.rede ?? raw?.redeNome ?? raw?.rede_nome ?? '',
+          tabelas: raw?.tabelas ?? raw?.tabelaPreco ?? raw?.tabela_preco ?? '',
+          descontoFinanceiroBoleto: raw?.desconto_financeiro_boleto ?? raw?.descontoFinanceiroBoleto ?? raw?.descontoBoleto ?? 0,
+          observacaoComercial: raw?.observacao_comercial ?? raw?.observacaoComercial ?? raw?.obs ?? raw?.observacao ?? '',
+          
+          // Financeiro
+          credito: raw?.credito ?? raw?.statusCredito ?? raw?.status_credito ?? '',
+          boleto: raw?.boleto ?? raw?.usaBoleto ?? raw?.usa_boleto ?? false,
+          prazo: raw?.prazo ?? raw?.prazoPagamento ?? raw?.prazo_pagamento ?? '',
+          limite: raw?.limite ?? raw?.limiteCredito ?? raw?.limite_credito ?? 0,
+          aberto: raw?.aberto ?? raw?.valorAberto ?? raw?.valor_aberto ?? 0,
+          disponivel: raw?.disponivel ?? raw?.limiteDisponivel ?? raw?.limite_disponivel ?? 0,
+          observacaoFinanceiro: raw?.observacao_financeiro ?? raw?.observacaoFinanceiro ?? raw?.obsFinanceiro ?? raw?.obs_financeiro ?? '',
+          
+          // Itinerário
+          representantes: Array.isArray(raw?.representantes) ? raw.representantes.map((r: any) => ({
+            id: r?.id ?? r?.codigo ?? r?.codigo_representante ?? r?.codigoRepresentante ?? '',
+            nome: r?.nome ?? '',
+          })) : [],
+        };
+        setData(detail);
+      } catch (e: any) {
+        setError(String(e) || 'Erro ao carregar dados do cliente');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDetail();
+  }, [open, clienteId]);
+
+  const formatCurrency = (value?: number) => {
+    if (value == null) return '';
+    return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Informações Cadastrais</DialogTitle>
+        </DialogHeader>
+        
+        {loading ? (
+          <div className="space-y-4 p-4">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-3/4" />
+            <Skeleton className="h-8 w-1/2" />
+            <Skeleton className="h-32 w-full" />
+          </div>
+        ) : error ? (
+          <div className="p-4 text-center text-destructive">{error}</div>
+        ) : (
+          <Tabs defaultValue="identificacao" className="flex-1 overflow-hidden flex flex-col">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="identificacao">Identificação</TabsTrigger>
+              <TabsTrigger value="comercial">Comercial</TabsTrigger>
+              <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
+              <TabsTrigger value="itinerario">Itinerário</TabsTrigger>
+            </TabsList>
+
+            <div className="flex-1 overflow-y-auto mt-4">
+              {/* Identificação */}
+              <TabsContent value="identificacao" className="m-0 space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <ReadOnlyField label="Código" value={data?.codigo} />
+                  <div className="flex items-center gap-2 pt-6">
+                    <Checkbox checked={data?.inativo ?? false} disabled />
+                    <label className="text-sm">Inativo</label>
+                  </div>
+                  <ReadOnlyField label="CNPJ/CPF" value={data?.cnpjCpf} className="col-span-1" />
+                  <ReadOnlyField label="Insc. Est." value={data?.inscEstadual} />
+                </div>
+                
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <ReadOnlyField label="Nome" value={data?.nome} className="col-span-2 md:col-span-3" />
+                  <ReadOnlyField label="Insc. Mun." value={data?.inscMunicipal} />
+                </div>
+                
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <ReadOnlyField label="Fantasia" value={data?.fantasia} className="col-span-2 md:col-span-3" />
+                  <ReadOnlyField label="RG" value={data?.rg} />
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <ReadOnlyField label="Endereço" value={data?.endereco} className="md:col-span-3" />
+                  <ReadOnlyField label="Bairro" value={data?.bairro} />
+                </div>
+                
+                <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                  <ReadOnlyField label="UF" value={data?.uf} className="col-span-1" />
+                  <ReadOnlyField label="Cidade" value={data?.cidade} className="col-span-2" />
+                  <ReadOnlyField label="CEP" value={data?.cep} />
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <ReadOnlyField label="Complemento" value={data?.complemento} />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <ReadOnlyField label="Telefone" value={data?.telefone} />
+                  <ReadOnlyField label="Fax" value={data?.fax} />
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <ReadOnlyField label="Email" value={data?.email} />
+                  <ReadOnlyField label="Site" value={data?.site} />
+                </div>
+                
+                <ReadOnlyField label="Rota" value={data?.rota} />
+              </TabsContent>
+
+              {/* Comercial */}
+              <TabsContent value="comercial" className="m-0 space-y-4">
+                {(data?.contatos && data.contatos.length > 0) && (
+                  <div className="space-y-2">
+                    {data.contatos.slice(0, 2).map((contato, idx) => (
+                      <div key={idx} className="grid grid-cols-3 gap-3">
+                        <ReadOnlyField label={idx === 0 ? "Contatos" : ""} value={contato.nome} />
+                        <ReadOnlyField label={idx === 0 ? "Celular" : ""} value={contato.celular} />
+                        <ReadOnlyField label={idx === 0 ? "Aniversário" : ""} value={contato.aniversario} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {(!data?.contatos || data.contatos.length === 0) && (
+                  <div className="grid grid-cols-3 gap-3">
+                    <ReadOnlyField label="Contatos" value="" />
+                    <ReadOnlyField label="Celular" value="" />
+                    <ReadOnlyField label="Aniversário" value="" />
+                  </div>
+                )}
+                
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <ReadOnlyField label="Classe" value={data?.classe} className="md:col-span-2" />
+                  <ReadOnlyField label="Checkouts" value={data?.checkouts} />
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <ReadOnlyField label="Nielsen" value={data?.nielsen} />
+                  <ReadOnlyField label="Rede" value={data?.rede} />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <ReadOnlyField label="Tabelas" value={data?.tabelas} />
+                  <div className="flex items-end gap-2">
+                    <ReadOnlyField label="Desconto financeiro no boleto" value={formatCurrency(data?.descontoFinanceiroBoleto)} className="flex-1" />
+                    <span className="text-sm pb-2">(%)</span>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Observações</label>
+                  <Textarea 
+                    readOnly 
+                    value={data?.observacaoComercial ?? ''} 
+                    className="min-h-[120px] text-sm bg-muted/30 cursor-default resize-none"
+                  />
+                </div>
+              </TabsContent>
+
+              {/* Financeiro */}
+              <TabsContent value="financeiro" className="m-0 space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 items-end">
+                  <ReadOnlyField label="Crédito" value={data?.credito} />
+                  <div className="flex items-center gap-2 pb-1">
+                    <Checkbox checked={data?.boleto ?? false} disabled />
+                    <label className="text-sm">Boleto</label>
+                  </div>
+                  <ReadOnlyField label="Prazo" value={data?.prazo} className="md:col-span-2" />
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:justify-end">
+                  <div className="md:col-start-3">
+                    <ReadOnlyField label="Limite" value={formatCurrency(data?.limite)} />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="md:col-start-3">
+                    <ReadOnlyField label="Aberto" value={formatCurrency(data?.aberto)} />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="md:col-start-3">
+                    <ReadOnlyField label="Disponível" value={formatCurrency(data?.disponivel)} />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Observações</label>
+                  <Textarea 
+                    readOnly 
+                    value={data?.observacaoFinanceiro ?? ''} 
+                    className="min-h-[150px] text-sm bg-muted/30 cursor-default resize-none"
+                  />
+                </div>
+              </TabsContent>
+
+              {/* Itinerário */}
+              <TabsContent value="itinerario" className="m-0">
+                <div className="border rounded-md">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-24">Repr_id</TableHead>
+                        <TableHead>Nome</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(data?.representantes && data.representantes.length > 0) ? (
+                        data.representantes.map((rep, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell>{rep.id}</TableCell>
+                            <TableCell>{rep.nome}</TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={2} className="text-center text-sm text-muted-foreground">
+                            Nenhum representante cadastrado
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </TabsContent>
+            </div>
+          </Tabs>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};

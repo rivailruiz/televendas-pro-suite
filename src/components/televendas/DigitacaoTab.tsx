@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Save, Undo, Search, Plus, Trash2 } from 'lucide-react';
+import { Save, Undo, Search, Plus, Trash2, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { metadataService, type Operacao, type Tabela, type FormaPagamento, type PrazoPagto } from '@/services/metadataService';
 import { clientsService, type Client } from '@/services/clientsService';
@@ -17,6 +17,7 @@ import { formatCurrency } from '@/utils/format';
 import { ordersService } from '@/services/ordersService';
 import { useStore } from '@/store/useStore';
 import { ProductSearchDialog } from './ProductSearchDialog';
+import { ClientInfoModal } from './ClientInfoModal';
 
 type OrderItem = {
   produtoId: number;
@@ -135,6 +136,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   const [prazosError, setPrazosError] = useState<string | null>(null);
 
   const [clientSearchOpen, setClientSearchOpen] = useState(false);
+  const [clientInfoOpen, setClientInfoOpen] = useState(false);
   const [productSearchOpen, setProductSearchOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
 
@@ -1053,69 +1055,80 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
 
             <div>
               <label className="text-sm font-medium mb-2 block">Cliente *</label>
-              <Dialog open={clientSearchOpen} onOpenChange={setClientSearchOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start">
-                    <Search className="h-4 w-4 mr-2" />
-                    {formData.clienteNome || 'Buscar cliente (F3)'}
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>Buscar Cliente</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <Input 
-                      placeholder="Digite nome ou código..."
-                      value={clientSearch}
-                      onChange={(e) => setClientSearch(e.target.value)}
-                      autoFocus
-                    />
-                    <div className="max-h-96 overflow-auto" onScroll={(e) => {
-                      const el = e.currentTarget;
-                      if (clientHasMore && !loadingClients && el.scrollTop + el.clientHeight >= el.scrollHeight - 24) {
-                        loadClients(false);
-                      }
-                    }}>
-                      {loadingClients ? (
-                        <div className="py-6 text-center text-sm text-muted-foreground">Carregando clientes...</div>
-                      ) : clientsError ? (
-                        <div className="py-6 text-center text-sm text-red-600">{clientsError}</div>
-                      ) : (
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Código</TableHead>
-                              <TableHead>Nome</TableHead>
-                              <TableHead>Cidade</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {filteredClients.map((client) => (
-                              <TableRow
-                                key={client.id}
-                                className="cursor-pointer"
-                                onClick={() => handleSelectClient(client)}
-                              >
-                                <TableCell>{client.codigoCliente ?? ''}</TableCell>
-                                <TableCell>{client.nome}</TableCell>
-                                <TableCell>{client.cidade}</TableCell>
-                              </TableRow>
-                            ))}
-                            {filteredClients.length === 0 && (
+              <div className="flex gap-1">
+                <Dialog open={clientSearchOpen} onOpenChange={setClientSearchOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="flex-1 justify-start">
+                      <Search className="h-4 w-4 mr-2" />
+                      {formData.clienteNome || 'Buscar cliente (F3)'}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Buscar Cliente</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <Input 
+                        placeholder="Digite nome ou código..."
+                        value={clientSearch}
+                        onChange={(e) => setClientSearch(e.target.value)}
+                        autoFocus
+                      />
+                      <div className="max-h-96 overflow-auto" onScroll={(e) => {
+                        const el = e.currentTarget;
+                        if (clientHasMore && !loadingClients && el.scrollTop + el.clientHeight >= el.scrollHeight - 24) {
+                          loadClients(false);
+                        }
+                      }}>
+                        {loadingClients ? (
+                          <div className="py-6 text-center text-sm text-muted-foreground">Carregando clientes...</div>
+                        ) : clientsError ? (
+                          <div className="py-6 text-center text-sm text-red-600">{clientsError}</div>
+                        ) : (
+                          <Table>
+                            <TableHeader>
                               <TableRow>
-                                <TableCell colSpan={3} className="text-center text-sm text-muted-foreground">
-                                  Nenhum cliente encontrado
-                                </TableCell>
+                                <TableHead>Código</TableHead>
+                                <TableHead>Nome</TableHead>
+                                <TableHead>Cidade</TableHead>
                               </TableRow>
-                            )}
-                          </TableBody>
-                        </Table>
-                      )}
+                            </TableHeader>
+                            <TableBody>
+                              {filteredClients.map((client) => (
+                                <TableRow
+                                  key={client.id}
+                                  className="cursor-pointer"
+                                  onClick={() => handleSelectClient(client)}
+                                >
+                                  <TableCell>{client.codigoCliente ?? ''}</TableCell>
+                                  <TableCell>{client.nome}</TableCell>
+                                  <TableCell>{client.cidade}</TableCell>
+                                </TableRow>
+                              ))}
+                              {filteredClients.length === 0 && (
+                                <TableRow>
+                                  <TableCell colSpan={3} className="text-center text-sm text-muted-foreground">
+                                    Nenhum cliente encontrado
+                                  </TableCell>
+                                </TableRow>
+                              )}
+                            </TableBody>
+                          </Table>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
+                  </DialogContent>
+                </Dialog>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={() => setClientInfoOpen(true)}
+                  disabled={!formData.clienteId}
+                  title="Informações do cliente"
+                >
+                  <Info className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             <div>
@@ -1507,6 +1520,12 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           <span>Salvar Pedido</span>
         </Button>
       </div>
+
+      <ClientInfoModal 
+        open={clientInfoOpen} 
+        onOpenChange={setClientInfoOpen} 
+        clienteId={formData.clienteId} 
+      />
     </div>
   );
 };
