@@ -70,6 +70,11 @@ export const ProductSearchDialog = ({
   const [tabelas, setTabelas] = useState<Tabela[]>([]);
   const [loadingTabelas, setLoadingTabelas] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(true);
+  const formatPercent = (value?: number) =>
+    value == null ? '-' : `${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+  const formatNumber = (value?: number, maximumFractionDigits = 2) =>
+    value == null ? '-' : value.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits });
+  const formatCurrencyOrDash = (value?: number) => (value == null ? '-' : formatCurrency(value));
 
   const PRODUCT_LIMIT = 100;
 
@@ -168,38 +173,6 @@ export const ProductSearchDialog = ({
           <DialogTitle>Pesquisa Produtos</DialogTitle>
         </DialogHeader>
         
-        {/* Quick search + Filter toggle */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <div className="flex-1 flex items-center gap-2">
-            <Input
-              placeholder="Buscar por descrição..."
-              value={filters.descricao}
-              onChange={(e) => setFilters(prev => ({ ...prev, descricao: e.target.value }))}
-              className="h-9 max-w-md"
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            />
-            <Button
-              size="sm"
-              onClick={handleSearch}
-              className="h-9"
-              disabled={loading}
-            >
-              <Search className="h-4 w-4 mr-1" />
-              Buscar
-            </Button>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setFiltersOpen(!filtersOpen)}
-            className="h-9"
-          >
-            <Filter className="h-4 w-4 mr-1" />
-            Filtros
-            {filtersOpen ? <ChevronUp className="h-4 w-4 ml-1" /> : <ChevronDown className="h-4 w-4 ml-1" />}
-          </Button>
-        </div>
-
         {/* Collapsible Filters Section */}
         <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
           <CollapsibleContent>
@@ -286,7 +259,7 @@ export const ProductSearchDialog = ({
                         <SelectItem value="_all">Todas</SelectItem>
                         {tabelas.map((t) => (
                           <SelectItem key={String(t.id)} value={String(t.id)}>
-                            {t.codigo ? `${t.codigo}` : t.descricao}
+                            {t.descricao}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -382,6 +355,38 @@ export const ProductSearchDialog = ({
           </CollapsibleContent>
         </Collapsible>
 
+        {/* Quick search + Filter toggle */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex-1 flex items-center gap-2">
+            <Input
+              placeholder="Buscar por descrição..."
+              value={filters.descricao}
+              onChange={(e) => setFilters(prev => ({ ...prev, descricao: e.target.value }))}
+              className="h-9 max-w-md"
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            />
+            <Button
+              size="sm"
+              onClick={handleSearch}
+              className="h-9"
+              disabled={loading}
+            >
+              <Search className="h-4 w-4 mr-1" />
+              Filtrar
+            </Button>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setFiltersOpen(!filtersOpen)}
+            className="h-9"
+          >
+            <Filter className="h-4 w-4 mr-1" />
+            Filtros
+            {filtersOpen ? <ChevronUp className="h-4 w-4 ml-1" /> : <ChevronDown className="h-4 w-4 ml-1" />}
+          </Button>
+        </div>
+
         {/* Products Table */}
         <div className="flex-1 overflow-auto min-h-[250px] border rounded-lg" onScroll={handleScroll}>
           {loading && products.length === 0 ? (
@@ -390,16 +395,26 @@ export const ProductSearchDialog = ({
             <div className="py-6 text-center text-sm text-destructive">{error}</div>
           ) : (
             <div className="overflow-x-auto">
-              <Table className="min-w-[700px]">
+              <Table className="min-w-[2200px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[70px] text-xs">Código</TableHead>
-                    <TableHead className="text-xs min-w-[200px]">Descrição</TableHead>
-                    <TableHead className="w-[100px] text-xs">Apresentação</TableHead>
-                    <TableHead className="w-[50px] text-xs">UN</TableHead>
-                    <TableHead className="w-[70px] text-xs text-right">Estoque</TableHead>
-                    <TableHead className="w-[80px] text-xs text-right">Preço</TableHead>
-                    <TableHead className="w-[90px] text-xs">Cód.Fab</TableHead>
+                    <TableHead className="w-[80px] text-xs">Código</TableHead>
+                    <TableHead className="text-xs min-w-[220px]">Descrição</TableHead>
+                    <TableHead className="w-[80px] text-xs">UN</TableHead>
+                    <TableHead className="w-[180px] text-xs">Apresentação</TableHead>
+                    <TableHead className="w-[120px] text-xs">Marca</TableHead>
+                    <TableHead className="w-[120px] text-xs">Cód. Fábrica</TableHead>
+                    <TableHead className="w-[160px] text-xs">Tabela Preço</TableHead>
+                    <TableHead className="w-[110px] text-xs text-right">Preço</TableHead>
+                    <TableHead className="w-[110px] text-xs text-right">Desc. Máx</TableHead>
+                    <TableHead className="w-[100px] text-xs text-right">Comissão</TableHead>
+                    <TableHead className="w-[90px] text-xs text-right">Estoque</TableHead>
+                    <TableHead className="w-[120px] text-xs text-right">Múltiplo Venda</TableHead>
+                    <TableHead className="w-[150px] text-xs text-right">Preço Nac. Cons.</TableHead>
+                    <TableHead className="w-[130px] text-xs">EAN13</TableHead>
+                    <TableHead className="w-[150px] text-xs">Divisão</TableHead>
+                    <TableHead className="w-[170px] text-xs">Fornecedor</TableHead>
+                    <TableHead className="w-[170px] text-xs">Princípio Ativo</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -409,25 +424,35 @@ export const ProductSearchDialog = ({
                       className="cursor-pointer hover:bg-primary/10"
                       onClick={() => handleSelectProduct(product)}
                     >
-                      <TableCell className="font-mono text-xs py-2">{product.codigoProduto ?? product.id}</TableCell>
+                      <TableCell className="font-mono text-xs py-2">{product.id}</TableCell>
                       <TableCell className="text-xs py-2">{product.descricao}</TableCell>
-                      <TableCell className="text-xs py-2">{/* Apresentação */}</TableCell>
                       <TableCell className="text-xs py-2">{product.un}</TableCell>
-                      <TableCell className="text-xs text-right py-2">{product.estoque ?? '-'}</TableCell>
+                      <TableCell className="text-xs py-2">{product.apresentacao ?? '-'}</TableCell>
+                      <TableCell className="text-xs py-2">{product.marca ?? '-'}</TableCell>
+                      <TableCell className="text-xs py-2">{product.codigoFabrica ?? '-'}</TableCell>
+                      <TableCell className="text-xs py-2">{product.descricaoTabelaPreco ?? '-'}</TableCell>
                       <TableCell className="text-xs text-right py-2">{formatCurrency(product.preco)}</TableCell>
-                      <TableCell className="text-xs py-2">{product.codigoProduto ?? ''}</TableCell>
+                      <TableCell className="text-xs text-right py-2">{formatPercent(product.descontoMaximo)}</TableCell>
+                      <TableCell className="text-xs text-right py-2">{formatPercent(product.comissao)}</TableCell>
+                      <TableCell className="text-xs text-right py-2">{formatNumber(product.estoque, 3)}</TableCell>
+                      <TableCell className="text-xs text-right py-2">{formatNumber(product.multiploDeVendas, 3)}</TableCell>
+                      <TableCell className="text-xs text-right py-2">{formatCurrencyOrDash(product.precoNacionalConsumidor)}</TableCell>
+                      <TableCell className="text-xs py-2">{product.ean13 ?? '-'}</TableCell>
+                      <TableCell className="text-xs py-2">{product.divisaoDescricao ?? '-'}</TableCell>
+                      <TableCell className="text-xs py-2">{product.fornecedor ?? '-'}</TableCell>
+                      <TableCell className="text-xs py-2">{product.principioAtivo ?? '-'}</TableCell>
                     </TableRow>
                   ))}
                   {products.length === 0 && !loading && (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">
+                      <TableCell colSpan={17} className="text-center text-sm text-muted-foreground py-8">
                         Nenhum produto encontrado
                       </TableCell>
                     </TableRow>
                   )}
                   {loading && products.length > 0 && (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={17} className="text-center text-sm text-muted-foreground">
                         Carregando mais...
                       </TableCell>
                     </TableRow>

@@ -127,9 +127,10 @@ export const metadataService = {
         return { id: val, descricao: val };
       }
       const id = raw?.tabela_preco_id ?? raw?.id ?? raw?.tabela_id ?? raw?.codigo ?? raw?.cod ?? '';
-      const codigo = raw?.codigo_tabela_preco ?? raw?.codigo ?? raw?.sigla ?? undefined;
+      const codigo = raw?.codigo_tabela_preco ?? raw?.codigoTabelaPreco ?? raw?.codigo ?? raw?.sigla ?? undefined;
       const desc =
         raw?.descricao_tabela_preco ??
+        raw?.descricaoTabelaPreco ??
         raw?.descricao ??
         raw?.descricao_tabela ??
         raw?.descricaoTabela ??
@@ -190,9 +191,10 @@ export const metadataService = {
     const normalizeTabelaCliente = (raw: any): Tabela => {
       if (!raw) return { id: '', descricao: '' };
       const id = raw?.tabela_preco_id ?? raw?.id ?? raw?.tabela_id ?? raw?.codigo ?? raw?.cod ?? '';
-      const codigo = raw?.codigo_tabela_preco ?? raw?.codigo ?? raw?.sigla ?? undefined;
+      const codigo = raw?.codigo_tabela_preco ?? raw?.codigoTabelaPreco ?? raw?.codigo ?? raw?.sigla ?? undefined;
       const desc =
         raw?.descricao_tabela_preco ??
+        raw?.descricaoTabelaPreco ??
         raw?.descricao ??
         raw?.descricao_tabela ??
         raw?.descricaoTabela ??
@@ -370,9 +372,10 @@ export const metadataService = {
     const normalize = (raw: any): Tabela => {
       if (!raw) return { id: '', descricao: '' };
       const id = raw?.tabela_preco_id ?? raw?.id ?? raw?.tabela_id ?? raw?.codigo ?? raw?.cod ?? '';
-      const codigo = raw?.codigo_tabela_preco ?? raw?.codigo ?? raw?.sigla ?? undefined;
+      const codigo = raw?.codigo_tabela_preco ?? raw?.codigoTabelaPreco ?? raw?.codigo ?? raw?.sigla ?? undefined;
       const desc =
         raw?.descricao_tabela_preco ??
+        raw?.descricaoTabelaPreco ??
         raw?.descricao ??
         raw?.descricao_tabela ??
         raw?.descricaoTabela ??

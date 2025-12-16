@@ -15,8 +15,14 @@ export interface Product {
   dun14?: string;
   apresentacao?: string;
   marca?: string;
+  tabelaPrecoId?: number;
+  descricaoTabelaPreco?: string;
+  descontoMaximo?: number;
+  comissao?: number;
   fornecedorId?: number;
+  fornecedor?: string;
   divisaoId?: number;
+  divisaoDescricao?: string;
   fatorCompra?: number;
   fatorVenda?: number;
   multiploDeVendas?: number;
@@ -42,6 +48,31 @@ interface ProductTabelaPrecoResponse {
 }
 
 function normalizeProduct(raw: any): Product {
+  const trimOrUndefined = (val: any): string | undefined => {
+    if (val === undefined || val === null) return undefined;
+    const str = String(val).trim();
+    return str.length ? str : undefined;
+  };
+
+  const boolOrUndefined = (val: any): boolean | undefined => {
+    if (val === undefined || val === null) return undefined;
+    if (typeof val === 'boolean') return val;
+    if (typeof val === 'string') {
+      const text = val.trim().toLowerCase();
+      if (text === 'true' || text === '1' || text === 'yes' || text === 'sim') return true;
+      if (text === 'false' || text === '0' || text === 'no' || text === 'nao' || text === 'não') return false;
+    }
+    if (typeof val === 'number') return val !== 0;
+    return undefined;
+  };
+
+  const numberOrUndefined = (val: any): number | undefined => {
+    if (val === undefined || val === null) return undefined;
+    if (typeof val === 'number') return val;
+    const num = Number(val);
+    return Number.isNaN(num) ? undefined : num;
+  };
+
   const id = raw?.id ?? raw?.produto_id ?? raw?.codigo ?? raw?.cod ?? 0;
   const codigoProduto =
     raw?.codigo_produto ??
@@ -93,25 +124,20 @@ function normalizeProduct(raw: any): Product {
     return undefined;
   })();
   const categoria = raw?.categoria ?? raw?.categoria_codigo ?? raw?.categoriaCodigo ?? undefined;
-
-  const boolOrUndefined = (val: any): boolean | undefined => {
-    if (val === undefined || val === null) return undefined;
-    if (typeof val === 'boolean') return val;
-    if (typeof val === 'string') {
-      const text = val.trim().toLowerCase();
-      if (text === 'true' || text === '1' || text === 'yes' || text === 'sim') return true;
-      if (text === 'false' || text === '0' || text === 'no' || text === 'nao' || text === 'não') return false;
-    }
-    if (typeof val === 'number') return val !== 0;
-    return undefined;
-  };
-
-  const numberOrUndefined = (val: any): number | undefined => {
-    if (val === undefined || val === null) return undefined;
-    if (typeof val === 'number') return val;
-    const num = Number(val);
-    return Number.isNaN(num) ? undefined : num;
-  };
+  const descricaoTabelaPreco =
+    raw?.descricao_tabela_preco ??
+    raw?.descricaoTabelaPreco ??
+    raw?.tabela_descricao ??
+    raw?.tabelaDescricao ??
+    raw?.tabela_preco ??
+    raw?.tabelaPreco;
+  const tabelaPrecoId = numberOrUndefined(raw?.tabela_preco_id ?? raw?.tabelaPrecoId);
+  const descontoMaximo = numberOrUndefined(raw?.desconto_maximo ?? raw?.descontoMaximo ?? raw?.desconto_max);
+  const comissao = numberOrUndefined(raw?.comissao ?? raw?.percentual_comissao ?? raw?.percentualComissao);
+  const fornecedor =
+    raw?.fornecedor ?? raw?.fornecedor_nome ?? raw?.fornecedorNome ?? raw?.nome_fornecedor ?? raw?.fantasia;
+  const divisaoDescricao =
+    raw?.descricao_divisao ?? raw?.divisaoDescricao ?? raw?.divisao_descricao ?? raw?.divisaoNome ?? raw?.divisao;
 
   return {
     id: Number(id) || 0,
@@ -121,13 +147,19 @@ function normalizeProduct(raw: any): Product {
     preco,
     estoque: typeof estoque === 'number' ? estoque : undefined,
     categoria: categoria ? String(categoria) : undefined,
-    codigoFabrica: raw?.codigo_fabrica ?? raw?.codigoFabrica,
-    ean13: raw?.ean13 ?? raw?.ean_13 ?? raw?.ean,
-    dun14: raw?.dun14 ?? raw?.dun_14 ?? raw?.dun,
-    apresentacao: raw?.apresentacao,
-    marca: raw?.marca,
+    codigoFabrica: trimOrUndefined(raw?.codigo_fabrica ?? raw?.codigoFabrica),
+    ean13: trimOrUndefined(raw?.ean13 ?? raw?.ean_13 ?? raw?.ean),
+    dun14: trimOrUndefined(raw?.dun14 ?? raw?.dun_14 ?? raw?.dun),
+    apresentacao: trimOrUndefined(raw?.apresentacao),
+    marca: trimOrUndefined(raw?.marca),
+    tabelaPrecoId,
+    descricaoTabelaPreco: trimOrUndefined(descricaoTabelaPreco),
+    descontoMaximo,
+    comissao,
     fornecedorId: numberOrUndefined(raw?.fornecedor_id ?? raw?.fornecedorId),
+    fornecedor: trimOrUndefined(fornecedor),
     divisaoId: numberOrUndefined(raw?.divisao_id ?? raw?.divisaoId),
+    divisaoDescricao: trimOrUndefined(divisaoDescricao),
     fatorCompra: numberOrUndefined(raw?.fator_compra ?? raw?.fatorCompra),
     fatorVenda: numberOrUndefined(raw?.fator_venda ?? raw?.fatorVenda),
     multiploDeVendas: numberOrUndefined(raw?.multiplo_de_vendas ?? raw?.multiploVendas ?? raw?.multiploVenda),
