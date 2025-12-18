@@ -259,13 +259,7 @@ export const ClientInfoModal = ({ open, onOpenChange, clienteId }: ClientInfoMod
                   <ReadOnlyField label="Rede" value={data?.rede} />
                 </div>
                 
-                <div className="grid grid-cols-2 gap-3">
-                  <ReadOnlyField label="Tabelas" value={data?.tabelas} />
-                  <div className="flex items-end gap-2">
-                    <ReadOnlyField label="Desconto financeiro no boleto" value={formatCurrency(data?.descontoFinanceiroBoleto)} className="flex-1" />
-                    <span className="text-sm pb-2">(%)</span>
-                  </div>
-                </div>
+                <ReadOnlyField label="Tabelas" value={data?.tabelas} />
                 
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1 block">Observações</label>
@@ -285,7 +279,11 @@ export const ClientInfoModal = ({ open, onOpenChange, clienteId }: ClientInfoMod
                     <Checkbox checked={data?.boleto ?? false} disabled />
                     <label className="text-sm">Boleto</label>
                   </div>
-                  <ReadOnlyField label="Prazo" value={data?.prazo} className="md:col-span-2" />
+                  <ReadOnlyField label="Prazo" value={data?.prazo} />
+                  <div className="flex items-end gap-2">
+                    <ReadOnlyField label="Desc. fin. boleto" value={formatCurrency(data?.descontoFinanceiroBoleto)} className="flex-1" />
+                    <span className="text-sm pb-2">(%)</span>
+                  </div>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:justify-end">
