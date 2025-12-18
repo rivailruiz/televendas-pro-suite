@@ -17,6 +17,7 @@ import { formatCurrency } from '@/utils/format';
 import { cn } from '@/lib/utils';
 
 interface ProductFilters {
+  codigoProduto: string;
   descricao: string;
   marca: string;
   tabela: string;
@@ -33,6 +34,7 @@ interface ProductFilters {
 }
 
 const emptyFilters: ProductFilters = {
+  codigoProduto: '',
   descricao: '',
   marca: '',
   tabela: '',
@@ -97,6 +99,7 @@ export const ProductSearchDialog = ({
   // Build filters object for API
   const buildFiltersParams = useCallback((): ProductFiltersParams => {
     const params: ProductFiltersParams = {};
+    if (filters.codigoProduto.trim()) params.codigoProduto = filters.codigoProduto.trim();
     if (filters.descricao.trim()) params.descricao = filters.descricao.trim();
     if (filters.marca.trim()) params.marca = filters.marca.trim();
     if (filters.tabela) params.tabela = filters.tabela;
@@ -180,6 +183,15 @@ export const ProductSearchDialog = ({
               <div className="flex gap-4 min-w-max">
                 {/* Column 1 */}
                 <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium w-20 text-right">Cód. Prod.</label>
+                    <Input
+                      value={filters.codigoProduto}
+                      onChange={(e) => setFilters(prev => ({ ...prev, codigoProduto: e.target.value }))}
+                      className="h-8 w-32"
+                      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    />
+                  </div>
                   <div className="flex items-center gap-2">
                     <label className="text-sm font-medium w-20 text-right">Cód.Fabrica</label>
                     <Input
@@ -424,7 +436,9 @@ export const ProductSearchDialog = ({
                       className="cursor-pointer hover:bg-primary/10"
                       onClick={() => handleSelectProduct(product)}
                     >
-                      <TableCell className="font-mono text-xs py-2">{product.id}</TableCell>
+                      <TableCell className="font-mono text-xs py-2">
+                        {product.codigoProduto ?? product.id}
+                      </TableCell>
                       <TableCell className="text-xs py-2">{product.descricao}</TableCell>
                       <TableCell className="text-xs py-2">{product.un}</TableCell>
                       <TableCell className="text-xs py-2">{product.apresentacao ?? '-'}</TableCell>

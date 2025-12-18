@@ -180,6 +180,7 @@ function normalizeProduct(raw: any): Product {
 }
 
 export interface ProductFiltersParams {
+  codigoProduto?: string;
   descricao?: string;
   marca?: string;
   tabela?: string;
@@ -216,6 +217,7 @@ async function fetchFromApi({
     if (limit) params.set('limit', String(limit));
     
     // Add individual filter parameters
+    if (filters?.codigoProduto) params.set('codigoProduto', filters.codigoProduto);
     if (filters?.descricao) params.set('descricao', filters.descricao);
     if (filters?.marca) params.set('marca', filters.marca);
     if (filters?.tabela) params.set('tabelaPrecoId', filters.tabela);
