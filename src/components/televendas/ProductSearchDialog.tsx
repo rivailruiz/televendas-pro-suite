@@ -423,7 +423,11 @@ export const ProductSearchDialog = ({
           ) : error ? (
             <div className="py-6 text-center text-sm text-destructive">{error}</div>
           ) : (
-            <div className="flex-1 overflow-auto" onScroll={handleScroll}>
+            <div 
+              className="flex-1 overflow-x-scroll overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-muted" 
+              style={{ scrollbarWidth: 'auto', scrollbarColor: 'hsl(var(--border)) hsl(var(--muted))' }}
+              onScroll={handleScroll}
+            >
               <Table className="min-w-[2200px]">
                 <TableHeader>
                   <TableRow>
