@@ -400,13 +400,13 @@ export const ProductSearchDialog = ({
         </div>
 
         {/* Products Table */}
-        <div className="flex-1 overflow-auto min-h-[250px] border rounded-lg" onScroll={handleScroll}>
+        <div className="flex-1 min-h-[250px] border rounded-lg overflow-hidden flex flex-col">
           {loading && products.length === 0 ? (
             <div className="py-6 text-center text-sm text-muted-foreground">Carregando produtos...</div>
           ) : error ? (
             <div className="py-6 text-center text-sm text-destructive">{error}</div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="flex-1 overflow-auto" onScroll={handleScroll}>
               <Table className="min-w-[2200px]">
                 <TableHeader>
                   <TableRow>
