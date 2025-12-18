@@ -1372,10 +1372,16 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                 open={productSearchOpen}
                 onOpenChange={setProductSearchOpen}
                 onSelectProduct={handleSelectProduct}
+                selectedTabelaId={formData.tabela}
+                availableTabelas={tabelas}
                 trigger={
-                  <Button variant="outline" className="w-full justify-start">
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start"
+                    disabled={!formData.clienteId}
+                  >
                     <Search className="h-4 w-4 mr-2" />
-                    {newItem.descricao || 'Buscar produto'}
+                    {newItem.descricao || (formData.clienteId ? 'Buscar produto' : 'Selecione um cliente')}
                   </Button>
                 }
               />
