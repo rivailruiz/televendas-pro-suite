@@ -836,10 +836,10 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
         if (!produtoId || !quant) return prev;
         const base: OrderItem = {
           produtoId,
-          codigoProduto: newItem.codigoProduto ?? '',
+          codigoProduto: itemToAdd.codigoProduto ?? '',
           descricao,
           un,
-          estoque: newItem.estoque,
+          estoque: itemToAdd.estoque,
           tabelaId: resolvedTabelaId || tabelaSelecionada,
           quant,
           descontoPerc,
@@ -883,7 +883,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
         if (matchIndex === -1) return prev;
         const current = prev[matchIndex];
         const mergedQuant = (current.quant || 0) + quant;
-        const codigoProduto = current.codigoProduto || newItem.codigoProduto || '';
+        const codigoProduto = current.codigoProduto || itemToAdd.codigoProduto || '';
         const merged: OrderItem = {
           ...current,
           quant: mergedQuant,
@@ -892,7 +892,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           codigoProduto,
           descricao: current.descricao || descricao,
           un: current.un || un,
-          estoque: current.estoque ?? newItem.estoque,
+          estoque: current.estoque ?? itemToAdd.estoque,
         };
         const total = calculateItemTotal(merged);
         const next = [...prev];
