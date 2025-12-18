@@ -145,6 +145,9 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   const [productSearchOpen, setProductSearchOpen] = useState(false);
   const [productCodeInput, setProductCodeInput] = useState('');
   const [loadingProductByCode, setLoadingProductByCode] = useState(false);
+  const [newItemTabelaId, setNewItemTabelaId] = useState<string>('');
+  const [newItemPreco, setNewItemPreco] = useState<number | null>(null);
+  const [loadingNewItemPreco, setLoadingNewItemPreco] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
 
   const [clients, setClients] = useState<Client[]>([]);
@@ -164,6 +167,9 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     setObservacoes(createEmptyObservacoes());
     setPreferredFormaId(null);
     setPreferredPrazoId(null);
+    setProductCodeInput('');
+    setNewItemTabelaId('');
+    setNewItemPreco(null);
   }, []);
 
   const handleDuplicateOrder = useCallback((purchaseOrder: PurchaseOrder) => {
@@ -738,7 +744,33 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       preco: product.preco,
       estoque: typeof product.estoque === 'number' ? product.estoque : undefined,
     });
+    setNewItemPreco(product.preco);
+    // Set default tabela if available
+    const defaultTabela = getDefaultTabelaId();
+    if (defaultTabela) {
+      setNewItemTabelaId(defaultTabela);
+    }
     setProductSearchOpen(false);
+  };
+
+  // Fetch price when tabela changes for new item
+  const handleNewItemTabelaChange = async (tabelaId: string) => {
+    setNewItemTabelaId(tabelaId);
+    if (!newItem.produtoId || !tabelaId) {
+      setNewItemPreco(newItem.preco ?? null);
+      return;
+    }
+    setLoadingNewItemPreco(true);
+    try {
+      const preco = await productsService.getPrecoByTabela(newItem.produtoId, Number(tabelaId));
+      setNewItemPreco(preco);
+      setNewItem(prev => ({ ...prev, preco, tabelaId }));
+    } catch (e) {
+      console.error('Erro ao buscar preço:', e);
+      setNewItemPreco(newItem.preco ?? null);
+    } finally {
+      setLoadingNewItemPreco(false);
+    }
   };
 
   const calculateItemTotal = (item: Partial<OrderItem>) => {
@@ -906,6 +938,8 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     }
     setNewItem({ produtoId: 0, quant: 1, descontoPerc: 0 });
     setProductCodeInput('');
+    setNewItemTabelaId('');
+    setNewItemPreco(null);
   };
 
   const handleAddItem = async () => {
@@ -924,12 +958,23 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           return;
         }
         const product = products[0];
+        // Use the selected tabela if available, otherwise get the price for the default tabela
+        let precoFinal = product.preco;
+        const tabelaToUse = newItemTabelaId || getDefaultTabelaId();
+        if (tabelaToUse) {
+          try {
+            precoFinal = await productsService.getPrecoByTabela(product.id, Number(tabelaToUse));
+          } catch {
+            precoFinal = product.preco;
+          }
+        }
         const itemToAdd: Partial<OrderItem> = {
           produtoId: product.id,
           codigoProduto: product.codigoProduto ?? '',
           descricao: product.descricao,
           un: product.un,
-          preco: product.preco,
+          preco: precoFinal,
+          tabelaId: tabelaToUse,
           estoque: typeof product.estoque === 'number' ? product.estoque : undefined,
           quant: newItem.quant || 1,
           descontoPerc: newItem.descontoPerc || 0,
@@ -1411,7 +1456,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           <CardTitle>Itens do Pedido</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3 sm:gap-4 items-end">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-2 sm:gap-3 items-end">
             <div>
               <label className="text-sm font-medium mb-2 block">Cód. Produto</label>
               <Input
@@ -1420,15 +1465,16 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                   setProductCodeInput(e.target.value);
                   // Limpa produto selecionado se digitar código manualmente
                   if (newItem.produtoId) {
-                    setNewItem({ ...newItem, produtoId: 0, descricao: '', codigoProduto: '' });
+                    setNewItem({ ...newItem, produtoId: 0, descricao: '', codigoProduto: '', preco: 0 });
+                    setNewItemPreco(null);
                   }
                 }}
-                placeholder="Digite o código"
+                placeholder="Código"
                 disabled={!formData.clienteId}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddItem()}
               />
             </div>
-            <div className="sm:col-span-1 lg:col-span-2">
+            <div className="col-span-1 lg:col-span-2">
               <label className="text-sm font-medium mb-2 block">Produto</label>
               <ProductSearchDialog
                 open={productSearchOpen}
@@ -1447,10 +1493,41 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                   >
                     <Search className="h-4 w-4 mr-2 shrink-0" />
                     <span className="truncate">
-                      {newItem.descricao || (formData.clienteId ? 'Buscar produto' : 'Selecione um cliente')}
+                      {newItem.descricao || (formData.clienteId ? 'Buscar' : 'Sel. cliente')}
                     </span>
                   </Button>
                 }
+              />
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium mb-2 block">Tabela</label>
+              <Select
+                value={newItemTabelaId}
+                onValueChange={handleNewItemTabelaChange}
+                disabled={!newItem.produtoId || tabelas.length === 0}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Tabela" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tabelas.map((t) => (
+                    <SelectItem key={String(t.id)} value={String(t.id)}>
+                      {t.descricao}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium mb-2 block">Preço</label>
+              <Input
+                type="text"
+                value={loadingNewItemPreco ? '...' : (newItemPreco != null ? formatCurrency(newItemPreco) : '')}
+                readOnly
+                className="bg-muted/50 text-right"
+                placeholder="R$ 0,00"
               />
             </div>
             
