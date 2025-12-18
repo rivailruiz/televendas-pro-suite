@@ -143,6 +143,8 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   const [clientReceivablesOpen, setClientReceivablesOpen] = useState(false);
   const [clientPurchasesOpen, setClientPurchasesOpen] = useState(false);
   const [productSearchOpen, setProductSearchOpen] = useState(false);
+  const [productCodeInput, setProductCodeInput] = useState('');
+  const [loadingProductByCode, setLoadingProductByCode] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
 
   const [clients, setClients] = useState<Client[]>([]);
@@ -745,27 +747,30 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     return item.preco * item.quant * (1 - desconto);
   };
 
-  const handleAddItem = async () => {
+  const handleAddItemWithProduct = async (productToAdd?: Partial<OrderItem>) => {
+    const itemToAdd = productToAdd || newItem;
+    
     if (!formData.operacao || !formData.clienteId || !formData.representanteId) {
       toast.error('Preencha operação, cliente e representante antes de adicionar itens');
       return;
     }
-    if (!newItem.produtoId || !newItem.quant) {
+    
+    if (!itemToAdd.produtoId || !itemToAdd.quant) {
       toast.error('Preencha produto e quantidade');
       return;
     }
 
     const normalizeCodigo = (val?: string | null) => String(val ?? '').trim();
-    const newCodigoNorm = normalizeCodigo(newItem.codigoProduto);
+    const newCodigoNorm = normalizeCodigo(itemToAdd.codigoProduto);
 
-    const produtoId = typeof newItem.produtoId === 'number' ? newItem.produtoId : Number(newItem.produtoId);
-    const quant = Math.max(0, Number(newItem.quant) || 0);
-    const descricao = newItem.descricao || '';
-    const un = newItem.un || '';
-    const descontoPerc = newItem.descontoPerc || 0;
-    const preco = newItem.preco || 0;
-    const obs = newItem.obs;
-    const tabelaSelecionada = getPreferredTabelaForItem(newItem);
+    const produtoId = typeof itemToAdd.produtoId === 'number' ? itemToAdd.produtoId : Number(itemToAdd.produtoId);
+    const quant = Math.max(0, Number(itemToAdd.quant) || 0);
+    const descricao = itemToAdd.descricao || '';
+    const un = itemToAdd.un || '';
+    const descontoPerc = itemToAdd.descontoPerc || 0;
+    const preco = itemToAdd.preco || 0;
+    const obs = itemToAdd.obs;
+    const tabelaSelecionada = getPreferredTabelaForItem(itemToAdd);
     const tabs = await ensureItemTabelas(produtoId);
     if (tabs && tabelaSelecionada && String(tabelaSelecionada).trim() !== '') {
       const hasTabela = tabs.some((t) => String(t.id) === String(tabelaSelecionada));
@@ -790,7 +795,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
 
     const existingIndexForStock = findSameProductIndex(items);
     const existingQtd = existingIndexForStock !== -1 ? items[existingIndexForStock].quant || 0 : 0;
-    const estoqueDisponivel = newItem.estoque ?? (existingIndexForStock !== -1 ? items[existingIndexForStock].estoque : undefined);
+    const estoqueDisponivel = itemToAdd.estoque ?? (existingIndexForStock !== -1 ? items[existingIndexForStock].estoque : undefined);
     if (estoqueDisponivel != null && quant + existingQtd > estoqueDisponivel) {
       toast.warning('Quantidade solicitada excede o estoque disponível');
     }
@@ -896,10 +901,51 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       });
     }
 
-    if (typeof newItem.produtoId === 'number' && newItem.produtoId > 0) {
-      ensureItemTabelas(newItem.produtoId);
+    if (typeof itemToAdd.produtoId === 'number' && itemToAdd.produtoId > 0) {
+      ensureItemTabelas(itemToAdd.produtoId);
     }
     setNewItem({ produtoId: 0, quant: 1, descontoPerc: 0 });
+    setProductCodeInput('');
+  };
+
+  const handleAddItem = async () => {
+    // Se tiver código digitado manualmente mas nenhum produto selecionado, busca pelo código
+    if (productCodeInput.trim() && !newItem.produtoId) {
+      if (!formData.clienteId) {
+        toast.error('Selecione um cliente antes de adicionar itens');
+        return;
+      }
+      setLoadingProductByCode(true);
+      try {
+        const products = await productsService.search({ codigoProduto: productCodeInput.trim() }, 1, 1);
+        if (products.length === 0) {
+          toast.error('Produto não encontrado com este código');
+          setLoadingProductByCode(false);
+          return;
+        }
+        const product = products[0];
+        const itemToAdd: Partial<OrderItem> = {
+          produtoId: product.id,
+          codigoProduto: product.codigoProduto ?? '',
+          descricao: product.descricao,
+          un: product.un,
+          preco: product.preco,
+          estoque: typeof product.estoque === 'number' ? product.estoque : undefined,
+          quant: newItem.quant || 1,
+          descontoPerc: newItem.descontoPerc || 0,
+        };
+        setLoadingProductByCode(false);
+        await handleAddItemWithProduct(itemToAdd);
+        return;
+      } catch (e: any) {
+        toast.error(e?.message || 'Erro ao buscar produto');
+        setLoadingProductByCode(false);
+        return;
+      }
+    }
+    
+    // Se já tem produto selecionado, adiciona normalmente
+    await handleAddItemWithProduct();
   };
 
   const handleUpdateItem = (index: number, patch: Partial<OrderItem>) => {
@@ -1365,23 +1411,44 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           <CardTitle>Itens do Pedido</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4 items-end">
-            <div className="sm:col-span-2 lg:col-span-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3 sm:gap-4 items-end">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Cód. Produto</label>
+              <Input
+                value={productCodeInput}
+                onChange={(e) => {
+                  setProductCodeInput(e.target.value);
+                  // Limpa produto selecionado se digitar código manualmente
+                  if (newItem.produtoId) {
+                    setNewItem({ ...newItem, produtoId: 0, descricao: '', codigoProduto: '' });
+                  }
+                }}
+                placeholder="Digite o código"
+                disabled={!formData.clienteId}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddItem()}
+              />
+            </div>
+            <div className="sm:col-span-1 lg:col-span-2">
               <label className="text-sm font-medium mb-2 block">Produto (F3)</label>
               <ProductSearchDialog
                 open={productSearchOpen}
                 onOpenChange={setProductSearchOpen}
-                onSelectProduct={handleSelectProduct}
+                onSelectProduct={(product) => {
+                  handleSelectProduct(product);
+                  setProductCodeInput(product.codigoProduto ?? String(product.id));
+                }}
                 selectedTabelaId={formData.tabela}
                 availableTabelas={tabelas}
                 trigger={
                   <Button 
                     variant="outline" 
-                    className="w-full justify-start"
+                    className="w-full justify-start min-w-0"
                     disabled={!formData.clienteId}
                   >
-                    <Search className="h-4 w-4 mr-2" />
-                    {newItem.descricao || (formData.clienteId ? 'Buscar produto' : 'Selecione um cliente')}
+                    <Search className="h-4 w-4 mr-2 shrink-0" />
+                    <span className="truncate">
+                      {newItem.descricao || (formData.clienteId ? 'Buscar produto' : 'Selecione um cliente')}
+                    </span>
                   </Button>
                 }
               />
@@ -1411,10 +1478,16 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
               <Button
                 onClick={handleAddItem}
                 className="w-full"
-                disabled={!formData.operacao || !formData.clienteId || !formData.representanteId}
+                disabled={!formData.operacao || !formData.clienteId || !formData.representanteId || loadingProductByCode}
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar
+                {loadingProductByCode ? (
+                  <span className="animate-pulse">Buscando...</span>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Adicionar
+                  </>
+                )}
               </Button>
             </div>
           </div>
