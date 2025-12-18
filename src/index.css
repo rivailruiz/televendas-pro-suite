@@ -159,3 +159,24 @@ All colors MUST be HSL.
     -webkit-tap-highlight-color: transparent;
   }
 }
+
+/* Scrollbar always visible for tables */
+.overflow-x-scroll::-webkit-scrollbar {
+  height: 12px;
+  display: block !important;
+}
+
+.overflow-x-scroll::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 6px;
+}
+
+.overflow-x-scroll::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 6px;
+  border: 2px solid hsl(var(--muted));
+}
+
+.overflow-x-scroll::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
