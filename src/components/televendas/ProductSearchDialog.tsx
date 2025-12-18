@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Search, CalendarIcon, X, Filter, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, CalendarIcon, X, Filter, ChevronDown, ChevronUp, DollarSign } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -15,6 +15,7 @@ import { productsService, type Product, type ProductFiltersParams } from '@/serv
 import { metadataService, type Tabela } from '@/services/metadataService';
 import { formatCurrency } from '@/utils/format';
 import { cn } from '@/lib/utils';
+import { ProductPriceTablesModal } from './ProductPriceTablesModal';
 
 interface ProductFilters {
   codigoProduto: string;
@@ -76,6 +77,14 @@ export const ProductSearchDialog = ({
   const [tabelas, setTabelas] = useState<Tabela[]>([]);
   const [loadingTabelas, setLoadingTabelas] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(true);
+  const [priceTablesModalOpen, setPriceTablesModalOpen] = useState(false);
+  const [selectedProductForPrices, setSelectedProductForPrices] = useState<Product | null>(null);
+
+  const handleOpenPriceTables = (e: React.MouseEvent, product: Product) => {
+    e.stopPropagation(); // Prevent row selection
+    setSelectedProductForPrices(product);
+    setPriceTablesModalOpen(true);
+  };
   const formatPercent = (value?: number) =>
     value == null ? '-' : `${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
   const formatNumber = (value?: number, maximumFractionDigits = 2) =>
@@ -428,9 +437,10 @@ export const ProductSearchDialog = ({
               style={{ scrollbarWidth: 'auto', scrollbarColor: 'hsl(var(--border)) hsl(var(--muted))' }}
               onScroll={handleScroll}
             >
-              <Table className="min-w-[2200px]">
+              <Table className="min-w-[2300px]">
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[50px] text-xs">Ações</TableHead>
                     <TableHead className="w-[80px] text-xs">Código</TableHead>
                     <TableHead className="text-xs min-w-[220px]">Descrição</TableHead>
                     <TableHead className="w-[80px] text-xs">UN</TableHead>
@@ -457,6 +467,17 @@ export const ProductSearchDialog = ({
                       className="cursor-pointer hover:bg-primary/10"
                       onClick={() => handleSelectProduct(product)}
                     >
+                      <TableCell className="py-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={(e) => handleOpenPriceTables(e, product)}
+                          title="Ver tabelas de preços"
+                        >
+                          <DollarSign className="h-4 w-4 text-primary" />
+                        </Button>
+                      </TableCell>
                       <TableCell className="font-mono text-xs py-2">
                         {product.codigoProduto ?? product.id}
                       </TableCell>
@@ -480,14 +501,14 @@ export const ProductSearchDialog = ({
                   ))}
                   {products.length === 0 && !loading && (
                     <TableRow>
-                      <TableCell colSpan={17} className="text-center text-sm text-muted-foreground py-8">
+                      <TableCell colSpan={18} className="text-center text-sm text-muted-foreground py-8">
                         Nenhum produto encontrado
                       </TableCell>
                     </TableRow>
                   )}
                   {loading && products.length > 0 && (
                     <TableRow>
-                      <TableCell colSpan={17} className="text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={18} className="text-center text-sm text-muted-foreground">
                         Carregando mais...
                       </TableCell>
                     </TableRow>
@@ -497,6 +518,14 @@ export const ProductSearchDialog = ({
             </div>
           )}
         </div>
+
+        {/* Price Tables Modal */}
+        <ProductPriceTablesModal
+          open={priceTablesModalOpen}
+          onOpenChange={setPriceTablesModalOpen}
+          productId={selectedProductForPrices?.id ?? 0}
+          productDescription={selectedProductForPrices?.descricao}
+        />
       </DialogContent>
     </Dialog>
   );
