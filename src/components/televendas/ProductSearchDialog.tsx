@@ -55,6 +55,8 @@ interface ProductSearchDialogProps {
   onOpenChange: (open: boolean) => void;
   onSelectProduct: (product: Product) => void;
   trigger?: React.ReactNode;
+  selectedTabelaId?: string;
+  availableTabelas?: Tabela[];
 }
 
 export const ProductSearchDialog = ({
@@ -62,6 +64,8 @@ export const ProductSearchDialog = ({
   onOpenChange,
   onSelectProduct,
   trigger,
+  selectedTabelaId,
+  availableTabelas,
 }: ProductSearchDialogProps) => {
   const [filters, setFilters] = useState<ProductFilters>(emptyFilters);
   const [products, setProducts] = useState<Product[]>([]);
@@ -80,8 +84,12 @@ export const ProductSearchDialog = ({
 
   const PRODUCT_LIMIT = 100;
 
-  // Load tabelas on mount
+  // Use available tabelas from props, or fallback to fetching
+  const displayTabelas = availableTabelas && availableTabelas.length > 0 ? availableTabelas : tabelas;
+
+  // Load tabelas on mount only if not provided via props
   useEffect(() => {
+    if (availableTabelas && availableTabelas.length > 0) return;
     const loadTabelas = async () => {
       setLoadingTabelas(true);
       try {
@@ -94,7 +102,14 @@ export const ProductSearchDialog = ({
       }
     };
     loadTabelas();
-  }, []);
+  }, [availableTabelas]);
+
+  // Initialize filter with selected tabela when dialog opens
+  useEffect(() => {
+    if (open && selectedTabelaId) {
+      setFilters(prev => ({ ...prev, tabela: selectedTabelaId }));
+    }
+  }, [open, selectedTabelaId]);
 
   // Build filters object for API
   const buildFiltersParams = useCallback((): ProductFiltersParams => {
@@ -268,8 +283,10 @@ export const ProductSearchDialog = ({
                         <SelectValue placeholder={loadingTabelas ? '...' : 'Todas'} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="_all">Todas</SelectItem>
-                        {tabelas.map((t) => (
+                        {availableTabelas && availableTabelas.length > 0 ? null : (
+                          <SelectItem value="_all">Todas</SelectItem>
+                        )}
+                        {displayTabelas.map((t) => (
                           <SelectItem key={String(t.id)} value={String(t.id)}>
                             {t.descricao}
                           </SelectItem>
