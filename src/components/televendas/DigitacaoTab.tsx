@@ -1128,7 +1128,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                   <DialogTrigger asChild>
                     <Button variant="outline" className="flex-1 justify-start min-w-0 overflow-hidden">
                       <Search className="h-4 w-4 mr-2 shrink-0" />
-                      <span className="truncate">{formData.clienteNome || 'Buscar cliente (F3)'}</span>
+                      <span className="truncate">{formData.clienteNome || 'Buscar cliente'}</span>
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-2xl">
@@ -1429,7 +1429,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
               />
             </div>
             <div className="sm:col-span-1 lg:col-span-2">
-              <label className="text-sm font-medium mb-2 block">Produto (F3)</label>
+              <label className="text-sm font-medium mb-2 block">Produto</label>
               <ProductSearchDialog
                 open={productSearchOpen}
                 onOpenChange={setProductSearchOpen}
