@@ -1474,7 +1474,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                 onKeyDown={(e) => e.key === 'Enter' && handleAddItem()}
               />
             </div>
-            <div className="col-span-1 lg:col-span-2">
+            <div className="col-span-2 lg:col-span-3">
               <label className="text-sm font-medium mb-2 block">Produto</label>
               <ProductSearchDialog
                 open={productSearchOpen}
