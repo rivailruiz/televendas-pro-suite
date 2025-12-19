@@ -6,10 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { ShoppingCart, Plus, Pencil, Trash2 } from 'lucide-react';
+import { ShoppingCart, Plus, Pencil, Trash2, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { clientsService, Client } from '@/services/clientsService';
 import { operacoes } from '@/mocks/data';
+import { ClientInfoModal } from './ClientInfoModal';
 
 export const ClientesTab = () => {
   const [clients, setClients] = useState<Client[]>([]);
@@ -31,6 +32,8 @@ export const ClientesTab = () => {
   const [detailLoading, setDetailLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [editId, setEditId] = useState<number | null>(null);
+  const [clientInfoOpen, setClientInfoOpen] = useState(false);
+  const [clientInfoId, setClientInfoId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     codigoCliente: '',
     cnpjCpf: '',
@@ -293,6 +296,21 @@ export const ClientesTab = () => {
               <Button variant="outline" size="sm" onClick={openCreateDialog}>
                 <Plus className="h-4 w-4 mr-2" /> Novo
               </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  if (selectedClients.length !== 1) {
+                    toast.error('Selecione exatamente um cliente para visualizar');
+                    return;
+                  }
+                  setClientInfoId(selectedClients[0]);
+                  setClientInfoOpen(true);
+                }}
+                disabled={selectedClients.length !== 1}
+              >
+                <Info className="h-4 w-4 mr-2" /> Visualizar
+              </Button>
               <Button variant="outline" size="sm" onClick={openEditDialog} disabled={selectedClients.length !== 1}>
                 <Pencil className="h-4 w-4 mr-2" /> Editar
               </Button>
@@ -518,6 +536,15 @@ export const ClientesTab = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Client Info Modal */}
+      {clientInfoId && (
+        <ClientInfoModal 
+          open={clientInfoOpen} 
+          onOpenChange={setClientInfoOpen} 
+          clienteId={clientInfoId} 
+        />
+      )}
     </div>
   );
 };
