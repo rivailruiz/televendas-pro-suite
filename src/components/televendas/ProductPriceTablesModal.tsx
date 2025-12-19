@@ -7,7 +7,7 @@ import { API_BASE } from '@/utils/env';
 import { apiClient } from '@/utils/apiClient';
 import { formatCurrency } from '@/utils/format';
 
-interface ProductPriceTableEntry {
+export interface ProductPriceTableEntry {
   tabelaPrecoId: number | string;
   codigoTabela?: string;
   descricaoTabela: string;
@@ -23,11 +23,11 @@ interface ProductPriceTableEntry {
 interface ProductPriceTablesModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  productId: number;
   productDescription?: string;
+  data: ProductPriceTableEntry[];
 }
 
-async function fetchProductPriceTables(produtoId: number): Promise<ProductPriceTableEntry[]> {
+export async function fetchProductPriceTables(produtoId: number): Promise<ProductPriceTableEntry[]> {
   const empresa = authService.getEmpresa();
   if (!empresa) return Promise.reject('Empresa não selecionada');
   const token = authService.getToken();
@@ -88,35 +88,9 @@ async function fetchProductPriceTables(produtoId: number): Promise<ProductPriceT
 export const ProductPriceTablesModal = ({
   open,
   onOpenChange,
-  productId,
   productDescription,
+  data,
 }: ProductPriceTablesModalProps) => {
-  const [entries, setEntries] = useState<ProductPriceTableEntry[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!open || !productId) {
-      setEntries([]);
-      setError(null);
-      return;
-    }
-
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await fetchProductPriceTables(productId);
-        setEntries(data);
-      } catch (e) {
-        setError(String(e));
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [open, productId]);
-
   const formatNumber = (value: number, decimals = 4) =>
     value.toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 
@@ -135,13 +109,7 @@ export const ProductPriceTablesModal = ({
         </DialogHeader>
         
         <div className="flex-1 overflow-auto border rounded-lg">
-          {loading ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">
-              Carregando tabelas de preços...
-            </div>
-          ) : error ? (
-            <div className="py-8 text-center text-sm text-destructive">{error}</div>
-          ) : entries.length === 0 ? (
+          {data.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">
               Nenhuma tabela de preço encontrada
             </div>
@@ -161,7 +129,7 @@ export const ProductPriceTablesModal = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {entries.map((entry, idx) => (
+                {data.map((entry, idx) => (
                   <TableRow key={`${entry.tabelaPrecoId}-${idx}`} className="hover:bg-muted/30">
                     <TableCell className="text-xs font-mono py-1.5">
                       {entry.codigoTabela || String(entry.tabelaPrecoId).charAt(0).toUpperCase()}
