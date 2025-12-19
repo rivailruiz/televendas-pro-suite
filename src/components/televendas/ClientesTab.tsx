@@ -543,7 +543,6 @@ export const ClientesTab = () => {
               {/* Identificação */}
               <TabsContent value="identificacao" className="m-0 space-y-4">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <FormField label="Código" value={formData.codigoCliente} onChange={(v) => setFormData({ ...formData, codigoCliente: v })} />
                   <div className="flex items-center gap-2 pt-6">
                     <Checkbox checked={formData.inativo} onCheckedChange={(c) => setFormData({ ...formData, inativo: c as boolean })} />
                     <label className="text-sm">Inativo</label>
@@ -673,7 +672,6 @@ export const ClientesTab = () => {
                 <div className="flex-1 overflow-y-auto mt-4 pr-2">
                   <TabsContent value="identificacao" className="m-0 space-y-4">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      <FormField label="Código" value={formData.codigoCliente} onChange={(v) => setFormData({ ...formData, codigoCliente: v })} />
                       <div className="flex items-center gap-2 pt-6">
                         <Checkbox checked={formData.inativo} onCheckedChange={(c) => setFormData({ ...formData, inativo: c as boolean })} />
                         <label className="text-sm">Inativo</label>
