@@ -1680,27 +1680,30 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <label className="text-sm font-medium mb-2 block">Observação Cliente</label>
+            <label className="text-sm font-medium mb-1 block">Observação Cliente</label>
             <Textarea 
               value={observacoes.cliente}
               onChange={(e) => setObservacoes({...observacoes, cliente: e.target.value})}
-              rows={2}
+              rows={1}
+              className="min-h-[40px] resize-none"
             />
           </div>
           <div>
-            <label className="text-sm font-medium mb-2 block">Observação Pedido</label>
+            <label className="text-sm font-medium mb-1 block">Observação Pedido</label>
             <Textarea 
               value={observacoes.pedido}
               onChange={(e) => setObservacoes({...observacoes, pedido: e.target.value})}
-              rows={2}
+              rows={1}
+              className="min-h-[40px] resize-none"
             />
           </div>
           <div>
-            <label className="text-sm font-medium mb-2 block">Observação NF</label>
+            <label className="text-sm font-medium mb-1 block">Observação NF</label>
             <Textarea 
               value={observacoes.nf}
               onChange={(e) => setObservacoes({...observacoes, nf: e.target.value})}
-              rows={2}
+              rows={1}
+              className="min-h-[40px] resize-none"
             />
           </div>
         </CardContent>
