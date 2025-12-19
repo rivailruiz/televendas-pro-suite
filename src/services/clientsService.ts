@@ -291,6 +291,7 @@ export const clientsService = {
 
   // Create new client - POST /api/clientes
   // codigo_cliente é gerado automaticamente, não enviar
+  // Payload plano com aliases suportados
   create: async (data: {
     cnpjCpf: string;
     tipoPessoa?: string;
@@ -306,17 +307,24 @@ export const clientsService = {
     numero?: string;
     complemento?: string;
     bairro?: string;
+    telefone?: string;
     fone?: string;
     whatsapp?: string;
     celular?: string;
     email?: string;
     emailDanfe?: string;
+    contato1Nome?: string;
     compradorNome?: string;
+    contato1Celular?: string;
     compradorFone?: string;
+    contato1Aniversario?: string;
     compradorDataNascimento?: string;
     segmentoId?: number;
     rotaId?: number;
+    rota?: string | number;
     redeId?: number;
+    rede?: string | number;
+    limite?: number;
     limiteCredito?: number;
     formaPagtoId?: number;
     prazoPagtoId?: number;
@@ -341,10 +349,11 @@ export const clientsService = {
       delete cleanData.codigoCliente;
       delete cleanData.codigo_cliente;
       
+      // Payload plano: empresaId no topo + campos diretamente
       const res = await apiClient.fetch(url, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ empresaId: empresa.empresa_id, data: cleanData }),
+        body: JSON.stringify({ empresaId: empresa.empresa_id, ...cleanData }),
       });
       if (!res.ok) {
         let message = 'Falha ao criar cliente';
@@ -359,6 +368,7 @@ export const clientsService = {
 
   // Update client - PUT /api/clientes/:id?empresaId=5
   // codigo_cliente não é aceito/gerado aqui
+  // Payload plano com aliases suportados
   update: async (
     id: number,
     data: Partial<{
@@ -376,17 +386,24 @@ export const clientsService = {
       numero: string;
       complemento: string;
       bairro: string;
+      telefone: string;
       fone: string;
       whatsapp: string;
       celular: string;
       email: string;
       emailDanfe: string;
+      contato1Nome: string;
       compradorNome: string;
+      contato1Celular: string;
       compradorFone: string;
+      contato1Aniversario: string;
       compradorDataNascimento: string;
       segmentoId: number;
       rotaId: number;
+      rota: string | number;
       redeId: number;
+      rede: string | number;
+      limite: number;
       limiteCredito: number;
       formaPagtoId: number;
       prazoPagtoId: number;
@@ -413,6 +430,7 @@ export const clientsService = {
       delete cleanData.codigoCliente;
       delete cleanData.codigo_cliente;
       
+      // Payload plano
       const res = await apiClient.fetch(url, {
         method: 'PUT',
         headers,
