@@ -2,6 +2,12 @@ import { authService } from '@/services/authService';
 import { API_BASE } from '@/utils/env';
 import { apiClient } from '@/utils/apiClient';
 
+export interface ClientRota {
+  id: number;
+  codigo_rota?: string;
+  descricao_rota?: string;
+}
+
 export interface Client {
   id: number;
   codigoCliente?: string;
@@ -13,6 +19,8 @@ export interface Client {
   contato?: string;
   formaPagtoId?: number | string | null;
   prazoPagtoId?: number | string | null;
+  rotaId?: number | null;
+  rota?: ClientRota | null;
   representanteId?: string;
   representanteNome?: string;
   representanteCodigo?: string;
@@ -76,6 +84,13 @@ function normalizeClient(raw: any): Client {
   const contato = raw?.contato ?? raw?.responsavel ?? raw?.contact ?? '';
   const formaPagtoId = raw?.forma_pagto_id ?? raw?.formaPagtoId ?? raw?.forma_pagto ?? null;
   const prazoPagtoId = raw?.prazo_pagto_id ?? raw?.prazoPagtoId ?? null;
+  const rotaId = raw?.rota_id ?? raw?.rotaId ?? null;
+  // Objeto rota vindo do join com rotas_clientes
+  const rotaObj = raw?.rota && typeof raw.rota === 'object' ? {
+    id: raw.rota.id,
+    codigo_rota: raw.rota.codigo_rota,
+    descricao_rota: raw.rota.descricao_rota,
+  } : null;
   const repObj = raw?.representante && typeof raw.representante === 'object' ? raw.representante : null;
   const representantesArr = Array.isArray(raw?.representantes) ? raw.representantes : [];
   const representantes = representantesArr
@@ -125,6 +140,8 @@ function normalizeClient(raw: any): Client {
     contato: contato ? String(contato) : undefined,
     formaPagtoId: typeof formaPagtoId === 'number' ? formaPagtoId : (formaPagtoId != null ? String(formaPagtoId) : null),
     prazoPagtoId: typeof prazoPagtoId === 'number' ? prazoPagtoId : (prazoPagtoId != null ? String(prazoPagtoId) : null),
+    rotaId: rotaId != null ? Number(rotaId) : null,
+    rota: rotaObj,
     representanteId: representanteId != null ? String(representanteId).trim() : undefined,
     representanteCodigo: representanteCodigo ? String(representanteCodigo).trim() : undefined,
     representanteNome: representanteNome ? String(representanteNome).trim() : undefined,
