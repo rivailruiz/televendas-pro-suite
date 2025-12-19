@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ShoppingCart, Plus, Pencil, Trash2, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { clientsService, Client } from '@/services/clientsService';
+import { metadataService, Rota } from '@/services/metadataService';
 import { operacoes } from '@/mocks/data';
 import { ClientInfoModal } from './ClientInfoModal';
 
@@ -54,6 +55,8 @@ export const ClientesTab = () => {
   const [editId, setEditId] = useState<number | null>(null);
   const [clientInfoOpen, setClientInfoOpen] = useState(false);
   const [clientInfoId, setClientInfoId] = useState<number | null>(null);
+  const [rotas, setRotas] = useState<Rota[]>([]);
+  const [rotasLoading, setRotasLoading] = useState(false);
   const [formData, setFormData] = useState({
     // Identificação
     codigoCliente: '',
@@ -109,6 +112,25 @@ export const ClientesTab = () => {
   useEffect(() => {
     loadClients();
   }, [filters]);
+
+  // Carregar rotas quando abrir os dialogs de criação/edição
+  useEffect(() => {
+    if (createOpen || editOpen) {
+      loadRotas();
+    }
+  }, [createOpen, editOpen]);
+
+  const loadRotas = async () => {
+    setRotasLoading(true);
+    try {
+      const data = await metadataService.getRotas();
+      setRotas(data);
+    } catch (e) {
+      console.error('Erro ao carregar rotas:', e);
+    } finally {
+      setRotasLoading(false);
+    }
+  };
 
   const loadClients = async () => {
     const data = await clientsService.search(filters.search, {
@@ -578,7 +600,26 @@ export const ClientesTab = () => {
                   <FormField label="Email" value={formData.email} onChange={(v) => setFormData({ ...formData, email: v })} />
                   <FormField label="Site" value={formData.site} onChange={(v) => setFormData({ ...formData, site: v })} />
                 </div>
-                <FormField label="Rota" value={formData.rota} onChange={(v) => setFormData({ ...formData, rota: v })} />
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Rota</label>
+                  <Select 
+                    value={formData.rotaId ? String(formData.rotaId) : ''} 
+                    onValueChange={(v) => setFormData({ ...formData, rotaId: parseInt(v) || 0 })}
+                    disabled={rotasLoading}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder={rotasLoading ? 'Carregando...' : 'Selecione a rota'} />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background z-50">
+                      <SelectItem value="0">Nenhuma</SelectItem>
+                      {rotas.map((rota) => (
+                        <SelectItem key={rota.id} value={String(rota.id)}>
+                          {rota.codigo_rota ? `${rota.codigo_rota} - ${rota.label}` : rota.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </TabsContent>
 
               {/* Comercial */}
@@ -700,7 +741,26 @@ export const ClientesTab = () => {
                       <FormField label="Telefone" value={formData.telefone} onChange={(v) => setFormData({ ...formData, telefone: v })} />
                       <FormField label="Email" value={formData.email} onChange={(v) => setFormData({ ...formData, email: v })} />
                     </div>
-                    <FormField label="Rota" value={formData.rota} onChange={(v) => setFormData({ ...formData, rota: v })} />
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Rota</label>
+                      <Select 
+                        value={formData.rotaId ? String(formData.rotaId) : ''} 
+                        onValueChange={(v) => setFormData({ ...formData, rotaId: parseInt(v) || 0 })}
+                        disabled={rotasLoading}
+                      >
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue placeholder={rotasLoading ? 'Carregando...' : 'Selecione a rota'} />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background z-50">
+                          <SelectItem value="0">Nenhuma</SelectItem>
+                          {rotas.map((rota) => (
+                            <SelectItem key={rota.id} value={String(rota.id)}>
+                              {rota.codigo_rota ? `${rota.codigo_rota} - ${rota.label}` : rota.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </TabsContent>
 
                   <TabsContent value="comercial" className="m-0 space-y-4">

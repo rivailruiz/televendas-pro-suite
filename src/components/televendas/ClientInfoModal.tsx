@@ -104,7 +104,9 @@ export const ClientInfoModal = ({ open, onOpenChange, clienteId }: ClientInfoMod
           fax: raw?.fax ?? '',
           email: raw?.email ?? '',
           site: raw?.site ?? '',
-          rota: raw?.rota_id ? `Rota ${raw.rota_id}` : '',
+          rota: raw?.rota?.descricao_rota 
+            ? (raw.rota.codigo_rota ? `${raw.rota.codigo_rota} - ${raw.rota.descricao_rota.trim()}` : raw.rota.descricao_rota.trim())
+            : (raw?.rota_id ? `Rota ${raw.rota_id}` : ''),
           
           // Comercial
           contatos: raw?.comprador_nome ? [{
