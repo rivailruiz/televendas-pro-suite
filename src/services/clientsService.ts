@@ -133,7 +133,7 @@ function normalizeClient(raw: any): Client {
 }
 
 type ClientSearchFilters = {
-  query?: string;
+  query?: string;         // q - busca geral
   nome?: string;
   codigoCliente?: string;
   fantasia?: string;
@@ -148,6 +148,11 @@ type ClientSearchFilters = {
   uf?: string;
   cidade?: string;
   bairro?: string;
+  consumidorFinal?: boolean;
+  segmentoId?: number;
+  redeId?: number;
+  rotaId?: number;
+  inativo?: boolean;
 };
 
 async function fetchFromApi({
@@ -193,6 +198,11 @@ async function fetchFromApi({
     setParam('uf', clean.uf);
     setParam('cidade', clean.cidade);
     setParam('bairro', clean.bairro);
+    if (clean.consumidorFinal !== undefined) params.set('consumidorFinal', String(clean.consumidorFinal));
+    if (clean.segmentoId !== undefined) params.set('segmentoId', String(clean.segmentoId));
+    if (clean.redeId !== undefined) params.set('redeId', String(clean.redeId));
+    if (clean.rotaId !== undefined) params.set('rotaId', String(clean.rotaId));
+    if (clean.inativo !== undefined) params.set('inativo', String(clean.inativo));
 
     if (page) params.set('page', String(page));
     if (limit) params.set('limit', String(limit));
@@ -279,20 +289,41 @@ export const clientsService = {
     }
   },
 
-  // Create new client
+  // Create new client - POST /api/clientes
+  // codigo_cliente é gerado automaticamente, não enviar
   create: async (data: {
-    codigoCliente: string;
     cnpjCpf: string;
+    tipoPessoa?: string;
+    consumidorFinal?: boolean;
+    inscricaoEstadual?: string;
     nome: string;
-    cep: string;
-    cidadeId: number;
-    uf: string;
-    endereco: string;
-    bairro: string;
-    segmentoId: number;
-    rotaId: number;
-    formaPagtoId: number;
-    prazoPagtoId: number;
+    fantasia?: string;
+    cep?: string;
+    cidadeId?: number;
+    cidade?: string;
+    uf?: string;
+    endereco?: string;
+    numero?: string;
+    complemento?: string;
+    bairro?: string;
+    fone?: string;
+    whatsapp?: string;
+    celular?: string;
+    email?: string;
+    emailDanfe?: string;
+    compradorNome?: string;
+    compradorFone?: string;
+    compradorDataNascimento?: string;
+    segmentoId?: number;
+    rotaId?: number;
+    redeId?: number;
+    limiteCredito?: number;
+    formaPagtoId?: number;
+    prazoPagtoId?: number;
+    b2bLiberado?: boolean;
+    b2bSenha?: string;
+    b2bTabelaId?: number;
+    inativo?: boolean;
   }): Promise<any> => {
     const empresa = authService.getEmpresa();
     if (!empresa) return Promise.reject('Empresa não selecionada');
@@ -305,10 +336,15 @@ export const clientsService = {
         accept: 'application/json',
         'Content-Type': 'application/json',
       };
+      // Remover codigoCliente se existir (é gerado automaticamente)
+      const { ...cleanData } = data as any;
+      delete cleanData.codigoCliente;
+      delete cleanData.codigo_cliente;
+      
       const res = await apiClient.fetch(url, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ empresaId: empresa.empresa_id, data }),
+        body: JSON.stringify({ empresaId: empresa.empresa_id, data: cleanData }),
       });
       if (!res.ok) {
         let message = 'Falha ao criar cliente';
@@ -321,22 +357,43 @@ export const clientsService = {
     }
   },
 
-  // Update client
+  // Update client - PUT /api/clientes/:id?empresaId=5
+  // codigo_cliente não é aceito/gerado aqui
   update: async (
     id: number,
     data: Partial<{
-      codigoCliente: string;
       cnpjCpf: string;
+      tipoPessoa: string;
+      consumidorFinal: boolean;
+      inscricaoEstadual: string;
       nome: string;
+      fantasia: string;
       cep: string;
       cidadeId: number;
+      cidade: string;
       uf: string;
       endereco: string;
+      numero: string;
+      complemento: string;
       bairro: string;
+      fone: string;
+      whatsapp: string;
+      celular: string;
+      email: string;
+      emailDanfe: string;
+      compradorNome: string;
+      compradorFone: string;
+      compradorDataNascimento: string;
       segmentoId: number;
       rotaId: number;
+      redeId: number;
+      limiteCredito: number;
       formaPagtoId: number;
       prazoPagtoId: number;
+      b2bLiberado: boolean;
+      b2bSenha: string;
+      b2bTabelaId: number;
+      inativo: boolean;
     }>
   ): Promise<any> => {
     const empresa = authService.getEmpresa();
@@ -345,15 +402,21 @@ export const clientsService = {
     if (!token) return Promise.reject('Token ausente');
 
     try {
-      const url = `${API_BASE}/api/clientes/${encodeURIComponent(id)}`;
+      // empresaId na query string conforme doc
+      const url = `${API_BASE}/api/clientes/${encodeURIComponent(id)}?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
       const headers: Record<string, string> = {
         accept: 'application/json',
         'Content-Type': 'application/json',
       };
+      // Remover codigoCliente se existir (não é aceito no PUT)
+      const { ...cleanData } = data as any;
+      delete cleanData.codigoCliente;
+      delete cleanData.codigo_cliente;
+      
       const res = await apiClient.fetch(url, {
         method: 'PUT',
         headers,
-        body: JSON.stringify({ empresaId: empresa.empresa_id, ...data }),
+        body: JSON.stringify(cleanData),
       });
       if (!res.ok) {
         let message = 'Falha ao atualizar cliente';
@@ -366,7 +429,7 @@ export const clientsService = {
     }
   },
 
-  // Delete client
+  // Delete client - DELETE /api/clientes/:id?empresaId=5
   remove: async (id: number): Promise<boolean> => {
     const empresa = authService.getEmpresa();
     if (!empresa) return Promise.reject('Empresa não selecionada');
@@ -385,6 +448,31 @@ export const clientsService = {
         return Promise.reject(message);
       }
       return true;
+    } catch (e) {
+      return Promise.reject('Erro de conexão com o servidor');
+    }
+  },
+
+  // Get price tables for client - GET /api/clientes/:id/tabelas-precos?empresaId=5
+  getTabelasPrecos: async (id: number): Promise<any[]> => {
+    const empresa = authService.getEmpresa();
+    if (!empresa) return Promise.reject('Empresa não selecionada');
+    const token = authService.getToken();
+    if (!token) return Promise.reject('Token ausente');
+    try {
+      const url = `${API_BASE}/api/clientes/${encodeURIComponent(id)}/tabelas-precos?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
+      const headers: Record<string, string> = { accept: 'application/json' };
+      const res = await apiClient.fetch(url, {
+        method: 'GET',
+        headers,
+      });
+      if (!res.ok) {
+        let message = 'Falha ao buscar tabelas de preço';
+        try { const err = await res.json(); message = extractErrorMessage(err, message); } catch {}
+        return Promise.reject(message);
+      }
+      const data = await res.json();
+      return Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
     } catch (e) {
       return Promise.reject('Erro de conexão com o servidor');
     }
