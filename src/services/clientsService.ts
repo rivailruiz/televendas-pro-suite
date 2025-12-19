@@ -353,7 +353,7 @@ export const clientsService = {
       const res = await apiClient.fetch(url, {
         method: 'PUT',
         headers,
-        body: JSON.stringify({ empresaId: empresa.empresa_id, data }),
+        body: JSON.stringify({ empresaId: empresa.empresa_id, ...data }),
       });
       if (!res.ok) {
         let message = 'Falha ao atualizar cliente';
