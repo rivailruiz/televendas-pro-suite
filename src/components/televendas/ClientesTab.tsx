@@ -536,7 +536,7 @@ export const ClientesTab = () => {
               <TabsTrigger value="identificacao">Identificação</TabsTrigger>
               <TabsTrigger value="comercial">Comercial</TabsTrigger>
               <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
-              <TabsTrigger value="itinerario">Itinerário</TabsTrigger>
+              <TabsTrigger value="itinerario">Representantes</TabsTrigger>
             </TabsList>
 
             <div className="flex-1 overflow-y-auto mt-4 pr-2">
@@ -666,7 +666,7 @@ export const ClientesTab = () => {
                   <TabsTrigger value="identificacao">Identificação</TabsTrigger>
                   <TabsTrigger value="comercial">Comercial</TabsTrigger>
                   <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
-                  <TabsTrigger value="itinerario">Itinerário</TabsTrigger>
+                  <TabsTrigger value="itinerario">Representantes</TabsTrigger>
                 </TabsList>
 
                 <div className="flex-1 overflow-y-auto mt-4 pr-2">
