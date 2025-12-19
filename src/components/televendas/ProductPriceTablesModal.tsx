@@ -8,16 +8,18 @@ import { apiClient } from '@/utils/apiClient';
 import { formatCurrency } from '@/utils/format';
 
 export interface ProductPriceTableEntry {
-  tabelaPrecoId: number | string;
-  codigoTabela?: string;
+  empresaId: number;
+  tabelaPrecoId: number;
+  codigoTabela: string;
   descricaoTabela: string;
-  preco: number;
-  desconto: number;
-  comissao: number;
-  pvsM: number; // Preço venda sugerido modificado
-  dc?: boolean; // Desconto Campanha
-  bdf?: boolean; // Bonificação / Desconto Financeiro
-  ae?: boolean; // Ativo/Elegível
+  prazoMedio: number;
+  somenteVendaAvista: boolean;
+  pedidoMinimo: number;
+  indiceFinanceiro: number;
+  validade: string | null;
+  formaPagtoId: number | null;
+  prazoPagtoId: number | null;
+  inativo: boolean;
 }
 
 interface ProductPriceTablesModalProps {
@@ -50,36 +52,20 @@ export async function fetchProductPriceTables(produtoId: number): Promise<Produc
     const data = await res.json();
     const arr = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
     
-    return arr.map((raw: any): ProductPriceTableEntry => {
-      const id = raw?.tabela_preco_id ?? raw?.id ?? raw?.tabela_id ?? '';
-      const codigo = raw?.codigo_tabela_preco ?? raw?.codigoTabelaPreco ?? raw?.codigo ?? raw?.sigla ?? undefined;
-      const desc =
-        raw?.descricao_tabela_preco ??
-        raw?.descricaoTabelaPreco ??
-        raw?.descricao ??
-        raw?.descricao_tabela ??
-        raw?.descricaoTabela ??
-        raw?.nome ??
-        raw?.tabela ??
-        '';
-      const preco = Number(raw?.preco ?? raw?.preco_tabela ?? raw?.precoTabela ?? 0) || 0;
-      const desconto = Number(raw?.desconto ?? raw?.desconto_maximo ?? raw?.descontoMaximo ?? 0) || 0;
-      const comissao = Number(raw?.comissao ?? raw?.percentual_comissao ?? raw?.percentualComissao ?? 0) || 0;
-      const pvsM = Number(raw?.pvs_m ?? raw?.pvsM ?? raw?.preco_venda_sugerido ?? raw?.precoVendaSugerido ?? preco) || 0;
-      
-      return {
-        tabelaPrecoId: typeof id === 'number' ? id : String(id || '').trim(),
-        codigoTabela: codigo ? String(codigo).trim() : undefined,
-        descricaoTabela: String(desc || '').trim(),
-        preco,
-        desconto,
-        comissao,
-        pvsM,
-        dc: Boolean(raw?.dc ?? raw?.desconto_campanha ?? raw?.descontoCampanha ?? false),
-        bdf: Boolean(raw?.bdf ?? raw?.bonificacao ?? raw?.desconto_financeiro ?? raw?.descontoFinanceiro ?? false),
-        ae: Boolean(raw?.ae ?? raw?.ativo ?? raw?.elegivel ?? true),
-      };
-    }).filter((entry: ProductPriceTableEntry) => entry.descricaoTabela.length > 0);
+    return arr.map((raw: any): ProductPriceTableEntry => ({
+      empresaId: Number(raw?.empresa_id ?? 0),
+      tabelaPrecoId: Number(raw?.tabela_preco_id ?? 0),
+      codigoTabela: String(raw?.codigo_tabela_preco ?? '').trim(),
+      descricaoTabela: String(raw?.descricao_tabela_preco ?? '').trim(),
+      prazoMedio: Number(raw?.prazo_medio ?? 0),
+      somenteVendaAvista: Boolean(raw?.somente_venda_avista ?? false),
+      pedidoMinimo: Number(raw?.pedido_minimo ?? 0),
+      indiceFinanceiro: Number(raw?.indice_financeiro ?? 0),
+      validade: raw?.validade ?? null,
+      formaPagtoId: raw?.forma_pagto_id ?? null,
+      prazoPagtoId: raw?.prazo_pagto_id ?? null,
+      inativo: Boolean(raw?.inativo ?? false),
+    })).filter((entry: ProductPriceTableEntry) => !entry.inativo);
   } catch (e) {
     return Promise.reject('Erro de conexão ao buscar tabelas de preço');
   }
@@ -91,9 +77,6 @@ export const ProductPriceTablesModal = ({
   productDescription,
   data,
 }: ProductPriceTablesModalProps) => {
-  const formatNumber = (value: number, decimals = 4) =>
-    value.toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl w-[90vw] max-h-[80vh] overflow-hidden flex flex-col">
@@ -117,44 +100,32 @@ export const ProductPriceTablesModal = ({
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  <TableHead className="w-[40px] text-xs font-semibold">C</TableHead>
+                  <TableHead className="w-[80px] text-xs font-semibold">Código</TableHead>
                   <TableHead className="text-xs font-semibold min-w-[180px]">Descrição</TableHead>
-                  <TableHead className="text-xs font-semibold text-right w-[90px]">Preço</TableHead>
-                  <TableHead className="text-xs font-semibold text-right w-[80px]">Desconto</TableHead>
-                  <TableHead className="text-xs font-semibold text-right w-[80px]">Comissão</TableHead>
-                  <TableHead className="text-xs font-semibold text-right w-[80px]">Pvs-M</TableHead>
-                  <TableHead className="text-xs font-semibold text-center w-[40px]">Dc</TableHead>
-                  <TableHead className="text-xs font-semibold text-center w-[40px]">Bdf</TableHead>
-                  <TableHead className="text-xs font-semibold text-center w-[40px]">Ae</TableHead>
+                  <TableHead className="text-xs font-semibold text-right w-[90px]">Prazo Médio</TableHead>
+                  <TableHead className="text-xs font-semibold text-right w-[100px]">Pedido Mín.</TableHead>
+                  <TableHead className="text-xs font-semibold text-center w-[80px]">À Vista</TableHead>
+                  <TableHead className="text-xs font-semibold w-[100px]">Validade</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {data.map((entry, idx) => (
                   <TableRow key={`${entry.tabelaPrecoId}-${idx}`} className="hover:bg-muted/30">
                     <TableCell className="text-xs font-mono py-1.5">
-                      {entry.codigoTabela || String(entry.tabelaPrecoId).charAt(0).toUpperCase()}
+                      {entry.codigoTabela}
                     </TableCell>
                     <TableCell className="text-xs py-1.5">{entry.descricaoTabela}</TableCell>
                     <TableCell className="text-xs text-right py-1.5 font-mono">
-                      {formatNumber(entry.preco)}
+                      {entry.prazoMedio} dias
                     </TableCell>
                     <TableCell className="text-xs text-right py-1.5 font-mono">
-                      {formatNumber(entry.desconto, 3)}
-                    </TableCell>
-                    <TableCell className="text-xs text-right py-1.5 font-mono">
-                      {formatNumber(entry.comissao, 3)}
-                    </TableCell>
-                    <TableCell className="text-xs text-right py-1.5 font-mono">
-                      {formatNumber(entry.pvsM)}
+                      {formatCurrency(entry.pedidoMinimo)}
                     </TableCell>
                     <TableCell className="text-center py-1.5">
-                      <Checkbox checked={entry.dc} disabled className="h-4 w-4" />
+                      <Checkbox checked={entry.somenteVendaAvista} disabled className="h-4 w-4" />
                     </TableCell>
-                    <TableCell className="text-center py-1.5">
-                      <Checkbox checked={entry.bdf} disabled className="h-4 w-4" />
-                    </TableCell>
-                    <TableCell className="text-center py-1.5">
-                      <Checkbox checked={entry.ae} disabled className="h-4 w-4" />
+                    <TableCell className="text-xs py-1.5">
+                      {entry.validade ? new Date(entry.validade).toLocaleDateString('pt-BR') : '-'}
                     </TableCell>
                   </TableRow>
                 ))}
