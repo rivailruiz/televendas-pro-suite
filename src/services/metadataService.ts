@@ -49,6 +49,14 @@ export interface PrazoPagto {
   inativo?: boolean;
 }
 
+export interface Rota {
+  id: number;
+  codigo_rota?: string;
+  descricao_rota?: string;
+  label: string;
+  inativo?: boolean;
+}
+
 function normalizeOperacao(raw: any): Operacao {
   const id = raw?.operacao_id ?? raw?.id ?? raw?.codigo ?? raw?.codigo_operacao ?? '';
   const codigo = raw?.codigo_operacao ?? raw?.codigo ?? String(id ?? '');
@@ -417,6 +425,49 @@ export const metadataService = {
         const bc = String(b.codigo || b.id || '');
         return ac.localeCompare(bc, 'pt-BR', { numeric: true, sensitivity: 'base' } as any);
       });
+      return mapped;
+    } catch (e) {
+      return Promise.reject('Erro de conexão com o servidor');
+    }
+  },
+
+  // Rotas disponíveis - GET /api/rotas?empresaId=...
+  getRotas: async (query?: string, incluirInativos = false): Promise<Rota[]> => {
+    const empresa = authService.getEmpresa();
+    if (!empresa) return Promise.reject('Empresa não selecionada');
+    const token = authService.getToken();
+    if (!token) return Promise.reject('Token ausente');
+
+    try {
+      const params = new URLSearchParams();
+      params.set('empresaId', String(empresa.empresa_id));
+      if (query) params.set('q', query);
+      if (incluirInativos) params.set('incluirInativos', 'true');
+
+      const url = `${API_BASE}/api/rotas?${params.toString()}`;
+      const headers: Record<string, string> = { accept: 'application/json' };
+      const res = await apiClient.fetch(url, { method: 'GET', headers });
+
+      if (!res.ok) {
+        let message = 'Falha ao buscar rotas';
+        try { const err = await res.json(); message = err?.message || err?.error || message; } catch {}
+        return Promise.reject(message);
+      }
+
+      const data = await res.json();
+      const arr = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
+
+      const normalize = (raw: any): Rota => ({
+        id: Number(raw?.id ?? raw?.rota_id ?? 0),
+        codigo_rota: raw?.codigo_rota ?? undefined,
+        descricao_rota: raw?.descricao_rota ?? undefined,
+        label: String(raw?.label ?? raw?.descricao_rota ?? '').trim(),
+        inativo: Boolean(raw?.inativo ?? false),
+      });
+
+      const mapped = arr.map(normalize).filter((r) => r.label.length > 0);
+      // Ordena por label
+      mapped.sort((a, b) => a.label.localeCompare(b.label, 'pt-BR', { numeric: true, sensitivity: 'base' } as any));
       return mapped;
     } catch (e) {
       return Promise.reject('Erro de conexão com o servidor');
