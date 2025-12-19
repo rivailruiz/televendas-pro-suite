@@ -12,6 +12,11 @@ export interface ProductPriceTableEntry {
   tabelaPrecoId: number;
   codigoTabela: string;
   descricaoTabela: string;
+  preco: number;
+  precoAplicado: number;
+  pvs: number;
+  descontoMaximo: number;
+  comissao: number;
   prazoMedio: number;
   somenteVendaAvista: boolean;
   pedidoMinimo: number;
@@ -19,6 +24,11 @@ export interface ProductPriceTableEntry {
   validade: string | null;
   formaPagtoId: number | null;
   prazoPagtoId: number | null;
+  permiteBonificacao: boolean;
+  permiteDebitoCredito: boolean;
+  permiteVendaEspecial: boolean;
+  produtoEmPromocao: boolean;
+  quantidadeMinima: number;
   inativo: boolean;
 }
 
@@ -57,6 +67,11 @@ export async function fetchProductPriceTables(produtoId: number): Promise<Produc
       tabelaPrecoId: Number(raw?.tabela_preco_id ?? 0),
       codigoTabela: String(raw?.codigo_tabela_preco ?? '').trim(),
       descricaoTabela: String(raw?.descricao_tabela_preco ?? '').trim(),
+      preco: Number(raw?.preco ?? 0),
+      precoAplicado: Number(raw?.preco_aplicado ?? 0),
+      pvs: Number(raw?.pvs ?? 0),
+      descontoMaximo: Number(raw?.desconto_maximo ?? 0),
+      comissao: Number(raw?.comissao ?? 0),
       prazoMedio: Number(raw?.prazo_medio ?? 0),
       somenteVendaAvista: Boolean(raw?.somente_venda_avista ?? false),
       pedidoMinimo: Number(raw?.pedido_minimo ?? 0),
@@ -64,6 +79,11 @@ export async function fetchProductPriceTables(produtoId: number): Promise<Produc
       validade: raw?.validade ?? null,
       formaPagtoId: raw?.forma_pagto_id ?? null,
       prazoPagtoId: raw?.prazo_pagto_id ?? null,
+      permiteBonificacao: Boolean(raw?.permite_bonificacao ?? false),
+      permiteDebitoCredito: Boolean(raw?.permite_debito_credito ?? false),
+      permiteVendaEspecial: Boolean(raw?.permite_venda_especial ?? false),
+      produtoEmPromocao: Boolean(raw?.produto_em_promocao ?? false),
+      quantidadeMinima: Number(raw?.quantidade_minima ?? 0),
       inativo: Boolean(raw?.inativo ?? false),
     })).filter((entry: ProductPriceTableEntry) => !entry.inativo);
   } catch (e) {
@@ -100,12 +120,14 @@ export const ProductPriceTablesModal = ({
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  <TableHead className="w-[80px] text-xs font-semibold">Código</TableHead>
-                  <TableHead className="text-xs font-semibold min-w-[180px]">Descrição</TableHead>
-                  <TableHead className="text-xs font-semibold text-right w-[90px]">Prazo Médio</TableHead>
-                  <TableHead className="text-xs font-semibold text-right w-[100px]">Pedido Mín.</TableHead>
-                  <TableHead className="text-xs font-semibold text-center w-[80px]">À Vista</TableHead>
-                  <TableHead className="text-xs font-semibold w-[100px]">Validade</TableHead>
+                  <TableHead className="w-[70px] text-xs font-semibold">Código</TableHead>
+                  <TableHead className="text-xs font-semibold min-w-[150px]">Descrição</TableHead>
+                  <TableHead className="text-xs font-semibold text-right w-[90px]">Preço</TableHead>
+                  <TableHead className="text-xs font-semibold text-right w-[80px]">Desc.Máx%</TableHead>
+                  <TableHead className="text-xs font-semibold text-right w-[70px]">Com.%</TableHead>
+                  <TableHead className="text-xs font-semibold text-right w-[70px]">PVS</TableHead>
+                  <TableHead className="text-xs font-semibold text-center w-[50px]">Bonif.</TableHead>
+                  <TableHead className="text-xs font-semibold text-center w-[50px]">D/C</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -116,16 +138,22 @@ export const ProductPriceTablesModal = ({
                     </TableCell>
                     <TableCell className="text-xs py-1.5">{entry.descricaoTabela}</TableCell>
                     <TableCell className="text-xs text-right py-1.5 font-mono">
-                      {entry.prazoMedio} dias
+                      {formatCurrency(entry.precoAplicado)}
                     </TableCell>
                     <TableCell className="text-xs text-right py-1.5 font-mono">
-                      {formatCurrency(entry.pedidoMinimo)}
+                      {entry.descontoMaximo.toFixed(2)}%
+                    </TableCell>
+                    <TableCell className="text-xs text-right py-1.5 font-mono">
+                      {entry.comissao.toFixed(2)}%
+                    </TableCell>
+                    <TableCell className="text-xs text-right py-1.5 font-mono">
+                      {formatCurrency(entry.pvs)}
                     </TableCell>
                     <TableCell className="text-center py-1.5">
-                      <Checkbox checked={entry.somenteVendaAvista} disabled className="h-4 w-4" />
+                      <Checkbox checked={entry.permiteBonificacao} disabled className="h-4 w-4" />
                     </TableCell>
-                    <TableCell className="text-xs py-1.5">
-                      {entry.validade ? new Date(entry.validade).toLocaleDateString('pt-BR') : '-'}
+                    <TableCell className="text-center py-1.5">
+                      <Checkbox checked={entry.permiteDebitoCredito} disabled className="h-4 w-4" />
                     </TableCell>
                   </TableRow>
                 ))}
