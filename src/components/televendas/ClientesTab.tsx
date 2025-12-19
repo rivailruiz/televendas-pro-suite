@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { ShoppingCart, Plus, Pencil, Trash2, Info } from 'lucide-react';
+import { ShoppingCart, Plus, Pencil, Trash2, Info, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { clientsService, Client } from '@/services/clientsService';
 import { metadataService, Rota } from '@/services/metadataService';
@@ -111,7 +111,7 @@ export const ClientesTab = () => {
 
   useEffect(() => {
     loadClients();
-  }, [filters]);
+  }, []);
 
   // Carregar rotas quando abrir os dialogs de criação/edição
   useEffect(() => {
@@ -370,16 +370,22 @@ export const ClientesTab = () => {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Filtros</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Filtros</CardTitle>
+            <Button onClick={loadClients} size="sm">
+              <Search className="h-4 w-4 mr-2" /> Filtrar
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
             <div>
               <label className="text-sm font-medium mb-2 block">Pesquisa</label>
               <Input 
                 placeholder="Nome ou código"
                 value={filters.search}
                 onChange={(e) => setFilters({...filters, search: e.target.value})}
+                onKeyDown={(e) => e.key === 'Enter' && loadClients()}
               />
             </div>
             <div>
@@ -416,18 +422,21 @@ export const ClientesTab = () => {
                 placeholder="Bairro"
                 value={filters.bairro}
                 onChange={(e) => setFilters({...filters, bairro: e.target.value})}
+                onKeyDown={(e) => e.key === 'Enter' && loadClients()}
               />
             </div>
-          </div>
-          <div className="flex items-center space-x-2 mt-4">
-            <Checkbox 
-              id="todos"
-              checked={filters.todos}
-              onCheckedChange={(checked) => setFilters({...filters, todos: checked as boolean})}
-            />
-            <label htmlFor="todos" className="text-sm font-medium">
-              Mostrar todos os clientes
-            </label>
+            <div className="flex items-end">
+              <div className="flex items-center space-x-2 pb-2">
+                <Checkbox 
+                  id="todos"
+                  checked={filters.todos}
+                  onCheckedChange={(checked) => setFilters({...filters, todos: checked as boolean})}
+                />
+                <label htmlFor="todos" className="text-sm font-medium">
+                  Mostrar todos
+                </label>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
