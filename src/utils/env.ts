@@ -1,16 +1,16 @@
 export const getApiBase = (): string => {
-  // Fallback for GitHub Pages - check this FIRST
-  if (typeof window !== 'undefined') {
-    const host = window.location.hostname || '';
-    if (host.endsWith('github.io')) {
-      return 'https://api.adsvendas.tecdisa.com.br';
-    }
+  const host = typeof window !== 'undefined' ? window.location.hostname || '' : '';
+  const envBaseRaw = (import.meta as any)?.env?.VITE_API_BASE;
+  const envBase = typeof envBaseRaw === 'string' ? envBaseRaw.trim() : '';
+
+  // Force the production API when served from GitHub Pages to avoid hitting the static host
+  if (host.endsWith('github.io')) {
+    return 'https://api.adsvendas.tecdisa.com.br';
   }
 
-  // Prefer build-time Vite env (only if non-empty)
-  const envBase = (import.meta as any)?.env?.VITE_API_BASE;
-  if (typeof envBase === 'string' && envBase.trim() !== '') {
-    return envBase.trim();
+  // Prefer build-time Vite env when it is present and non-empty
+  if (envBase) {
+    return envBase;
   }
 
   // Local default
