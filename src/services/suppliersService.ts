@@ -1,5 +1,6 @@
 import { apiClient } from '@/utils/apiClient';
 import { authService } from '@/services/authService';
+import { API_BASE } from '@/utils/env';
 
 export interface Fornecedor {
   fornecedor_id: number;
@@ -45,7 +46,7 @@ export const suppliersService = {
     }
 
     try {
-      const response = await apiClient.fetch(`/api/fornecedores?${params.toString()}`);
+      const response = await apiClient.fetch(`${API_BASE}/api/fornecedores?${params.toString()}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -78,7 +79,7 @@ export const suppliersService = {
     }
 
     try {
-      const response = await apiClient.fetch(`/api/fornecedores/empresa/${empresaId}?${params.toString()}`);
+      const response = await apiClient.fetch(`${API_BASE}/api/fornecedores/empresa/${empresaId}?${params.toString()}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
