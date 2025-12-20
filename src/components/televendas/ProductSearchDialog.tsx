@@ -14,6 +14,7 @@ import { ptBR } from 'date-fns/locale';
 import { productsService, type Product, type ProductFiltersParams } from '@/services/productsService';
 import { metadataService, type Tabela } from '@/services/metadataService';
 import { suppliersService, type Fornecedor } from '@/services/suppliersService';
+import { divisionsService, type Divisao } from '@/services/divisionsService';
 import { formatCurrency } from '@/utils/format';
 import { cn } from '@/lib/utils';
 import { ProductPriceTablesModal, type ProductPriceTableEntry, fetchProductPriceTables } from './ProductPriceTablesModal';
@@ -80,6 +81,8 @@ export const ProductSearchDialog = ({
   const [loadingTabelas, setLoadingTabelas] = useState(false);
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [loadingFornecedores, setLoadingFornecedores] = useState(false);
+  const [divisoes, setDivisoes] = useState<Divisao[]>([]);
+  const [loadingDivisoes, setLoadingDivisoes] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(true);
   const [priceTablesModalOpen, setPriceTablesModalOpen] = useState(false);
   const [selectedProductForPrices, setSelectedProductForPrices] = useState<Product | null>(null);
@@ -136,6 +139,17 @@ export const ProductSearchDialog = ({
         console.error('Erro ao carregar fornecedores:', e);
       } finally {
         setLoadingFornecedores(false);
+      }
+
+      // Load divisões
+      setLoadingDivisoes(true);
+      try {
+        const data = await divisionsService.getAll();
+        setDivisoes(data);
+      } catch (e) {
+        console.error('Erro ao carregar divisões:', e);
+      } finally {
+        setLoadingDivisoes(false);
       }
     };
     
@@ -344,10 +358,15 @@ export const ProductSearchDialog = ({
                       onValueChange={(v) => setFilters(prev => ({ ...prev, divisao: v === '_all' ? '' : v }))}
                     >
                       <SelectTrigger className="h-8 w-28">
-                        <SelectValue placeholder="Todas" />
+                        <SelectValue placeholder={loadingDivisoes ? '...' : 'Todas'} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="_all">Todas</SelectItem>
+                        {divisoes.map((d) => (
+                          <SelectItem key={d.divisao_id} value={String(d.divisao_id)}>
+                            {d.descricao_divisao}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
