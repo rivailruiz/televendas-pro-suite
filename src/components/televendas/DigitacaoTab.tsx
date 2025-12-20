@@ -792,6 +792,24 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       return;
     }
 
+    // Garante que a descrição do produto seja carregada se estiver vazia
+    if (!itemToAdd.descricao && itemToAdd.produtoId) {
+      try {
+        const products = await productsService.search({ codigoProduto: itemToAdd.codigoProduto || String(itemToAdd.produtoId) }, 1, 1);
+        if (products.length > 0) {
+          itemToAdd.descricao = products[0].descricao;
+          itemToAdd.un = itemToAdd.un || products[0].un;
+        }
+      } catch (e) {
+        console.error('Erro ao buscar descrição do produto:', e);
+      }
+    }
+
+    if (!itemToAdd.descricao) {
+      toast.error('Não foi possível identificar o produto. Selecione-o pela busca.');
+      return;
+    }
+
     const normalizeCodigo = (val?: string | null) => String(val ?? '').trim();
     const newCodigoNorm = normalizeCodigo(itemToAdd.codigoProduto);
 
