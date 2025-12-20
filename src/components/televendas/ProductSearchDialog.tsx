@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { productsService, type Product, type ProductFiltersParams } from '@/services/productsService';
 import { metadataService, type Tabela } from '@/services/metadataService';
+import { suppliersService, type Fornecedor } from '@/services/suppliersService';
 import { formatCurrency } from '@/utils/format';
 import { cn } from '@/lib/utils';
 import { ProductPriceTablesModal, type ProductPriceTableEntry, fetchProductPriceTables } from './ProductPriceTablesModal';
@@ -77,6 +78,8 @@ export const ProductSearchDialog = ({
   const [hasMore, setHasMore] = useState(true);
   const [tabelas, setTabelas] = useState<Tabela[]>([]);
   const [loadingTabelas, setLoadingTabelas] = useState(false);
+  const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
+  const [loadingFornecedores, setLoadingFornecedores] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(true);
   const [priceTablesModalOpen, setPriceTablesModalOpen] = useState(false);
   const [selectedProductForPrices, setSelectedProductForPrices] = useState<Product | null>(null);
@@ -108,21 +111,35 @@ export const ProductSearchDialog = ({
   // Use available tabelas from props, or fallback to fetching
   const displayTabelas = availableTabelas && availableTabelas.length > 0 ? availableTabelas : tabelas;
 
-  // Load tabelas on mount only if not provided via props
+  // Load tabelas and fornecedores on mount
   useEffect(() => {
-    if (availableTabelas && availableTabelas.length > 0) return;
-    const loadTabelas = async () => {
-      setLoadingTabelas(true);
+    const loadMetadata = async () => {
+      // Load tabelas only if not provided via props
+      if (!availableTabelas || availableTabelas.length === 0) {
+        setLoadingTabelas(true);
+        try {
+          const data = await metadataService.getTabelas();
+          setTabelas(data);
+        } catch (e) {
+          console.error('Erro ao carregar tabelas:', e);
+        } finally {
+          setLoadingTabelas(false);
+        }
+      }
+
+      // Load fornecedores
+      setLoadingFornecedores(true);
       try {
-        const data = await metadataService.getTabelas();
-        setTabelas(data);
+        const data = await suppliersService.getAll();
+        setFornecedores(data);
       } catch (e) {
-        console.error('Erro ao carregar tabelas:', e);
+        console.error('Erro ao carregar fornecedores:', e);
       } finally {
-        setLoadingTabelas(false);
+        setLoadingFornecedores(false);
       }
     };
-    loadTabelas();
+    
+    loadMetadata();
   }, [availableTabelas]);
 
   // Initialize filter with selected tabela when dialog opens
@@ -274,11 +291,16 @@ export const ProductSearchDialog = ({
                       value={filters.fornecedor}
                       onValueChange={(v) => setFilters(prev => ({ ...prev, fornecedor: v === '_all' ? '' : v }))}
                     >
-                      <SelectTrigger className="h-8 w-32">
-                        <SelectValue placeholder="Todos" />
+                      <SelectTrigger className="h-8 w-40">
+                        <SelectValue placeholder={loadingFornecedores ? '...' : 'Todos'} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="_all">Todos</SelectItem>
+                        {fornecedores.map((f) => (
+                          <SelectItem key={f.fornecedor_id} value={String(f.fornecedor_id)}>
+                            {f.nome_fornecedor}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
