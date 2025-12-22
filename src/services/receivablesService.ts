@@ -3,43 +3,51 @@ import { API_BASE } from '@/utils/env';
 import { apiClient } from '@/utils/apiClient';
 
 export interface Receivable {
-  id: number;
-  tipo?: string;
-  numero?: string;
-  nome?: string;
-  clienteId?: number;
-  clienteCodigo?: string;
-  local?: string;
-  cond?: string;
-  vencimento?: string;
+  id?: string | number;
+  empresa_id: number;
+  areceber_id: string | number;
+  ads_areceber_id?: number;
+  documento_tipo?: string;
+  documento_numero?: string;
+  nosso_numero_boleto?: string;
+  nf?: number;
+  cliente_id?: number;
+  representante_id?: number;
+  datapagto?: string | null;
+  emissao?: string;
+  vencto?: string;
   valor?: number;
   saldo?: number;
-  dataPagamento?: string;
-  atraso?: number;
-  situacao?: string;
+  emcartorio?: boolean;
 }
 
-interface ReceivablesFilters {
-  situacao?: string;
-  ordem?: string;
+export interface ReceivablesFilters {
+  clienteId?: number;
+  representanteId?: number;
+  dataInicio?: string; // yyyy-MM-dd
+  dataFim?: string; // yyyy-MM-dd
+  page?: number;
+  limit?: number;
 }
 
 function normalizeReceivable(raw: any): Receivable {
   return {
-    id: raw?.id ?? raw?.titulo_id ?? raw?.tituloId ?? 0,
-    tipo: raw?.tipo ?? raw?.tipo_titulo ?? raw?.tipoTitulo ?? '',
-    numero: raw?.numero ?? raw?.numero_titulo ?? raw?.numeroTitulo ?? raw?.titulo ?? '',
-    nome: raw?.nome ?? raw?.cliente_nome ?? raw?.clienteNome ?? raw?.razao_social ?? '',
-    clienteId: raw?.cliente_id ?? raw?.clienteId ?? 0,
-    clienteCodigo: raw?.cliente_codigo ?? raw?.clienteCodigo ?? raw?.codigo_cliente ?? '',
-    local: raw?.local ?? raw?.filial ?? '',
-    cond: raw?.cond ?? raw?.condicao ?? raw?.parcela ?? '',
-    vencimento: raw?.vencimento ?? raw?.data_vencimento ?? raw?.dataVencimento ?? '',
-    valor: raw?.valor ?? raw?.valor_titulo ?? raw?.valorTitulo ?? 0,
-    saldo: raw?.saldo ?? raw?.saldo_devedor ?? raw?.saldoDevedor ?? 0,
-    dataPagamento: raw?.data_pagamento ?? raw?.dataPagamento ?? raw?.dt_pagto ?? '',
-    atraso: raw?.atraso ?? raw?.dias_atraso ?? raw?.diasAtraso ?? 0,
-    situacao: raw?.situacao ?? raw?.status ?? '',
+    id: raw?.areceber_id ?? raw?.id ?? undefined,
+    empresa_id: Number(raw?.empresa_id ?? 0),
+    areceber_id: raw?.areceber_id ?? raw?.id ?? '',
+    ads_areceber_id: raw?.ads_areceber_id ?? undefined,
+    documento_tipo: raw?.documento_tipo ?? undefined,
+    documento_numero: raw?.documento_numero ?? undefined,
+    nosso_numero_boleto: raw?.nosso_numero_boleto ?? undefined,
+    nf: raw?.nf ?? undefined,
+    cliente_id: raw?.cliente_id ?? raw?.clienteId ?? undefined,
+    representante_id: raw?.representante_id ?? raw?.representanteId ?? undefined,
+    datapagto: raw?.datapagto ?? raw?.data_pagto ?? null,
+    emissao: raw?.emissao ?? undefined,
+    vencto: raw?.vencto ?? raw?.vencimento ?? undefined,
+    valor: typeof raw?.valor === 'number' ? raw.valor : Number(raw?.valor ?? 0) || 0,
+    saldo: typeof raw?.saldo === 'number' ? raw.saldo : Number(raw?.saldo ?? 0) || 0,
+    emcartorio: Boolean(raw?.emcartorio ?? false),
   };
 }
 
@@ -55,10 +63,13 @@ export const receivablesService = {
       params.set('empresaId', String(empresa.empresa_id));
       params.set('clienteId', String(clienteId));
       
-      if (filters?.situacao) params.set('situacao', filters.situacao);
-      if (filters?.ordem) params.set('ordem', filters.ordem);
+      if (filters?.representanteId) params.set('representanteId', String(filters.representanteId));
+      if (filters?.dataInicio) params.set('dataInicio', filters.dataInicio);
+      if (filters?.dataFim) params.set('dataFim', filters.dataFim);
+      if (filters?.page) params.set('page', String(filters.page));
+      if (filters?.limit) params.set('limit', String(filters.limit));
 
-      const url = `${API_BASE}/api/contas-receber?${params.toString()}`;
+      const url = `${API_BASE}/api/areceber?${params.toString()}`;
       const headers: Record<string, string> = { accept: 'application/json' };
       
       const res = await apiClient.fetch(url, {

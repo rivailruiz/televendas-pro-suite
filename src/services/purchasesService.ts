@@ -41,9 +41,11 @@ export interface PurchaseSummary {
   trocasPerc: number;
 }
 
-interface PurchasesFilters {
+export interface PurchasesFilters {
   dataInicio?: string;
   dataFim?: string;
+  page?: number;
+  limit?: number;
 }
 
 function normalizeItem(raw: any): PurchaseItem {
@@ -93,8 +95,10 @@ export const purchasesService = {
       
       if (filters?.dataInicio) params.set('dataInicio', filters.dataInicio);
       if (filters?.dataFim) params.set('dataFim', filters.dataFim);
+      if (filters?.page) params.set('page', String(filters.page));
+      if (filters?.limit) params.set('limit', String(filters.limit));
 
-      const url = `${API_BASE}/api/ultimas-compras?${params.toString()}`;
+      const url = `${API_BASE}/api/pedidos/ultimas-compras?${params.toString()}`;
       const headers: Record<string, string> = { accept: 'application/json' };
       
       const res = await apiClient.fetch(url, {

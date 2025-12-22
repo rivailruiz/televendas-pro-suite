@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,15 +14,14 @@ interface ClientReceivablesModalProps {
 }
 
 type Situacao = 'a_receber' | 'recebido' | 'todos';
-type Ordem = 'vencto' | 'valor' | 'atraso';
+type Ordem = 'vencto' | 'valor';
 
 export const ClientReceivablesModal = ({ open, onOpenChange, clienteId }: ClientReceivablesModalProps) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<Receivable[]>([]);
-  const [situacao, setSituacao] = useState<Situacao>('a_receber');
   const [ordem, setOrdem] = useState<Ordem>('vencto');
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set());
 
   useEffect(() => {
     if (!open || !clienteId) return;
@@ -34,8 +32,8 @@ export const ClientReceivablesModal = ({ open, onOpenChange, clienteId }: Client
       setSelectedIds(new Set());
       try {
         const result = await receivablesService.getByClienteId(clienteId, {
-          situacao: situacao === 'todos' ? undefined : situacao,
-          ordem,
+          page: 1,
+          limit: 100,
         });
         setData(result);
       } catch (e: any) {
@@ -47,9 +45,9 @@ export const ClientReceivablesModal = ({ open, onOpenChange, clienteId }: Client
     };
 
     fetchData();
-  }, [open, clienteId, situacao, ordem]);
+  }, [open, clienteId]);
 
-  const handleToggleSelect = (id: number) => {
+  const handleToggleSelect = (id: string | number) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
       if (next.has(id)) {
@@ -76,11 +74,9 @@ export const ClientReceivablesModal = ({ open, onOpenChange, clienteId }: Client
   const sortedData = [...data].sort((a, b) => {
     switch (ordem) {
       case 'vencto':
-        return (a.vencimento || '').localeCompare(b.vencimento || '');
+        return (a.vencto || '').localeCompare(b.vencto || '');
       case 'valor':
         return (b.valor || 0) - (a.valor || 0);
-      case 'atraso':
-        return (b.atraso || 0) - (a.atraso || 0);
       default:
         return 0;
     }
@@ -88,15 +84,12 @@ export const ClientReceivablesModal = ({ open, onOpenChange, clienteId }: Client
 
   // Calculate totals
   const totalSelecionado = sortedData
-    .filter(r => selectedIds.has(r.id))
+    .filter(r => selectedIds.has(r.id ?? r.areceber_id))
     .reduce((sum, r) => sum + (r.saldo || 0), 0);
 
   const totalGeral = sortedData.reduce((sum, r) => sum + (r.saldo || 0), 0);
 
-  // Calculate "corrigido" - sum of saldos for items with atraso > 0
-  const totalCorrigido = sortedData
-    .filter(r => (r.atraso || 0) > 0)
-    .reduce((sum, r) => sum + (r.saldo || 0), 0);
+  const totalCorrigido = totalGeral;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -120,51 +113,49 @@ export const ClientReceivablesModal = ({ open, onOpenChange, clienteId }: Client
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead className="w-10">sel</TableHead>
+                    <TableHead className="w-10">Sel</TableHead>
                     <TableHead className="w-16">Tipo</TableHead>
-                    <TableHead className="w-24">Numero</TableHead>
-                    <TableHead>Nome</TableHead>
-                    <TableHead className="w-20">Cliente</TableHead>
-                    <TableHead className="w-16">Local</TableHead>
-                    <TableHead className="w-14">cond</TableHead>
-                    <TableHead className="w-24">Vencto</TableHead>
-                    <TableHead className="w-24 text-right">Valor</TableHead>
-                    <TableHead className="w-24 text-right">Saldo</TableHead>
-                    <TableHead className="w-24">Dt. Pagto</TableHead>
-                    <TableHead className="w-16 text-right">Atraso</TableHead>
+                    <TableHead className="w-24">Número</TableHead>
+                    <TableHead className="w-28">Nosso Número</TableHead>
+                    <TableHead className="w-20 text-right">NF</TableHead>
+                    <TableHead className="w-28">Emissão</TableHead>
+                    <TableHead className="w-28">Vencimento</TableHead>
+                    <TableHead className="w-20 text-right">Valor</TableHead>
+                    <TableHead className="w-20 text-right">Saldo</TableHead>
+                    <TableHead className="w-28">Pagamento</TableHead>
+                    <TableHead className="w-20 text-center">Cartório</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {sortedData.length > 0 ? (
                     sortedData.map((item) => (
                       <TableRow 
-                        key={item.id} 
-                        className={selectedIds.has(item.id) ? 'bg-primary/10' : ''}
+                        key={item.id ?? item.areceber_id} 
+                        className={selectedIds.has(item.id ?? item.areceber_id) ? 'bg-primary/10' : ''}
                       >
                         <TableCell>
                           <Checkbox 
-                            checked={selectedIds.has(item.id)}
-                            onCheckedChange={() => handleToggleSelect(item.id)}
+                            checked={selectedIds.has(item.id ?? item.areceber_id)}
+                            onCheckedChange={() => handleToggleSelect(item.id ?? item.areceber_id)}
                           />
                         </TableCell>
-                        <TableCell className="text-xs">{item.tipo}</TableCell>
-                        <TableCell className="text-xs">{item.numero}</TableCell>
-                        <TableCell className="text-xs truncate max-w-[200px]">{item.nome}</TableCell>
-                        <TableCell className="text-xs">{item.clienteCodigo}</TableCell>
-                        <TableCell className="text-xs">{item.local}</TableCell>
-                        <TableCell className="text-xs">{item.cond}</TableCell>
-                        <TableCell className="text-xs">{formatDate(item.vencimento)}</TableCell>
+                        <TableCell className="text-xs">{item.documento_tipo?.trim() || '-'}</TableCell>
+                        <TableCell className="text-xs">{item.documento_numero ?? '-'}</TableCell>
+                        <TableCell className="text-xs truncate max-w-[160px]">{item.nosso_numero_boleto?.trim() || '-'}</TableCell>
+                        <TableCell className="text-xs text-right">{item.nf || ''}</TableCell>
+                        <TableCell className="text-xs">{formatDate(item.emissao)}</TableCell>
+                        <TableCell className="text-xs">{formatDate(item.vencto)}</TableCell>
                         <TableCell className="text-xs text-right">{formatCurrency(item.valor || 0)}</TableCell>
                         <TableCell className="text-xs text-right">{formatCurrency(item.saldo || 0)}</TableCell>
-                        <TableCell className="text-xs">{formatDate(item.dataPagamento)}</TableCell>
-                        <TableCell className={`text-xs text-right ${(item.atraso || 0) > 0 ? 'text-destructive font-medium' : ''}`}>
-                          {item.atraso || 0}
+                        <TableCell className="text-xs">{formatDate(item.datapagto || undefined) || '-'}</TableCell>
+                        <TableCell className="text-xs text-center">
+                          {item.emcartorio ? 'Sim' : 'Não'}
                         </TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={12} className="text-center text-sm text-muted-foreground py-8">
+                      <TableCell colSpan={11} className="text-center text-sm text-muted-foreground py-8">
                         Nenhuma conta a receber encontrada
                       </TableCell>
                     </TableRow>
@@ -175,36 +166,6 @@ export const ClientReceivablesModal = ({ open, onOpenChange, clienteId }: Client
 
             {/* Footer with filters and totals */}
             <div className="mt-4 flex flex-wrap items-end justify-between gap-4 border-t pt-4">
-              {/* Filters */}
-              <div className="flex flex-wrap gap-4">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium">Situação</label>
-                  <Select value={situacao} onValueChange={(v) => setSituacao(v as Situacao)}>
-                    <SelectTrigger className="w-32 h-8">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="a_receber">A receber</SelectItem>
-                      <SelectItem value="recebido">Recebido</SelectItem>
-                      <SelectItem value="todos">Todos</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium">Ordem</label>
-                  <Select value={ordem} onValueChange={(v) => setOrdem(v as Ordem)}>
-                    <SelectTrigger className="w-28 h-8">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="vencto">Vencto</SelectItem>
-                      <SelectItem value="valor">Valor</SelectItem>
-                      <SelectItem value="atraso">Atraso</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
               {/* Totals */}
               <div className="flex flex-wrap items-center gap-4">
                 <div className="flex items-center gap-2">

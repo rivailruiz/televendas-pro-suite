@@ -32,6 +32,8 @@ const Login = () => {
         try {
           const empresas = await authService.getEmpresas();
           if (empresas.length === 1) {
+            // Reexecuta login com empresaId para receber parametros_app_mobile quando disponível
+            await authService.login(usuario, senha, empresas[0].empresa_id);
             authService.setEmpresa(empresas[0]);
             navigate('/televendas');
           } else {

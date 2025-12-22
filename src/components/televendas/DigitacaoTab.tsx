@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Save, Undo, Search, Plus, Trash2, Info, DollarSign, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { metadataService, type Operacao, type Tabela, type FormaPagamento, type PrazoPagto } from '@/services/metadataService';
+import { authService } from '@/services/authService';
 import { clientsService, type Client } from '@/services/clientsService';
 import { productsService, type Product } from '@/services/productsService';
 import { representativesService, type Representative } from '@/services/representativesService';
@@ -31,6 +32,7 @@ type OrderItem = {
   tabelaId?: string | number;
   quant: number;
   descontoPerc: number;
+  descontoMaximo?: number;
   preco: number;
   total: number;
   obs?: string;
@@ -63,6 +65,7 @@ const createEmptyNewItem = () =>
     produtoId: 0,
     quant: 1,
     descontoPerc: 0,
+    descontoMaximo: undefined,
   }) as Partial<OrderItem>;
 
 const createEmptyObservacoes = () => ({
@@ -160,6 +163,31 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   const [preferredPrazoId, setPreferredPrazoId] = useState<string | number | null>(null);
   const prevOrderIdRef = useRef<number | null>(null);
 
+  const parametrosAppMobile = useMemo(() => authService.getParametrosAppMobile(), []);
+  const bloqueiaDescontoAcimaTabela = useMemo(
+    () => Boolean(parametrosAppMobile?.bloqueia_desconto_acima_tabela),
+    [parametrosAppMobile?.bloqueia_desconto_acima_tabela],
+  );
+  const normalizeMaxDesconto = useCallback(
+    (val?: number) => (typeof val === 'number' && !Number.isNaN(val) ? val : undefined),
+    [],
+  );
+  const clampDesconto = useCallback(
+    (valor: number, max?: number) => {
+      if (!bloqueiaDescontoAcimaTabela) return valor;
+      const maxValue = normalizeMaxDesconto(max);
+      if (maxValue == null) return valor;
+      if (valor > maxValue) {
+        toast.error(
+          `Desconto acima do limite permitido (${maxValue.toFixed(2)}%). Política da empresa bloqueia descontos acima da tabela.`,
+        );
+        return maxValue;
+      }
+      return valor;
+    },
+    [bloqueiaDescontoAcimaTabela, normalizeMaxDesconto],
+  );
+
   const resetFormState = useCallback(() => {
     setFormData(createEmptyFormData());
     setItems([]);
@@ -181,6 +209,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       un: item.un || '',
       quant: item.quant,
       descontoPerc: item.descontoPerc || 0,
+      descontoMaximo: normalizeMaxDesconto((item as any)?.descontoMaximo ?? (item as any)?.desconto_maximo ?? (item as any)?.desconto_max),
       preco: item.preco,
       total: item.total,
     }));
@@ -322,6 +351,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           estoque: typeof it.estoque === 'number' ? it.estoque : undefined,
           total: it.total,
           obs: it.obs,
+          descontoMaximo: normalizeMaxDesconto((it as any)?.descontoMaximo ?? (it as any)?.desconto_maximo ?? (it as any)?.desconto_max),
           tabelaId:
             it.tabela_preco_id ??
             it.tabela_precoId ??
@@ -376,6 +406,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           estoque: typeof (it as any)?.estoque === 'number' ? (it as any).estoque : undefined,
           total: it.total,
           obs: it.obs,
+          descontoMaximo: normalizeMaxDesconto((it as any)?.descontoMaximo ?? (it as any)?.desconto_maximo ?? (it as any)?.desconto_max),
           tabelaId:
             (it as any)?.tabela_preco_id ??
             (it as any)?.tabela_precoId ??
@@ -735,6 +766,8 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   }, [prazos, formData.prazo]);
 
   const handleSelectProduct = (product: Product) => {
+    const maxDesconto = normalizeMaxDesconto(product.descontoMaximo);
+    const descontoPerc = clampDesconto(newItem.descontoPerc || 0, maxDesconto);
     setNewItem({
       ...newItem,
       produtoId: product.id,
@@ -743,6 +776,8 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       un: product.un,
       preco: product.preco,
       estoque: typeof product.estoque === 'number' ? product.estoque : undefined,
+      descontoMaximo: maxDesconto,
+      descontoPerc,
     });
     setNewItemPreco(product.preco);
     // Set default tabela if available
@@ -817,7 +852,8 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     const quant = Math.max(0, Number(itemToAdd.quant) || 0);
     const descricao = itemToAdd.descricao || '';
     const un = itemToAdd.un || '';
-    const descontoPerc = itemToAdd.descontoPerc || 0;
+    const maxDesconto = normalizeMaxDesconto(itemToAdd.descontoMaximo);
+    const descontoPerc = clampDesconto(itemToAdd.descontoPerc || 0, maxDesconto);
     const preco = itemToAdd.preco || 0;
     const obs = itemToAdd.obs;
     const tabelaSelecionada = getPreferredTabelaForItem(itemToAdd);
@@ -894,6 +930,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           quant,
           descontoPerc,
           preco: precoTabela,
+          descontoMaximo: maxDesconto,
           total: 0,
           obs,
         };
@@ -943,7 +980,9 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           descricao: current.descricao || descricao,
           un: current.un || un,
           estoque: current.estoque ?? itemToAdd.estoque,
+          descontoMaximo: current.descontoMaximo ?? maxDesconto,
         };
+        merged.descontoPerc = clampDesconto(merged.descontoPerc, merged.descontoMaximo);
         const total = calculateItemTotal(merged);
         const next = [...prev];
         next[matchIndex] = { ...merged, total };
@@ -954,7 +993,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     if (typeof itemToAdd.produtoId === 'number' && itemToAdd.produtoId > 0) {
       ensureItemTabelas(itemToAdd.produtoId);
     }
-    setNewItem({ produtoId: 0, quant: 1, descontoPerc: 0 });
+    setNewItem({ produtoId: 0, quant: 1, descontoPerc: 0, descontoMaximo: undefined });
     setProductCodeInput('');
     setNewItemTabelaId('');
     setNewItemPreco(null);
@@ -996,6 +1035,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           estoque: typeof product.estoque === 'number' ? product.estoque : undefined,
           quant: newItem.quant || 1,
           descontoPerc: newItem.descontoPerc || 0,
+          descontoMaximo: normalizeMaxDesconto(product.descontoMaximo),
         };
         setLoadingProductByCode(false);
         await handleAddItemWithProduct(itemToAdd);
@@ -1014,7 +1054,20 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   const handleUpdateItem = (index: number, patch: Partial<OrderItem>) => {
     setItems((prev) => {
       const updated = [...prev];
-      const current = { ...updated[index], ...patch } as OrderItem;
+      const currentBase = { ...updated[index] } as OrderItem;
+      const maxDesconto = normalizeMaxDesconto(
+        patch.descontoMaximo ?? currentBase.descontoMaximo,
+      );
+      const descontoPerc =
+        patch.descontoPerc != null
+          ? clampDesconto(patch.descontoPerc, maxDesconto)
+          : currentBase.descontoPerc;
+      const current = {
+        ...currentBase,
+        ...patch,
+        descontoPerc,
+        descontoMaximo: maxDesconto ?? currentBase.descontoMaximo,
+      } as OrderItem;
       if (current.estoque != null && current.quant > current.estoque) {
         toast.warning('Quantidade solicitada excede o estoque disponível');
       }
@@ -1483,7 +1536,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                   setProductCodeInput(e.target.value);
                   // Limpa produto selecionado se digitar código manualmente
                   if (newItem.produtoId) {
-                    setNewItem({ ...newItem, produtoId: 0, descricao: '', codigoProduto: '', preco: 0 });
+                    setNewItem({ ...newItem, produtoId: 0, descricao: '', codigoProduto: '', preco: 0, descontoMaximo: undefined });
                     setNewItemPreco(null);
                   }
                 }}
@@ -1563,7 +1616,12 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                 type="number"
                 inputMode="decimal"
                 value={newItem.descontoPerc || ''}
-                onChange={(e) => setNewItem({...newItem, descontoPerc: parseFloat(e.target.value) || 0})}
+                onChange={(e) => {
+                  const parsed = parseFloat(e.target.value);
+                  const nextVal = Number.isFinite(parsed) ? parsed : 0;
+                  const limited = clampDesconto(nextVal, newItem.descontoMaximo);
+                  setNewItem({ ...newItem, descontoPerc: limited });
+                }}
                 min={0}
                 max={100}
                 step="any"

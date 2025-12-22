@@ -6,8 +6,13 @@ export interface Empresa {
 import { API_BASE } from '@/utils/env';
 import { apiClient } from '@/utils/apiClient';
 
+export interface ParametrosAppMobile {
+  empresa_id?: number;
+  bloqueia_desconto_acima_tabela?: boolean;
+}
+
 export const authService = {
-  login: async (usuario: string, senha: string) => {
+  login: async (usuario: string, senha: string, empresaId?: number) => {
     try {
       const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
@@ -15,7 +20,9 @@ export const authService = {
           'accept': '*/*',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ usuario, senha }),
+        body: JSON.stringify(
+          empresaId != null ? { usuario, senha, empresaId } : { usuario, senha },
+        ),
         // Fluxo baseado em token no corpo da resposta (sem cookies)
         credentials: 'omit',
       });
@@ -57,6 +64,7 @@ export const authService = {
         token,
         // Keep full payload for potential future use
         payload: data,
+        parametros_app_mobile: data?.parametros_app_mobile ?? null,
         timestamp: new Date().toISOString(),
       };
 
@@ -122,5 +130,10 @@ export const authService = {
   getEmpresa: (): Empresa | null => {
     const session = authService.getSession();
     return session?.empresa ?? null;
+  },
+
+  getParametrosAppMobile: (): ParametrosAppMobile | null => {
+    const session = authService.getSession();
+    return session?.parametros_app_mobile ?? session?.payload?.parametros_app_mobile ?? null;
   },
 };
