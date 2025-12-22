@@ -72,6 +72,8 @@ function normalizeProduct(raw: any): Product {
     const num = Number(val);
     return Number.isNaN(num) ? undefined : num;
   };
+  const divisaoInfo = raw?.divisao_info;
+  const fornecedorInfo = raw?.fornecedor_info;
 
   const id = raw?.id ?? raw?.produto_id ?? raw?.codigo ?? raw?.cod ?? 0;
   const codigoProduto =
@@ -135,9 +137,21 @@ function normalizeProduct(raw: any): Product {
   const descontoMaximo = numberOrUndefined(raw?.desconto_maximo ?? raw?.descontoMaximo ?? raw?.desconto_max);
   const comissao = numberOrUndefined(raw?.comissao ?? raw?.percentual_comissao ?? raw?.percentualComissao);
   const fornecedor =
-    raw?.fornecedor ?? raw?.fornecedor_nome ?? raw?.fornecedorNome ?? raw?.nome_fornecedor ?? raw?.fantasia;
+    fornecedorInfo?.nome_fornecedor ??
+    fornecedorInfo?.fantasia ??
+    raw?.fornecedor ??
+    raw?.fornecedor_nome ??
+    raw?.fornecedorNome ??
+    raw?.nome_fornecedor ??
+    raw?.fantasia;
   const divisaoDescricao =
-    raw?.descricao_divisao ?? raw?.divisaoDescricao ?? raw?.divisao_descricao ?? raw?.divisaoNome ?? raw?.divisao;
+    divisaoInfo?.descricao_divisao ??
+    divisaoInfo?.descricao ??
+    raw?.descricao_divisao ??
+    raw?.divisaoDescricao ??
+    raw?.divisao_descricao ??
+    raw?.divisaoNome ??
+    raw?.divisao;
 
   return {
     id: Number(id) || 0,
@@ -156,9 +170,11 @@ function normalizeProduct(raw: any): Product {
     descricaoTabelaPreco: trimOrUndefined(descricaoTabelaPreco),
     descontoMaximo,
     comissao,
-    fornecedorId: numberOrUndefined(raw?.fornecedor_id ?? raw?.fornecedorId),
+    fornecedorId: numberOrUndefined(
+      fornecedorInfo?.fornecedor_id ?? fornecedorInfo?.fornecedorId ?? raw?.fornecedor_id ?? raw?.fornecedorId
+    ),
     fornecedor: trimOrUndefined(fornecedor),
-    divisaoId: numberOrUndefined(raw?.divisao_id ?? raw?.divisaoId),
+    divisaoId: numberOrUndefined(divisaoInfo?.divisao_id ?? divisaoInfo?.divisaoId ?? raw?.divisao_id ?? raw?.divisaoId),
     divisaoDescricao: trimOrUndefined(divisaoDescricao),
     fatorCompra: numberOrUndefined(raw?.fator_compra ?? raw?.fatorCompra),
     fatorVenda: numberOrUndefined(raw?.fator_venda ?? raw?.fatorVenda),

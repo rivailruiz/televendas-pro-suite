@@ -14,7 +14,6 @@ export interface ProductPriceTableEntry {
   descricaoTabela: string;
   preco: number;
   precoAplicado: number;
-  pvs: number;
   descontoMaximo: number;
   comissao: number;
   prazoMedio: number;
@@ -69,7 +68,6 @@ export async function fetchProductPriceTables(produtoId: number): Promise<Produc
       descricaoTabela: String(raw?.descricao_tabela_preco ?? '').trim(),
       preco: Number(raw?.preco ?? 0),
       precoAplicado: Number(raw?.preco_aplicado ?? 0),
-      pvs: Number(raw?.pvs ?? 0),
       descontoMaximo: Number(raw?.desconto_maximo ?? 0),
       comissao: Number(raw?.comissao ?? 0),
       prazoMedio: Number(raw?.prazo_medio ?? 0),
@@ -125,7 +123,7 @@ export const ProductPriceTablesModal = ({
                   <TableHead className="text-xs font-semibold text-right w-[90px]">Preço</TableHead>
                   <TableHead className="text-xs font-semibold text-right w-[80px]">Desc.Máx%</TableHead>
                   <TableHead className="text-xs font-semibold text-right w-[70px]">Com.%</TableHead>
-                  <TableHead className="text-xs font-semibold text-right w-[70px]">PVS</TableHead>
+                  <TableHead className="text-xs font-semibold text-center w-[70px]">Venda Esp.</TableHead>
                   <TableHead className="text-xs font-semibold text-center w-[50px]">Bonif.</TableHead>
                   <TableHead className="text-xs font-semibold text-center w-[50px]">D/C</TableHead>
                 </TableRow>
@@ -146,8 +144,8 @@ export const ProductPriceTablesModal = ({
                     <TableCell className="text-xs text-right py-1.5 font-mono">
                       {entry.comissao.toFixed(2)}%
                     </TableCell>
-                    <TableCell className="text-xs text-right py-1.5 font-mono">
-                      {formatCurrency(entry.pvs)}
+                    <TableCell className="text-center py-1.5">
+                      <Checkbox checked={entry.permiteVendaEspecial} disabled className="h-4 w-4" />
                     </TableCell>
                     <TableCell className="text-center py-1.5">
                       <Checkbox checked={entry.permiteBonificacao} disabled className="h-4 w-4" />
