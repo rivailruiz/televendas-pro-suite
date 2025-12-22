@@ -186,9 +186,9 @@ export const ClientPurchasesModal = ({
         ) : error ? (
           <div className="p-4 text-center text-destructive">{error}</div>
         ) : (
-          <div className="flex flex-col flex-1 overflow-hidden">
-            <Tabs defaultValue="pedidos" className="flex-1 overflow-hidden flex flex-col">
-              <div className="flex items-center justify-between">
+          <div className="flex flex-col flex-1 min-h-0">
+            <Tabs defaultValue="pedidos" className="flex-1 flex flex-col min-h-0">
+              <div className="flex items-center justify-between flex-shrink-0">
                 <TabsList>
                   <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
                   <TabsTrigger value="itens">Itens do pedido</TabsTrigger>
@@ -205,9 +205,9 @@ export const ClientPurchasesModal = ({
                 </Button>
               </div>
 
-              <div className="flex-1 overflow-hidden mt-2">
+              <div className="flex-1 min-h-0 overflow-auto mt-2">
                 {/* Orders Tab */}
-                <TabsContent value="pedidos" className="m-0 h-full overflow-auto">
+                <TabsContent value="pedidos" className="m-0 h-full">
                   <div className="border rounded-md">
                     <Table>
                       <TableHeader>
@@ -258,7 +258,7 @@ export const ClientPurchasesModal = ({
                 </TabsContent>
 
                 {/* Items Tab */}
-                <TabsContent value="itens" className="m-0 h-full overflow-auto">
+                <TabsContent value="itens" className="m-0 h-full">
                   {loadingItems ? (
                     <div className="space-y-2 p-4">
                       <Skeleton className="h-8 w-full" />
@@ -304,7 +304,7 @@ export const ClientPurchasesModal = ({
             </Tabs>
 
             {/* Summary Footer */}
-            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 border-t pt-4">
+            <div className="flex-shrink-0 mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 border-t pt-4">
               <div className="flex items-center gap-2">
                 <label className="text-sm whitespace-nowrap">Compras</label>
                 <Input 
@@ -325,7 +325,6 @@ export const ClientPurchasesModal = ({
                   value={summary.bonificacoesPerc.toFixed(3)} 
                   className="h-8 w-20 text-right bg-muted/30 text-sm"
                 />
-                <span className="text-xs">(%)</span>
               </div>
               <div className="flex items-center gap-2">
                 <label className="text-sm whitespace-nowrap">Devoluções</label>
@@ -339,7 +338,6 @@ export const ClientPurchasesModal = ({
                   value={summary.devolucoesPerc.toFixed(3)} 
                   className="h-8 w-20 text-right bg-muted/30 text-sm"
                 />
-                <span className="text-xs">(%)</span>
               </div>
               <div className="flex items-center gap-2">
                 <label className="text-sm whitespace-nowrap">Trocas</label>
@@ -353,7 +351,6 @@ export const ClientPurchasesModal = ({
                   value={summary.trocasPerc.toFixed(3)} 
                   className="h-8 w-20 text-right bg-muted/30 text-sm"
                 />
-                <span className="text-xs">(%)</span>
               </div>
             </div>
           </div>
