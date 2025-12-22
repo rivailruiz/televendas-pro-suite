@@ -251,6 +251,16 @@ export const ProductSearchDialog = ({
                 {/* Column 1 */}
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium w-20 text-right">Descrição</label>
+                    <Input
+                      placeholder="Buscar por descrição..."
+                      value={filters.descricao}
+                      onChange={(e) => setFilters(prev => ({ ...prev, descricao: e.target.value }))}
+                      className="h-8 w-52"
+                      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
                     <label className="text-sm font-medium w-20 text-right">Cód. Prod.</label>
                     <Input
                       value={filters.codigoProduto}
@@ -326,6 +336,56 @@ export const ProductSearchDialog = ({
                     />
                     <label htmlFor="pAtivo" className="text-sm cursor-pointer whitespace-nowrap">P. Ativo</label>
                   </div>
+
+                  <div className="flex flex-col gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      onClick={handleSearch}
+                      className="h-8 w-full"
+                      disabled={loading}
+                    >
+                      <Search className="h-4 w-4 mr-1" />
+                      Filtrar
+                    </Button>
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium whitespace-nowrap">Últ. compras:</label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className={cn(
+                              "h-8 justify-start text-left font-normal px-2",
+                              !filters.ultimasComprasDesde && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-1 h-4 w-4" />
+                            {filters.ultimasComprasDesde
+                              ? format(filters.ultimasComprasDesde, 'dd/MM/yyyy', { locale: ptBR })
+                              : 'Selecionar'}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={filters.ultimasComprasDesde}
+                            onSelect={(date) => setFilters(prev => ({ ...prev, ultimasComprasDesde: date }))}
+                            locale={ptBR}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleClearFilters}
+                      className="h-8 w-full"
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      Limpar
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Column 3 */}
@@ -400,72 +460,13 @@ export const ProductSearchDialog = ({
                   </div>
                 </div>
 
-                {/* Column 5 - Date and actions */}
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium whitespace-nowrap">Últ. compras:</label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className={cn(
-                            "h-8 justify-start text-left font-normal px-2",
-                            !filters.ultimasComprasDesde && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-1 h-4 w-4" />
-                          {filters.ultimasComprasDesde
-                            ? format(filters.ultimasComprasDesde, 'dd/MM/yyyy', { locale: ptBR })
-                            : 'Selecionar'}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={filters.ultimasComprasDesde}
-                          onSelect={(date) => setFilters(prev => ({ ...prev, ultimasComprasDesde: date }))}
-                          locale={ptBR}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleClearFilters}
-                    className="h-8"
-                  >
-                    <X className="h-4 w-4 mr-1" />
-                    Limpar
-                  </Button>
-                </div>
               </div>
             </div>
           </CollapsibleContent>
         </Collapsible>
 
-        {/* Quick search + Filter toggle */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <div className="flex-1 flex items-center gap-2">
-            <Input
-              placeholder="Buscar por descrição..."
-              value={filters.descricao}
-              onChange={(e) => setFilters(prev => ({ ...prev, descricao: e.target.value }))}
-              className="h-9 max-w-md"
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            />
-            <Button
-              size="sm"
-              onClick={handleSearch}
-              className="h-9"
-              disabled={loading}
-            >
-              <Search className="h-4 w-4 mr-1" />
-              Filtrar
-            </Button>
-          </div>
+        {/* Filter toggle */}
+        <div className="flex justify-end flex-shrink-0">
           <Button
             variant="outline"
             size="sm"
