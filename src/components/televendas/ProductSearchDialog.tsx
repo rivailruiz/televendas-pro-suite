@@ -246,89 +246,133 @@ export const ProductSearchDialog = ({
         {/* Collapsible Filters Section */}
         <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
           <CollapsibleContent>
-            <div className="border rounded-lg p-4 bg-muted/30 flex-shrink-0 overflow-x-auto">
-              <div className="flex gap-4 min-w-max">
-                {/* Column 1 */}
+            <div className="border rounded-lg p-4 bg-muted/30 flex-shrink-0">
+              <div className="grid grid-cols-[1fr_1fr_auto] gap-6">
+                {/* Column 1 - Text inputs */}
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium w-20 text-right">Descrição</label>
+                    <label className="text-sm font-medium w-24 text-right shrink-0">Descrição</label>
                     <Input
-                      placeholder="Buscar por descrição..."
+                      placeholder=""
                       value={filters.descricao}
                       onChange={(e) => setFilters(prev => ({ ...prev, descricao: e.target.value }))}
-                      className="h-8 w-52"
+                      className="h-8 flex-1"
                       onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium w-20 text-right">Cód. Prod.</label>
+                    <label className="text-sm font-medium w-24 text-right shrink-0">Cód. Prod.</label>
                     <Input
                       value={filters.codigoProduto}
                       onChange={(e) => setFilters(prev => ({ ...prev, codigoProduto: e.target.value }))}
-                      className="h-8 w-32"
+                      className="h-8 flex-1"
                       onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium w-20 text-right">Cód.Fabrica</label>
+                    <label className="text-sm font-medium w-24 text-right shrink-0">Cód.Fabrica</label>
                     <Input
                       value={filters.codFabrica}
                       onChange={(e) => setFilters(prev => ({ ...prev, codFabrica: e.target.value }))}
-                      className="h-8 w-32"
+                      className="h-8 flex-1"
                       onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium w-20 text-right">Ean13</label>
+                    <label className="text-sm font-medium w-24 text-right shrink-0">Ean13</label>
                     <Input
                       value={filters.ean13}
                       onChange={(e) => setFilters(prev => ({ ...prev, ean13: e.target.value }))}
-                      className="h-8 w-32"
+                      className="h-8 flex-1"
                       onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium w-20 text-right">Dun14</label>
+                    <label className="text-sm font-medium w-24 text-right shrink-0">Dun14</label>
                     <Input
                       value={filters.dun14}
                       onChange={(e) => setFilters(prev => ({ ...prev, dun14: e.target.value }))}
-                      className="h-8 w-32"
+                      className="h-8 flex-1"
                       onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                     />
                   </div>
                 </div>
 
-                {/* Column 2 */}
+                {/* Column 2 - Dropdowns and buttons */}
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium w-16 text-right">Marca</label>
-                    <Input
-                      value={filters.marca}
-                      onChange={(e) => setFilters(prev => ({ ...prev, marca: e.target.value }))}
-                      className="h-8 w-32"
-                      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium w-14 text-right shrink-0">Marca</label>
+                      <Input
+                        value={filters.marca}
+                        onChange={(e) => setFilters(prev => ({ ...prev, marca: e.target.value }))}
+                        className="h-8 flex-1"
+                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium w-14 text-right shrink-0">Tabela</label>
+                      <Select
+                        value={filters.tabela}
+                        onValueChange={(v) => setFilters(prev => ({ ...prev, tabela: v === '_all' ? '' : v }))}
+                      >
+                        <SelectTrigger className="h-8 flex-1">
+                          <SelectValue placeholder={loadingTabelas ? '...' : 'Todas'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableTabelas && availableTabelas.length > 0 ? null : (
+                            <SelectItem value="_all">Todas</SelectItem>
+                          )}
+                          {displayTabelas.map((t) => (
+                            <SelectItem key={String(t.id)} value={String(t.id)}>
+                              {t.descricao}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium w-16 text-right">Fornec.</label>
-                    <Select
-                      value={filters.fornecedor}
-                      onValueChange={(v) => setFilters(prev => ({ ...prev, fornecedor: v === '_all' ? '' : v }))}
-                    >
-                      <SelectTrigger className="h-8 w-40">
-                        <SelectValue placeholder={loadingFornecedores ? '...' : 'Todos'} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="_all">Todos</SelectItem>
-                        {fornecedores.map((f) => (
-                          <SelectItem key={f.fornecedor_id} value={String(f.fornecedor_id)}>
-                            {f.nome_fornecedor}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium w-14 text-right shrink-0">Fornec.</label>
+                      <Select
+                        value={filters.fornecedor}
+                        onValueChange={(v) => setFilters(prev => ({ ...prev, fornecedor: v === '_all' ? '' : v }))}
+                      >
+                        <SelectTrigger className="h-8 flex-1">
+                          <SelectValue placeholder={loadingFornecedores ? '...' : 'Todos'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="_all">Todos</SelectItem>
+                          {fornecedores.map((f) => (
+                            <SelectItem key={f.fornecedor_id} value={String(f.fornecedor_id)}>
+                              {f.nome_fornecedor}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium w-14 text-right shrink-0">Divisão</label>
+                      <Select
+                        value={filters.divisao}
+                        onValueChange={(v) => setFilters(prev => ({ ...prev, divisao: v === '_all' ? '' : v }))}
+                      >
+                        <SelectTrigger className="h-8 flex-1">
+                          <SelectValue placeholder={loadingDivisoes ? '...' : 'Todas'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="_all">Todas</SelectItem>
+                          {divisoes.map((d) => (
+                            <SelectItem key={d.divisao_id} value={String(d.divisao_id)}>
+                              {d.descricao_divisao}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 pt-1">
                     <Checkbox
                       id="pAtivo"
                       checked={filters.pAtivo}
@@ -336,104 +380,57 @@ export const ProductSearchDialog = ({
                     />
                     <label htmlFor="pAtivo" className="text-sm cursor-pointer whitespace-nowrap">P. Ativo</label>
                   </div>
-
-                  <div className="flex flex-col gap-2 pt-1">
-                    <Button
-                      size="sm"
-                      onClick={handleSearch}
-                      className="h-8 w-full"
-                      disabled={loading}
-                    >
-                      <Search className="h-4 w-4 mr-1" />
-                      Filtrar
-                    </Button>
-                    <div className="flex items-center gap-2">
-                      <label className="text-sm font-medium whitespace-nowrap">Últ. compras:</label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className={cn(
-                              "h-8 justify-start text-left font-normal px-2",
-                              !filters.ultimasComprasDesde && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-1 h-4 w-4" />
-                            {filters.ultimasComprasDesde
-                              ? format(filters.ultimasComprasDesde, 'dd/MM/yyyy', { locale: ptBR })
-                              : 'Selecionar'}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={filters.ultimasComprasDesde}
-                            onSelect={(date) => setFilters(prev => ({ ...prev, ultimasComprasDesde: date }))}
-                            locale={ptBR}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleClearFilters}
-                      className="h-8 w-full"
-                    >
-                      <X className="h-4 w-4 mr-1" />
-                      Limpar
-                    </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleSearch}
+                    className="h-9 w-48"
+                    disabled={loading}
+                  >
+                    <Search className="h-4 w-4 mr-2" />
+                    Filtrar
+                  </Button>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium whitespace-nowrap">Últ. compras:</label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className={cn(
+                            "h-8 justify-start text-left font-normal px-3",
+                            !filters.ultimasComprasDesde && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {filters.ultimasComprasDesde
+                            ? format(filters.ultimasComprasDesde, 'dd/MM/yyyy', { locale: ptBR })
+                            : 'Selecionar'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={filters.ultimasComprasDesde}
+                          onSelect={(date) => setFilters(prev => ({ ...prev, ultimasComprasDesde: date }))}
+                          locale={ptBR}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleClearFilters}
+                    className="h-8 w-48"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Limpar
+                  </Button>
                 </div>
 
-                {/* Column 3 */}
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium w-14 text-right">Tabela</label>
-                    <Select
-                      value={filters.tabela}
-                      onValueChange={(v) => setFilters(prev => ({ ...prev, tabela: v === '_all' ? '' : v }))}
-                    >
-                      <SelectTrigger className="h-8 w-28">
-                        <SelectValue placeholder={loadingTabelas ? '...' : 'Todas'} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableTabelas && availableTabelas.length > 0 ? null : (
-                          <SelectItem value="_all">Todas</SelectItem>
-                        )}
-                        {displayTabelas.map((t) => (
-                          <SelectItem key={String(t.id)} value={String(t.id)}>
-                            {t.descricao}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium w-14 text-right">Divisão</label>
-                    <Select
-                      value={filters.divisao}
-                      onValueChange={(v) => setFilters(prev => ({ ...prev, divisao: v === '_all' ? '' : v }))}
-                    >
-                      <SelectTrigger className="h-8 w-28">
-                        <SelectValue placeholder={loadingDivisoes ? '...' : 'Todas'} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="_all">Todas</SelectItem>
-                        {divisoes.map((d) => (
-                          <SelectItem key={d.divisao_id} value={String(d.divisao_id)}>
-                            {d.descricao_divisao}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Column 4 - Checkboxes */}
-                <div className="flex flex-col gap-2">
+                {/* Column 3 - Checkboxes */}
+                <div className="flex flex-col gap-2 pl-4 border-l">
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="comEstoque"
@@ -459,7 +456,6 @@ export const ProductSearchDialog = ({
                     <label htmlFor="lancamentos" className="text-sm cursor-pointer whitespace-nowrap">Lançamentos</label>
                   </div>
                 </div>
-
               </div>
             </div>
           </CollapsibleContent>
