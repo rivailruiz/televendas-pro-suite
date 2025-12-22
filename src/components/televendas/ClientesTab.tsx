@@ -77,6 +77,7 @@ export const ClientesTab = () => {
     nome: '',
     fantasia: '',
     endereco: '',
+    numero: '',
     bairro: '',
     uf: '',
     cidade: '',
@@ -635,8 +636,8 @@ const normalizeCnpj = (v: string) => v.replace(/\D+/g, '').slice(0, 14);
             <div className="flex-1 overflow-y-auto mt-4 pr-2">
               {/* Identificação */}
               <TabsContent value="identificacao" className="m-0 space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div className="flex items-center gap-2 pt-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 items-end">
+                  <div className="flex items-center gap-2 h-8">
                     <Checkbox checked={formData.inativo} onCheckedChange={(c) => setFormData({ ...formData, inativo: c as boolean })} />
                     <label className="text-sm">Inativo</label>
                   </div>
