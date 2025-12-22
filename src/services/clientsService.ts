@@ -248,6 +248,32 @@ async function fetchFromApi({
 }
 
 export const clientsService = {
+  lookupCnpj: async (cnpj: string) => {
+    const token = authService.getToken();
+    if (!token) return Promise.reject('Token ausente');
+    const trimmed = (cnpj || '').trim();
+    if (!trimmed) return Promise.reject('CNPJ obrigatório');
+
+    const params = new URLSearchParams();
+    params.set('cnpj', trimmed);
+
+    try {
+      const url = `${API_BASE}/api/cnpj?${params.toString()}`;
+      const headers: Record<string, string> = { accept: 'application/json' };
+      const res = await apiClient.fetch(url, { method: 'GET', headers });
+      if (!res.ok) {
+        let message = 'Falha ao consultar CNPJ';
+        try {
+          const err = await res.json();
+          message = extractErrorMessage(err, message);
+        } catch {}
+        return Promise.reject(message);
+      }
+      return res.json();
+    } catch (e) {
+      return Promise.reject('Erro de conexão na consulta de CNPJ');
+    }
+  },
   // Server-side search with pagination
   find: async (
     queryOrFilters?: string | ClientSearchFilters,

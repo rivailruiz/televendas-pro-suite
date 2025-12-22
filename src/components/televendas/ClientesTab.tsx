@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,15 @@ import { clientsService, Client } from '@/services/clientsService';
 import { metadataService, Rota } from '@/services/metadataService';
 import { operacoes } from '@/mocks/data';
 import { ClientInfoModal } from './ClientInfoModal';
+import { cn } from '@/lib/utils';
+
+const debounce = <T extends (...args: any[]) => void>(fn: T, wait = 300) => {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  return (...args: Parameters<T>) => {
+    if (timeout) clearTimeout(timeout);
+    timeout = setTimeout(() => fn(...args), wait);
+  };
+};
 
 const FormField = ({ label, value, onChange, type = 'text', className = '' }: { 
   label: string; 
@@ -107,6 +116,54 @@ export const ClientesTab = () => {
     prazoPagtoId: 0,
   });
 
+  const cnpjLookupRef = useRef<(v: string) => void>();
+  if (!cnpjLookupRef.current) {
+    cnpjLookupRef.current = debounce(async (value: string) => {
+      const cleaned = normalizeCnpj(value);
+      if (cleaned.length !== 14) return;
+      try {
+        const result = await clientsService.lookupCnpj(cleaned);
+        if (!result || !result.data) return;
+        const d = result.data;
+        setFormData((prevState) => {
+          const prev = prevState;
+          const estab = d.estabelecimento ?? {};
+          const cidadeObj = estab.cidade ?? {};
+          const estadoObj = estab.estado ?? {};
+          const tipoLogradouro = estab.tipo_logradouro ? String(estab.tipo_logradouro).trim() : '';
+          const logradouro = estab.logradouro ? String(estab.logradouro).trim() : '';
+          const enderecoFmt = [tipoLogradouro, logradouro].filter(Boolean).join(' ') || d.logradouro || prev.endereco;
+          const complemento = estab.complemento ? String(estab.complemento).trim() : prev.complemento;
+          const telefone1 = estab.telefone1 ? String(estab.telefone1).trim() : '';
+          const ddd1 = estab.ddd1 ? String(estab.ddd1).trim() : '';
+          const telefoneFmt = [ddd1, telefone1].filter(Boolean).join('');
+          const faxFmt = estab.fax ? String(estab.fax).trim() : prev.fax;
+
+          return {
+            ...prev,
+            cnpjCpf: cleaned,
+            nome: d.razao_social || prev.nome,
+            fantasia: d.nome_fantasia || estab.nome_fantasia || prev.fantasia,
+            endereco: enderecoFmt,
+            numero: estab.numero || d.numero || prev.numero || '',
+            bairro: estab.bairro || d.bairro || prev.bairro,
+            cidade: cidadeObj.nome || estab.municipio || d.municipio || prev.cidade,
+            uf: estadoObj.sigla || estab.uf || d.uf || prev.uf,
+            cep: estab.cep ? normalizeCep(String(estab.cep)) : (d.cep ? normalizeCep(String(d.cep)) : prev.cep),
+            complemento,
+            telefone: telefoneFmt || prev.telefone,
+            fax: faxFmt,
+            email: estab.email || prev.email,
+            cidadeId: cidadeObj.id ?? prev.cidadeId,
+          };
+        });
+        toast.success('Dados preenchidos pela consulta de CNPJ');
+      } catch (e: any) {
+        toast.error(String(e));
+      }
+    }, 600);
+  }
+
   console.log('ClientesTab rendering', { clients });
 
   useEffect(() => {
@@ -178,52 +235,56 @@ export const ClientesTab = () => {
   const ufs = [...new Set(clients.map(c => c.uf))];
   const cidades = [...new Set(clients.map(c => c.cidade))];
 
-  const createEmptyFormData = () => ({
-    codigoCliente: '',
-    inativo: false,
-    cnpjCpf: '',
-    inscEstadual: '',
-    inscMunicipal: '',
-    rg: '',
-    nome: '',
-    fantasia: '',
-    endereco: '',
-    bairro: '',
-    uf: '',
-    cidade: '',
-    cidadeId: 0,
-    cep: '',
-    complemento: '',
-    telefone: '',
-    fax: '',
-    email: '',
-    site: '',
-    rota: '',
-    rotaId: 0,
-    contato1Nome: '',
-    contato1Celular: '',
-    contato1Aniversario: '',
-    contato2Nome: '',
-    contato2Celular: '',
-    contato2Aniversario: '',
-    classe: '',
-    checkouts: 0,
-    nielsen: '',
-    rede: '',
-    tabelas: '',
-    descontoFinanceiroBoleto: 0,
-    observacaoComercial: '',
-    segmentoId: 0,
-    credito: '',
-    boleto: false,
-    prazo: '',
-    limite: 0,
-    aberto: 0,
-    disponivel: 0,
-    observacaoFinanceiro: '',
-    formaPagtoId: 0,
-    prazoPagtoId: 0,
-  });
+const createEmptyFormData = () => ({
+  codigoCliente: '',
+  inativo: false,
+  cnpjCpf: '',
+  inscEstadual: '',
+  inscMunicipal: '',
+  rg: '',
+  nome: '',
+  fantasia: '',
+  endereco: '',
+  numero: '',
+  bairro: '',
+  uf: '',
+  cidade: '',
+  cidadeId: 0,
+  cep: '',
+  complemento: '',
+  telefone: '',
+  fax: '',
+  email: '',
+  site: '',
+  rota: '',
+  rotaId: 0,
+  contato1Nome: '',
+  contato1Celular: '',
+  contato1Aniversario: '',
+  contato2Nome: '',
+  contato2Celular: '',
+  contato2Aniversario: '',
+  classe: '',
+  checkouts: 0,
+  nielsen: '',
+  rede: '',
+  tabelas: '',
+  descontoFinanceiroBoleto: 0,
+  observacaoComercial: '',
+  segmentoId: 0,
+  credito: '',
+  boleto: false,
+  prazo: '',
+  limite: 0,
+  aberto: 0,
+  disponivel: 0,
+  observacaoFinanceiro: '',
+  formaPagtoId: 0,
+  prazoPagtoId: 0,
+});
+
+const normalizeCep = (v: string) => v.replace(/\D+/g, '').slice(0, 8);
+const normalizeCnpj = (v: string) => v.replace(/\D+/g, '').slice(0, 14);
 
   const openCreateDialog = () => {
     setFormError(null);
@@ -271,20 +332,21 @@ export const ClientesTab = () => {
     try {
       const detail = await clientsService.getDetail(id);
       // Try to map common fields; fallback to empty strings
-      const d = detail || {};
-      setFormData({
-        codigoCliente: String(d.codigo_cliente ?? d.codigoCliente ?? d.codigo ?? ''),
-        inativo: Boolean(d.inativo),
-        cnpjCpf: String(d.cnpj_cpf ?? d.cnpjCpf ?? d.cnpj ?? d.cpf ?? ''),
+        const d = detail || {};
+        setFormData({
+          codigoCliente: String(d.codigo_cliente ?? d.codigoCliente ?? d.codigo ?? ''),
+          inativo: Boolean(d.inativo),
+          cnpjCpf: String(d.cnpj_cpf ?? d.cnpjCpf ?? d.cnpj ?? d.cpf ?? ''),
         inscEstadual: String(d.inscricao_estadual ?? d.inscEstadual ?? d.insc_estadual ?? ''),
         inscMunicipal: String(d.inscricao_municipal ?? d.inscMunicipal ?? d.insc_municipal ?? ''),
         rg: String(d.rg ?? ''),
-        nome: String(d.nome ?? d.razao_social ?? ''),
-        fantasia: String(d.fantasia ?? ''),
-        endereco: String(d.endereco ?? d.logradouro ?? ''),
-        bairro: String(d.bairro ?? '').trim(),
-        uf: String(d.uf ?? d.estado ?? ''),
-        cidade: String(d.cidade ?? '').trim(),
+          nome: String(d.nome ?? d.razao_social ?? ''),
+          fantasia: String(d.fantasia ?? ''),
+          endereco: String(d.endereco ?? d.logradouro ?? ''),
+          numero: String((d as any)?.numero ?? (d as any)?.num ?? ''),
+          bairro: String(d.bairro ?? '').trim(),
+          uf: String(d.uf ?? d.estado ?? ''),
+          cidade: String(d.cidade ?? '').trim(),
         cidadeId: Number(d.cidade_id ?? d.cidadeId ?? 0),
         cep: String(d.cep ?? ''),
         complemento: String(d.complemento ?? '').trim(),
@@ -578,7 +640,18 @@ export const ClientesTab = () => {
                     <Checkbox checked={formData.inativo} onCheckedChange={(c) => setFormData({ ...formData, inativo: c as boolean })} />
                     <label className="text-sm">Inativo</label>
                   </div>
-                  <FormField label="CNPJ/CPF" value={formData.cnpjCpf} onChange={(v) => setFormData({ ...formData, cnpjCpf: v })} />
+                  <FormField label="CNPJ/CPF" value={formData.cnpjCpf} onChange={(v) => {
+                    setFormData({ ...formData, cnpjCpf: v });
+                    cnpjLookupRef.current?.(v);
+                  }} />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    onClick={() => cnpjLookupRef.current?.(formData.cnpjCpf)}
+                  >
+                    Consultar CNPJ
+                  </Button>
                   <FormField label="Insc. Est." value={formData.inscEstadual} onChange={(v) => setFormData({ ...formData, inscEstadual: v })} />
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -591,9 +664,10 @@ export const ClientesTab = () => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   <FormField label="Endereço" value={formData.endereco} onChange={(v) => setFormData({ ...formData, endereco: v })} className="md:col-span-3" />
-                  <FormField label="Bairro" value={formData.bairro} onChange={(v) => setFormData({ ...formData, bairro: v })} />
+                  <FormField label="Número" value={formData.numero} onChange={(v) => setFormData({ ...formData, numero: v })} />
                 </div>
                 <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                  <FormField label="Bairro" value={formData.bairro} onChange={(v) => setFormData({ ...formData, bairro: v })} />
                   <FormField label="UF" value={formData.uf} onChange={(v) => setFormData({ ...formData, uf: v })} className="col-span-1" />
                   <FormField label="Cidade" value={formData.cidade} onChange={(v) => setFormData({ ...formData, cidade: v })} className="col-span-2" />
                   <FormField label="CEP" value={formData.cep} onChange={(v) => setFormData({ ...formData, cep: v })} />
@@ -726,7 +800,10 @@ export const ClientesTab = () => {
                         <Checkbox checked={formData.inativo} onCheckedChange={(c) => setFormData({ ...formData, inativo: c as boolean })} />
                         <label className="text-sm">Inativo</label>
                       </div>
-                      <FormField label="CNPJ/CPF" value={formData.cnpjCpf} onChange={(v) => setFormData({ ...formData, cnpjCpf: v })} />
+                      <FormField label="CNPJ/CPF" value={formData.cnpjCpf} onChange={(v) => {
+                        setFormData({ ...formData, cnpjCpf: v });
+                        cnpjLookupRef.current?.(v);
+                      }} />
                       <FormField label="Insc. Est." value={formData.inscEstadual} onChange={(v) => setFormData({ ...formData, inscEstadual: v })} />
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -739,9 +816,10 @@ export const ClientesTab = () => {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                       <FormField label="Endereço" value={formData.endereco} onChange={(v) => setFormData({ ...formData, endereco: v })} className="md:col-span-3" />
-                      <FormField label="Bairro" value={formData.bairro} onChange={(v) => setFormData({ ...formData, bairro: v })} />
+                      <FormField label="Número" value={formData.numero} onChange={(v) => setFormData({ ...formData, numero: v })} />
                     </div>
                     <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                      <FormField label="Bairro" value={formData.bairro} onChange={(v) => setFormData({ ...formData, bairro: v })} />
                       <FormField label="UF" value={formData.uf} onChange={(v) => setFormData({ ...formData, uf: v })} className="col-span-1" />
                       <FormField label="Cidade" value={formData.cidade} onChange={(v) => setFormData({ ...formData, cidade: v })} className="col-span-2" />
                       <FormField label="CEP" value={formData.cep} onChange={(v) => setFormData({ ...formData, cep: v })} />
