@@ -53,8 +53,9 @@ export const ProductBatchModal = ({
   };
 
   // Calculate total stock from batches
-  const totalStock = batches.reduce((sum, b) => sum + (b.quantidadeAtual ?? b.quantidadeLote ?? 0), 0);
-  const displayStock = typeof estoqueAtual === 'number' ? estoqueAtual : totalStock;
+  const totalFromBatches = batches.reduce((sum, b) => sum + (b.quantidadeAtual ?? b.quantidadeLote ?? 0), 0);
+  // Use estoqueAtual if provided and valid, otherwise use total from batches
+  const displayStock = typeof estoqueAtual === 'number' && estoqueAtual > 0 ? estoqueAtual : totalFromBatches;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
