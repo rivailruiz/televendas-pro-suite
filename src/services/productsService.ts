@@ -362,14 +362,32 @@ async function fetchLotes(produtoId: number): Promise<ProductBatch[]> {
     const data = await res.json();
     const arr = Array.isArray(data) ? data : [];
     
+    const parseNumber = (val: any): number => {
+      if (typeof val === 'number') return val;
+      if (typeof val === 'string') {
+        const n = parseFloat(val);
+        return Number.isNaN(n) ? 0 : n;
+      }
+      return 0;
+    };
+
+    const parseDate = (val: any): string => {
+      if (!val) return '';
+      // Handle ISO date format like "2025-02-12T00:00:00.000Z"
+      const str = String(val);
+      return str.split('T')[0] || str;
+    };
+    
     return arr.map((raw: any) => ({
-      empresaId: raw.empresa_id ?? raw.empresaId ?? 0,
-      produtoId: raw.produto_id ?? raw.produtoId ?? produtoId,
+      empresaId: parseNumber(raw.empresa_id ?? raw.empresaId),
+      produtoId: parseNumber(raw.produto_id ?? raw.produtoId) || produtoId,
       lote: raw.lote ?? '',
-      dataFabricacao: raw.data_fabricacao ?? raw.dataFabricacao ?? '',
-      dataValidade: raw.data_validade ?? raw.dataValidade ?? '',
-      quantidadeLote: raw.quantidade_lote ?? raw.quantidadeLote ?? 0,
-      quantidadeAtual: raw.quantidade_atual ?? raw.quantidadeAtual ?? null,
+      dataFabricacao: parseDate(raw.data_fabricacao ?? raw.dataFabricacao),
+      dataValidade: parseDate(raw.data_validade ?? raw.dataValidade),
+      quantidadeLote: parseNumber(raw.quantidade_lote ?? raw.quantidadeLote),
+      quantidadeAtual: raw.quantidade_atual != null || raw.quantidadeAtual != null 
+        ? parseNumber(raw.quantidade_atual ?? raw.quantidadeAtual) 
+        : null,
       fci: raw.fci ?? null,
     }));
   } catch {
