@@ -59,6 +59,13 @@ export interface Order {
   observacaoPedido?: string;
   observacaoNF?: string;
   transmitido?: boolean;
+  clienteEndereco?: string;
+  clienteNumero?: string;
+  clienteComplemento?: string;
+  clienteBairro?: string;
+  clienteCidade?: string;
+  clienteUf?: string;
+  clienteCep?: string;
 }
 
 const firstNonEmpty = (...values: any[]): string | null => {
@@ -68,6 +75,42 @@ const firstNonEmpty = (...values: any[]): string | null => {
     if (text) return text;
   }
   return null;
+};
+
+const textOrUndefined = (val: any): string | undefined => {
+  if (val === undefined || val === null) return undefined;
+  if (typeof val === 'string' || typeof val === 'number') {
+    const text = String(val).trim();
+    return text.length ? text : undefined;
+  }
+  return undefined;
+};
+
+const extractFormaPagtoDescricao = (raw: any): string | undefined => {
+  const formaObj =
+    raw?.formaPagamento && typeof raw.formaPagamento === 'object'
+      ? raw.formaPagamento
+      : raw?.forma_pagamento;
+  return (
+    textOrUndefined(raw?.formaPagamento) ??
+    textOrUndefined(raw?.forma_pagamento) ??
+    textOrUndefined(formaObj?.descricao) ??
+    textOrUndefined(formaObj?.nome)
+  );
+};
+
+const extractPrazoDescricao = (raw: any): string | undefined => {
+  const prazoObj =
+    raw?.prazoPagamento && typeof raw.prazoPagamento === 'object'
+      ? raw.prazoPagamento
+      : raw?.prazo_pagamento;
+  return (
+    textOrUndefined(raw?.prazo) ??
+    textOrUndefined(raw?.prazo_pagamento) ??
+    textOrUndefined(raw?.prazoPagamento) ??
+    textOrUndefined(prazoObj?.descricao) ??
+    textOrUndefined(prazoObj?.nome)
+  );
 };
 
 const buildPedidoOrigem = (val?: any): string => {
@@ -352,9 +395,9 @@ export const ordersService = {
           representanteCodigo,
           representanteNome: p?.representanteNome ?? p?.representante_nome ?? 'REPRESENTANTE',
           tabela: p?.tabela ?? p?.tabela_preco ?? 'TABELA 01',
-          formaPagamento: p?.formaPagamento ?? p?.forma_pagamento ?? 'BOLETO BANCARIO',
+          formaPagamento: extractFormaPagtoDescricao(p) ?? 'BOLETO BANCARIO',
           formaPagtoId,
-          prazo: p?.prazo ?? p?.prazo_pagamento ?? '30 DIAS',
+          prazo: extractPrazoDescricao(p) ?? '30 DIAS',
           prazoPagtoId,
           boleto: Boolean(p?.boleto ?? true),
           rede: p?.rede ?? '',
@@ -375,6 +418,13 @@ export const ordersService = {
           observacaoPedido: p?.observacaoPedido ?? '',
           observacaoNF: p?.observacaoNF ?? '',
           transmitido: Boolean(p?.transmitido ?? false),
+          clienteEndereco: textOrUndefined(p?.clienteEndereco ?? p?.cliente_endereco),
+          clienteNumero: textOrUndefined(p?.clienteNumero ?? p?.cliente_numero),
+          clienteComplemento: textOrUndefined(p?.clienteComplemento ?? p?.cliente_complemento),
+          clienteBairro: textOrUndefined(p?.clienteBairro ?? p?.cliente_bairro),
+          clienteCidade: textOrUndefined(p?.clienteCidade ?? p?.cliente_cidade),
+          clienteUf: textOrUndefined(p?.clienteUf ?? p?.cliente_uf ?? p?.clienteUF),
+          clienteCep: textOrUndefined(p?.clienteCep ?? p?.cliente_cep),
         };
       });
 
@@ -420,9 +470,9 @@ export const ordersService = {
         representanteCodigo,
         representanteNome: p?.representanteNome ?? p?.representante_nome ?? '',
         tabela: p?.tabela ?? p?.tabela_preco ?? '',
-        formaPagamento: p?.formaPagamento ?? p?.forma_pagamento ?? '',
+        formaPagamento: extractFormaPagtoDescricao(p) ?? '',
         formaPagtoId,
-        prazo: p?.prazo ?? p?.prazo_pagamento ?? '',
+        prazo: extractPrazoDescricao(p) ?? '',
         prazoPagtoId,
         boleto: Boolean(p?.boleto ?? false),
         rede: p?.rede ?? '',
@@ -443,6 +493,13 @@ export const ordersService = {
         observacaoPedido: p?.observacaoPedido ?? '',
         observacaoNF: p?.observacaoNF ?? '',
         transmitido: Boolean(p?.transmitido ?? false),
+        clienteEndereco: textOrUndefined(p?.clienteEndereco ?? p?.cliente_endereco),
+        clienteNumero: textOrUndefined(p?.clienteNumero ?? p?.cliente_numero),
+        clienteComplemento: textOrUndefined(p?.clienteComplemento ?? p?.cliente_complemento),
+        clienteBairro: textOrUndefined(p?.clienteBairro ?? p?.cliente_bairro),
+        clienteCidade: textOrUndefined(p?.clienteCidade ?? p?.cliente_cidade),
+        clienteUf: textOrUndefined(p?.clienteUf ?? p?.cliente_uf ?? p?.clienteUF),
+        clienteCep: textOrUndefined(p?.clienteCep ?? p?.cliente_cep),
       };
       return order;
     } catch (e) {

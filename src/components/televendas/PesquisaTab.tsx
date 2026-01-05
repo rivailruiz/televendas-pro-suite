@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -73,6 +73,9 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   const [outputMode, setOutputMode] = useState<'video' | 'impressora'>('video');
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewOrder, setPreviewOrder] = useState<Order | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const previewRequestId = useRef(0);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [deletingOrder, setDeletingOrder] = useState(false);
@@ -118,6 +121,30 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
 
   const previewClienteCodigo = formatClienteCodigo(previewOrder);
   const previewRepresentanteCodigo = formatRepresentanteCodigo(previewOrder);
+
+  const formatCep = (cep?: string | null) => {
+    if (!cep) return '';
+    const digits = String(cep).replace(/\D/g, '');
+    if (digits.length === 8) return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+    return String(cep).trim();
+  };
+
+  const formatEnderecoCliente = (order?: Order | null) => {
+    if (!order) return '';
+    const endereco = String(order.clienteEndereco ?? '').trim();
+    const numero = String(order.clienteNumero ?? '').trim();
+    const complemento = String(order.clienteComplemento ?? '').trim();
+    const bairro = String(order.clienteBairro ?? '').trim();
+    const cidade = String(order.clienteCidade ?? '').trim();
+    const uf = String(order.clienteUf ?? '').trim();
+    const cep = formatCep(order.clienteCep);
+
+    const linha1 = [endereco, numero].filter(Boolean).join(', ');
+    const linha2 = [complemento, bairro].filter(Boolean).join(' - ');
+    const linha3 = [cidade, uf].filter(Boolean).join('/');
+    const partes = [linha1, linha2, linha3, cep ? `CEP ${cep}` : ''].filter(Boolean);
+    return partes.join(' | ');
+  };
 
   // Representantes para busca
   const [repSearchOpen, setRepSearchOpen] = useState(false);
@@ -343,8 +370,29 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
       toast.error('Selecione exatamente um pedido para visualizar');
       return;
     }
+    openPreview(order);
+  };
+
+  const openPreview = (order: Order) => {
     setPreviewOrder(order);
     setPreviewOpen(true);
+    setPreviewLoading(true);
+    setPreviewError(null);
+    const requestId = ++previewRequestId.current;
+    ordersService
+      .getById(order.id)
+      .then((detail) => {
+        if (previewRequestId.current !== requestId) return;
+        setPreviewOrder(detail);
+      })
+      .catch((error: any) => {
+        if (previewRequestId.current !== requestId) return;
+        setPreviewError(error?.message || 'Erro ao carregar detalhes do pedido');
+      })
+      .finally(() => {
+        if (previewRequestId.current !== requestId) return;
+        setPreviewLoading(false);
+      });
   };
 
   const handleConfirmExcluir = async () => {
@@ -811,8 +859,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                             size="icon"
                             className="h-8 w-8"
                             onClick={() => {
-                              setPreviewOrder(order);
-                              setPreviewOpen(true);
+                              openPreview(order);
                             }}
                           >
                             <Eye className="h-4 w-4" />
@@ -956,7 +1003,16 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                 <div>Cliente: {previewOrder.clienteNome}{previewClienteCodigo ? ` (Cód.: ${previewClienteCodigo})` : ''}</div>
                 <div>Operação: {formatOperacao(previewOrder)}</div>
                 <div>Representante: {previewRepresentanteCodigo ? `${previewRepresentanteCodigo} - ` : ''}{previewOrder.representanteNome}</div>
+                <div>Endereço: {formatEnderecoCliente(previewOrder) || '-'}</div>
+                <div>Forma de pagamento: {previewOrder.formaPagamento || '-'}</div>
+                <div>Prazo: {previewOrder.prazo || '-'}</div>
               </div>
+              {previewLoading && (
+                <div className="text-sm text-muted-foreground">Carregando detalhes do pedido...</div>
+              )}
+              {previewError && (
+                <div className="text-sm text-destructive">{previewError}</div>
+              )}
               <div className="overflow-x-auto scrollbar-thin">
                 <Table className="min-w-[800px]">
                   <TableHeader>
