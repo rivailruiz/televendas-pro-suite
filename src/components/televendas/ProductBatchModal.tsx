@@ -1,17 +1,9 @@
+import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-
-interface Batch {
-  lote: string;
-  validade: string;
-  quantidade: number;
-}
-
-interface StockByCompany {
-  empresa: string;
-  estoque: number;
-}
+import { productsService, type ProductBatch } from '@/services/productsService';
+import { format, parseISO } from 'date-fns';
 
 interface ProductBatchModalProps {
   open: boolean;
@@ -21,25 +13,48 @@ interface ProductBatchModalProps {
   estoqueAtual?: number;
 }
 
-// Mock data - replace with actual API call when available
-const mockBatches: Batch[] = [
-  { lote: '0361125', validade: '30/11/2027', quantidade: 268.0 },
-];
-
-const mockStockByCompany: StockByCompany[] = [
-  { empresa: 'VLMED DISTRIBUIDORA', estoque: 268.0 },
-  { empresa: 'VLMED DISTRIBUIDORA', estoque: 0.0 },
-];
-
 export const ProductBatchModal = ({
   open,
   onOpenChange,
-  produtoDescricao,
+  produtoId,
   estoqueAtual = 0,
 }: ProductBatchModalProps) => {
-  // TODO: Replace with actual API call using produtoId
-  const batches = mockBatches;
-  const stockByCompany = mockStockByCompany;
+  const [batches, setBatches] = useState<ProductBatch[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open || !produtoId) return;
+
+    const loadBatches = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await productsService.getLotes(produtoId);
+        setBatches(data);
+      } catch (e: any) {
+        setError(typeof e === 'string' ? e : 'Erro ao carregar lotes');
+        setBatches([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadBatches();
+  }, [open, produtoId]);
+
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '-';
+    try {
+      return format(parseISO(dateStr), 'dd/MM/yyyy');
+    } catch {
+      return dateStr;
+    }
+  };
+
+  // Calculate total stock from batches
+  const totalStock = batches.reduce((sum, b) => sum + (b.quantidadeAtual ?? b.quantidadeLote ?? 0), 0);
+  const displayStock = estoqueAtual || totalStock;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -53,7 +68,7 @@ export const ProductBatchModal = ({
             <span className="text-sm font-medium">Estoque atual</span>
             <Input
               readOnly
-              value={estoqueAtual.toFixed(0)}
+              value={displayStock.toFixed(0)}
               className="w-24 h-8 text-center bg-muted/50"
             />
           </div>
@@ -69,46 +84,34 @@ export const ProductBatchModal = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {batches.map((batch, idx) => (
-                  <TableRow key={idx} className="bg-primary/10 hover:bg-primary/20">
-                    <TableCell className="py-2">{batch.lote}</TableCell>
-                    <TableCell className="py-2">{batch.validade}</TableCell>
-                    <TableCell className="py-2 text-right">{batch.quantidade.toFixed(1)}</TableCell>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-center text-muted-foreground py-4">
+                      Carregando...
+                    </TableCell>
                   </TableRow>
-                ))}
-                {batches.length === 0 && (
+                ) : error ? (
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-center text-destructive py-4">
+                      {error}
+                    </TableCell>
+                  </TableRow>
+                ) : batches.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={3} className="text-center text-muted-foreground py-4">
                       Nenhum lote encontrado
                     </TableCell>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Stock by company table */}
-          <div className="border rounded overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-primary hover:bg-primary">
-                  <TableHead className="text-primary-foreground font-medium py-2">Empresa</TableHead>
-                  <TableHead className="text-primary-foreground font-medium py-2 text-right">Estoque</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {stockByCompany.map((item, idx) => (
-                  <TableRow key={idx}>
-                    <TableCell className="py-2">{item.empresa}</TableCell>
-                    <TableCell className="py-2 text-right">{item.estoque.toFixed(1)}</TableCell>
-                  </TableRow>
-                ))}
-                {stockByCompany.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={2} className="text-center text-muted-foreground py-4">
-                      Nenhum dado de estoque por empresa
-                    </TableCell>
-                  </TableRow>
+                ) : (
+                  batches.map((batch, idx) => (
+                    <TableRow key={idx} className="bg-primary/10 hover:bg-primary/20">
+                      <TableCell className="py-2">{batch.lote}</TableCell>
+                      <TableCell className="py-2">{formatDate(batch.dataValidade)}</TableCell>
+                      <TableCell className="py-2 text-right">
+                        {(batch.quantidadeAtual ?? batch.quantidadeLote).toFixed(1)}
+                      </TableCell>
+                    </TableRow>
+                  ))
                 )}
               </TableBody>
             </Table>

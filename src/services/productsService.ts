@@ -47,6 +47,17 @@ interface ProductTabelaPrecoResponse {
   preco: number;
 }
 
+export interface ProductBatch {
+  empresaId: number;
+  produtoId: number;
+  lote: string;
+  dataFabricacao: string;
+  dataValidade: string;
+  quantidadeLote: number;
+  quantidadeAtual: number | null;
+  fci: string | null;
+}
+
 function normalizeProduct(raw: any): Product {
   const trimOrUndefined = (val: any): string | undefined => {
     if (val === undefined || val === null) return undefined;
@@ -325,6 +336,47 @@ async function fetchPrecoByTabela({
   }
 }
 
+async function fetchLotes(produtoId: number): Promise<ProductBatch[]> {
+  const empresa = authService.getEmpresa();
+  if (!empresa) return Promise.reject('Empresa não selecionada');
+  const token = authService.getToken();
+  if (!token) return Promise.reject('Token ausente');
+
+  try {
+    const params = new URLSearchParams();
+    params.set('empresaId', String(empresa.empresa_id));
+
+    const url = `${API_BASE}/api/produtos/${encodeURIComponent(produtoId)}/lotes?${params.toString()}`;
+    const headers: Record<string, string> = { accept: 'application/json' };
+    const res = await apiClient.fetch(url, { method: 'GET', headers });
+
+    if (!res.ok) {
+      let message = 'Erro ao buscar lotes do produto';
+      try {
+        const err = await res.json();
+        message = err?.message || err?.error || message;
+      } catch {}
+      return Promise.reject(message);
+    }
+
+    const data = await res.json();
+    const arr = Array.isArray(data) ? data : [];
+    
+    return arr.map((raw: any) => ({
+      empresaId: raw.empresa_id ?? raw.empresaId ?? 0,
+      produtoId: raw.produto_id ?? raw.produtoId ?? produtoId,
+      lote: raw.lote ?? '',
+      dataFabricacao: raw.data_fabricacao ?? raw.dataFabricacao ?? '',
+      dataValidade: raw.data_validade ?? raw.dataValidade ?? '',
+      quantidadeLote: raw.quantidade_lote ?? raw.quantidadeLote ?? 0,
+      quantidadeAtual: raw.quantidade_atual ?? raw.quantidadeAtual ?? null,
+      fci: raw.fci ?? null,
+    }));
+  } catch {
+    return Promise.reject('Erro de conexão ao buscar lotes');
+  }
+}
+
 export const productsService = {
   find: async (filters?: ProductFiltersParams, page = 1, limit = 100): Promise<Product[]> => {
     return fetchFromApi({ filters, page, limit });
@@ -342,6 +394,9 @@ export const productsService = {
   ): Promise<number> => {
     const data = await fetchPrecoByTabela({ produtoId, tabelaPrecoId });
     return data.preco;
+  },
+  getLotes: async (produtoId: number): Promise<ProductBatch[]> => {
+    return fetchLotes(produtoId);
   },
 
   reserveEstoque: async (produtoId: number, quantidade: number): Promise<void> => {
