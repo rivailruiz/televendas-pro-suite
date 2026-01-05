@@ -30,7 +30,7 @@ interface ProductFilters {
   ean13: string;
   divisao: string;
   dun14: string;
-  pAtivo: boolean;
+  principioAtivo: string;
   comEstoque: boolean;
   lancamentos: boolean;
   estoqueZerado: boolean;
@@ -47,7 +47,7 @@ const emptyFilters: ProductFilters = {
   ean13: '',
   divisao: '',
   dun14: '',
-  pAtivo: false,
+  principioAtivo: '',
   comEstoque: false,
   lancamentos: false,
   estoqueZerado: false,
@@ -175,7 +175,7 @@ export const ProductSearchDialog = ({
     if (filters.ean13.trim()) params.ean13 = filters.ean13.trim();
     if (filters.divisao) params.divisao = filters.divisao;
     if (filters.dun14.trim()) params.dun14 = filters.dun14.trim();
-    if (filters.pAtivo) params.pAtivo = true;
+    if (filters.principioAtivo.trim()) params.principioAtivo = filters.principioAtivo.trim();
     if (filters.comEstoque) params.comEstoque = true;
     if (filters.estoqueZerado) params.estoqueZerado = true;
     if (filters.lancamentos) params.lancamentos = true;
@@ -220,7 +220,7 @@ export const ProductSearchDialog = ({
   };
 
   const handleClearFilters = () => {
-    setFilters(emptyFilters);
+    setFilters((prev) => ({ ...emptyFilters, tabela: prev.tabela }));
   };
 
   const handleSelectProduct = (product: Product) => {
@@ -373,12 +373,13 @@ export const ProductSearchDialog = ({
                     </div>
                   </div>
                   <div className="flex items-center space-x-2 pt-1">
-                    <Checkbox
-                      id="pAtivo"
-                      checked={filters.pAtivo}
-                      onCheckedChange={(checked) => setFilters(prev => ({ ...prev, pAtivo: !!checked }))}
+                    <label className="text-sm font-medium w-24 text-right shrink-0">Princípio Ativo</label>
+                    <Input
+                      value={filters.principioAtivo}
+                      onChange={(e) => setFilters(prev => ({ ...prev, principioAtivo: e.target.value }))}
+                      className="h-8 flex-1"
+                      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                     />
-                    <label htmlFor="pAtivo" className="text-sm cursor-pointer whitespace-nowrap">P. Ativo</label>
                   </div>
                   <Button
                     size="sm"
@@ -493,21 +494,21 @@ export const ProductSearchDialog = ({
                     <TableHead className="w-[50px] text-xs">Ações</TableHead>
                     <TableHead className="w-[80px] text-xs">Código</TableHead>
                     <TableHead className="text-xs min-w-[220px]">Descrição</TableHead>
-                    <TableHead className="w-[80px] text-xs">UN</TableHead>
-                    <TableHead className="w-[180px] text-xs">Apresentação</TableHead>
-                    <TableHead className="w-[120px] text-xs">Marca</TableHead>
-                    <TableHead className="w-[120px] text-xs">Cód. Fábrica</TableHead>
-                    <TableHead className="w-[160px] text-xs">Tabela Preço</TableHead>
                     <TableHead className="w-[110px] text-xs text-right">Preço</TableHead>
                     <TableHead className="w-[110px] text-xs text-right">Desc. Máx</TableHead>
-                    <TableHead className="w-[100px] text-xs text-right">Comissão</TableHead>
                     <TableHead className="w-[90px] text-xs text-right">Estoque</TableHead>
+                    <TableHead className="w-[100px] text-xs text-right">Comissão</TableHead>
+                    <TableHead className="w-[180px] text-xs">Apresentação</TableHead>
+                    <TableHead className="w-[120px] text-xs">Marca</TableHead>
+                    <TableHead className="w-[80px] text-xs">UN</TableHead>
+                    <TableHead className="w-[160px] text-xs">Tabela Preço</TableHead>
                     <TableHead className="w-[120px] text-xs text-right">Múltiplo Venda</TableHead>
                     <TableHead className="w-[150px] text-xs text-right">Preço Nac. Cons.</TableHead>
                     <TableHead className="w-[130px] text-xs">EAN13</TableHead>
                     <TableHead className="w-[150px] text-xs">Divisão</TableHead>
                     <TableHead className="w-[170px] text-xs">Fornecedor</TableHead>
                     <TableHead className="w-[170px] text-xs">Princípio Ativo</TableHead>
+                    <TableHead className="w-[120px] text-xs">Cód. Fábrica</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -537,21 +538,21 @@ export const ProductSearchDialog = ({
                         {product.codigoProduto ?? product.id}
                       </TableCell>
                       <TableCell className="text-xs py-2">{product.descricao}</TableCell>
-                      <TableCell className="text-xs py-2">{product.un}</TableCell>
-                      <TableCell className="text-xs py-2">{product.apresentacao ?? '-'}</TableCell>
-                      <TableCell className="text-xs py-2">{product.marca ?? '-'}</TableCell>
-                      <TableCell className="text-xs py-2">{product.codigoFabrica ?? '-'}</TableCell>
-                      <TableCell className="text-xs py-2">{product.descricaoTabelaPreco ?? '-'}</TableCell>
                       <TableCell className="text-xs text-right py-2">{formatCurrency(product.preco)}</TableCell>
                       <TableCell className="text-xs text-right py-2">{formatPercent(product.descontoMaximo)}</TableCell>
-                      <TableCell className="text-xs text-right py-2">{formatPercent(product.comissao)}</TableCell>
                       <TableCell className="text-xs text-right py-2">{formatNumber(product.estoque, 3)}</TableCell>
+                      <TableCell className="text-xs text-right py-2">{formatPercent(product.comissao)}</TableCell>
+                      <TableCell className="text-xs py-2">{product.apresentacao ?? '-'}</TableCell>
+                      <TableCell className="text-xs py-2">{product.marca ?? '-'}</TableCell>
+                      <TableCell className="text-xs py-2">{product.un}</TableCell>
+                      <TableCell className="text-xs py-2">{product.descricaoTabelaPreco ?? '-'}</TableCell>
                       <TableCell className="text-xs text-right py-2">{formatNumber(product.multiploDeVendas, 3)}</TableCell>
                       <TableCell className="text-xs text-right py-2">{formatCurrencyOrDash(product.precoNacionalConsumidor)}</TableCell>
                       <TableCell className="text-xs py-2">{product.ean13 ?? '-'}</TableCell>
                       <TableCell className="text-xs py-2">{product.divisaoDescricao ?? '-'}</TableCell>
                       <TableCell className="text-xs py-2">{product.fornecedor ?? '-'}</TableCell>
                       <TableCell className="text-xs py-2">{product.principioAtivo ?? '-'}</TableCell>
+                      <TableCell className="text-xs py-2">{product.codigoFabrica ?? '-'}</TableCell>
                     </TableRow>
                   ))}
                   {products.length === 0 && !loading && (

@@ -131,18 +131,81 @@ const resolveOperacaoFields = (raw: any): { id?: number | string; codigo?: strin
   };
 };
 
-const normalizeItens = (raw: any[]): OrderItemUI[] => {
-  const itens = Array.isArray(raw) ? raw : [];
-  return itens.map((it, idx) => ({
-    ...it,
-    codigoProduto:
-      it?.codigoProduto ??
-      it?.codigo_produto ??
-      it?.produto_codigo ??
-      it?.produtoCod ??
-      it?.produto_cod,
-    ordem: Number(it?.ordem ?? it?.order ?? it?.ord ?? idx + 1) || idx + 1,
-  })) as OrderItemUI[];
+const coerceItensArray = (value: any): any[] => {
+  if (Array.isArray(value)) return value;
+  if (value && typeof value === 'object') {
+    const nested = (value as any).data ?? (value as any).itens ?? (value as any).items;
+    if (Array.isArray(nested)) return nested;
+  }
+  return [];
+};
+
+const extractItensArray = (payload: any): any[] => {
+  const direct = coerceItensArray(payload);
+  if (direct.length > 0) return direct;
+
+  const candidates = [
+    payload?.itens,
+    payload?.itens_pedido,
+    payload?.itensPedido,
+    payload?.pedido_itens,
+    payload?.items,
+    payload?.order_items,
+    payload?.orderItems,
+  ];
+
+  for (const candidate of candidates) {
+    const arr = coerceItensArray(candidate);
+    if (arr.length > 0) return arr;
+  }
+
+  return direct;
+};
+
+const normalizeItens = (raw: any): OrderItemUI[] => {
+  const itens = extractItensArray(raw);
+  return itens.map((it, idx) => {
+    const produtoId = Number(it?.produtoId ?? it?.produto_id ?? it?.produto ?? it?.id) || 0;
+    const quant = Number(it?.quant ?? it?.quantidade ?? it?.qtd) || 0;
+    const descontoPerc =
+      Number(it?.descontoPerc ?? it?.desconto_perc ?? it?.percentual_desconto ?? it?.desconto) || 0;
+    const preco =
+      Number(it?.preco ?? it?.preco_unitario ?? it?.precoUnitario ?? it?.valor_unitario) || 0;
+    const total = Number(it?.total ?? it?.valor_total ?? it?.valorTotal ?? it?.valor) || 0;
+    const liquidoRaw = it?.liquido ?? it?.valor_liquido ?? it?.valorLiquido;
+    const liquido =
+      typeof liquidoRaw === 'number' ? liquidoRaw : Number(liquidoRaw ?? (quant ? total / quant : 0)) || 0;
+
+    return {
+      ...it,
+      produtoId,
+      codigoProduto:
+        it?.codigoProduto ??
+        it?.codigo_produto ??
+        it?.produto_codigo ??
+        it?.produtoCod ??
+        it?.produto_cod ??
+        it?.codigo,
+      descricao:
+        it?.descricao ??
+        it?.descricao_produto ??
+        it?.produto_descricao ??
+        it?.produtoDescricao ??
+        it?.descricaoProduto ??
+        '',
+      av: Number(it?.av ?? 1) || 1,
+      un: it?.un ?? it?.unidade ?? 'UN',
+      c: Number(it?.c ?? 1) || 1,
+      ordem: Number(it?.ordem ?? it?.order ?? it?.ord ?? idx + 1) || idx + 1,
+      quant,
+      descontoPerc,
+      preco,
+      liquido,
+      total,
+      obs: it?.obs ?? it?.observacao ?? it?.observacao_item ?? it?.observacaoItem,
+      estoque: typeof it?.estoque === 'number' ? it.estoque : undefined,
+    } as OrderItemUI;
+  });
 };
 
 const extractFormaPagtoId = (raw: any): number | string | undefined => {
@@ -300,7 +363,7 @@ export const ordersService = {
           valor: typeof p?.valor === 'number' ? p.valor : Number(p?.valor ?? p?.total ?? 0) || 0,
           cancelado: Boolean(p?.cancelado ?? false),
           faturado: Boolean(p?.faturado ?? false),
-          itens: normalizeItens(p?.itens),
+          itens: normalizeItens(p),
           totais: p?.totais ?? {
             bruto: Number(p?.bruto ?? 0) || 0,
             descontos: Number(p?.descontos ?? 0) || 0,
@@ -368,7 +431,7 @@ export const ordersService = {
         valor: typeof p?.valor === 'number' ? p.valor : Number(p?.valor ?? p?.total ?? 0) || 0,
         cancelado: Boolean(p?.cancelado ?? false),
         faturado: Boolean(p?.faturado ?? false),
-        itens: normalizeItens(p?.itens),
+        itens: normalizeItens(p),
         totais: p?.totais ?? {
           bruto: Number(p?.bruto ?? 0) || 0,
           descontos: Number(p?.descontos ?? 0) || 0,

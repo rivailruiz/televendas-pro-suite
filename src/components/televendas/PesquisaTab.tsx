@@ -6,6 +6,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { Search, X, FileEdit, Trash2, Mail, Download, Printer, File, Eye } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -63,6 +73,9 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   const [outputMode, setOutputMode] = useState<'video' | 'impressora'>('video');
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewOrder, setPreviewOrder] = useState<Order | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
+  const [deletingOrder, setDeletingOrder] = useState(false);
   const [clienteNome, setClienteNome] = useState<string>('');
   const [representanteNome, setRepresentanteNome] = useState<string>('');
 
@@ -268,17 +281,18 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
       toast.error('Selecione pelo menos um pedido');
       return;
     }
-
-    try {
-      for (const id of selectedOrders) {
-        await ordersService.remove(id);
-      }
-      toast.success(`${selectedOrders.length} pedido(s) excluído(s)`);
-      clearSelection();
-      loadOrders();
-    } catch (error) {
-      toast.error('Erro ao excluir pedidos');
+    if (selectedOrders.length > 1) {
+      toast.error('Selecione apenas um pedido para excluir');
+      return;
     }
+
+    const order = getSingleSelectedOrder();
+    if (!order) {
+      toast.error('Selecione exatamente um pedido para excluir');
+      return;
+    }
+    setOrderToDelete(order);
+    setDeleteConfirmOpen(true);
   };
 
   const handleExportar = async () => {
@@ -331,6 +345,33 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
     }
     setPreviewOrder(order);
     setPreviewOpen(true);
+  };
+
+  const handleConfirmExcluir = async () => {
+    if (!orderToDelete) {
+      setDeleteConfirmOpen(false);
+      return;
+    }
+    setDeletingOrder(true);
+    try {
+      await ordersService.remove(orderToDelete.id);
+      toast.success('Pedido excluído');
+      clearSelection();
+      setPreviewOrder((prev) => {
+        if (prev?.id === orderToDelete.id) {
+          setPreviewOpen(false);
+          return null;
+        }
+        return prev;
+      });
+      loadOrders();
+    } catch (error: any) {
+      toast.error(error?.message || 'Erro ao excluir pedido');
+    } finally {
+      setDeletingOrder(false);
+      setDeleteConfirmOpen(false);
+      setOrderToDelete(null);
+    }
   };
 
   const buildPrintableHtml = (order: Order) => {
@@ -810,13 +851,8 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                             size="icon"
                             className="h-8 w-8"
                             onClick={async () => {
-                              try {
-                                await ordersService.remove(order.id);
-                                toast.success('Pedido excluído');
-                                loadOrders();
-                              } catch (e: any) {
-                                toast.error(`Erro ao excluir: ${e.message || e}`);
-                              }
+                              setOrderToDelete(order);
+                              setDeleteConfirmOpen(true);
                             }}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -888,9 +924,10 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
               variant="outline"
               size="sm"
               onClick={handleExcluir}
+              disabled={selectedOrders.length !== 1}
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              Excluir selecionados
+              Excluir selecionado
             </Button>
             <Button
               variant="outline"
@@ -961,6 +998,25 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir pedido?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {orderToDelete
+                ? `Pedido #${orderToDelete.id} - ${orderToDelete.clienteNome || 'Cliente não informado'}.`
+                : 'Esta ação não pode ser desfeita.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingOrder}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmExcluir} disabled={deletingOrder}>
+              {deletingOrder ? 'Excluindo...' : 'Excluir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

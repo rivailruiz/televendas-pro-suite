@@ -311,9 +311,12 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   // Se veio um pedido para edição, busca detalhes via API e preenche o formulário e itens
   useEffect(() => {
     if (!currentOrder) return;
+    let active = true;
+    const orderId = currentOrder.id;
     const fill = async () => {
       try {
-        const detail = await ordersService.getById(currentOrder.id);
+        const detail = await ordersService.getById(orderId);
+        if (!active) return;
         const detailFormaId = extractFormaPagtoId(detail);
         const detailPrazoId = extractPrazoPagtoId(detail);
         setFormData((prev) => ({
@@ -334,7 +337,10 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
         }));
         if (detailFormaId != null) setPreferredFormaId(detailFormaId);
         if (detailPrazoId != null) setPreferredPrazoId(detailPrazoId);
-        const mapped = (detail.itens || []).map((it: any) => ({
+        const detailItens = Array.isArray(detail.itens) ? detail.itens : [];
+        const fallbackItens = Array.isArray(currentOrder.itens) ? currentOrder.itens : [];
+        const itensSource = detailItens.length > 0 ? detailItens : fallbackItens;
+        const mapped = itensSource.map((it: any) => ({
           produtoId: it.produtoId,
           codigoProduto:
             it.codigoProduto ??
@@ -369,6 +375,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           nf: detail.observacaoNF || '',
         });
       } catch {
+        if (!active) return;
         // Fallback: preenche com o que já temos
         const fallbackFormaId = extractFormaPagtoId(currentOrder);
         const fallbackPrazoId = extractPrazoPagtoId(currentOrder);
@@ -426,6 +433,9 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       }
     };
     fill();
+    return () => {
+      active = false;
+    };
   }, [currentOrder]);
 
   useEffect(() => {
@@ -1720,7 +1730,17 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                       <span className="text-xs text-muted-foreground">%</span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">{formatCurrency(item.preco)}</TableCell>
+                  <TableCell className="text-right">
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      className="h-8 w-28 ml-auto text-right"
+                      value={item.preco}
+                      onChange={(e) => handleUpdateItem(idx, { preco: parseFloat(e.target.value) || 0 })}
+                      min={0}
+                      step="any"
+                    />
+                  </TableCell>
                   <TableCell className="text-right font-semibold">{formatCurrency(item.total)}</TableCell>
                   <TableCell>
                     <Button size="sm" variant="ghost" onClick={() => handleRemoveItem(idx)}>
