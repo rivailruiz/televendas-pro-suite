@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Save, Undo, Search, Plus, Trash2, Info, DollarSign, History } from 'lucide-react';
+import { Save, Undo, Search, Plus, Trash2, Info, DollarSign, History, Package } from 'lucide-react';
 import { toast } from 'sonner';
 import { metadataService, type Operacao, type Tabela, type FormaPagamento, type PrazoPagto } from '@/services/metadataService';
 import { authService } from '@/services/authService';
@@ -21,6 +21,7 @@ import { ProductSearchDialog } from './ProductSearchDialog';
 import { ClientInfoModal } from './ClientInfoModal';
 import { ClientReceivablesModal } from './ClientReceivablesModal';
 import { ClientPurchasesModal } from './ClientPurchasesModal';
+import { ProductBatchModal } from './ProductBatchModal';
 import type { PurchaseOrder } from '@/services/purchasesService';
 
 type OrderItem = {
@@ -145,6 +146,8 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   const [clientInfoOpen, setClientInfoOpen] = useState(false);
   const [clientReceivablesOpen, setClientReceivablesOpen] = useState(false);
   const [clientPurchasesOpen, setClientPurchasesOpen] = useState(false);
+  const [batchModalOpen, setBatchModalOpen] = useState(false);
+  const [selectedBatchItem, setSelectedBatchItem] = useState<OrderItem | null>(null);
   const [productSearchOpen, setProductSearchOpen] = useState(false);
   const [productCodeInput, setProductCodeInput] = useState('');
   const [loadingProductByCode, setLoadingProductByCode] = useState(false);
@@ -1743,9 +1746,22 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                   </TableCell>
                   <TableCell className="text-right font-semibold">{formatCurrency(item.total)}</TableCell>
                   <TableCell>
-                    <Button size="sm" variant="ghost" onClick={() => handleRemoveItem(idx)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setSelectedBatchItem(item);
+                          setBatchModalOpen(true);
+                        }}
+                        title="Ver lotes"
+                      >
+                        <Package className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => handleRemoveItem(idx)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -1834,6 +1850,14 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
         clienteId={formData.clienteId}
         clienteNome={formData.clienteNome}
         onDuplicateOrder={handleDuplicateOrder}
+      />
+
+      <ProductBatchModal
+        open={batchModalOpen}
+        onOpenChange={setBatchModalOpen}
+        produtoId={selectedBatchItem?.produtoId ?? 0}
+        produtoDescricao={selectedBatchItem?.descricao ?? ''}
+        estoqueAtual={selectedBatchItem?.estoque}
       />
     </div>
   );
