@@ -827,6 +827,26 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     return item.preco * item.quant * (1 - desconto);
   };
 
+  const calculateUnitPrice = (item: Partial<OrderItem>) => {
+    const base = Number(item.preco) || 0;
+    if (!base) return 0;
+    const desconto = Number(item.descontoPerc) || 0;
+    const unit = base * (1 - desconto / 100);
+    return Number.isFinite(unit) ? unit : 0;
+  };
+
+  const calculateDescontoFromUnitPrice = (base: number, unit: number) => {
+    if (!base || !Number.isFinite(base) || base <= 0) return 0;
+    const perc = ((base - unit) / base) * 100;
+    return Number.isFinite(perc) ? perc : 0;
+  };
+
+  const selectZeroValue = (input: HTMLInputElement) => {
+    if (Number(input.value) === 0) {
+      input.select();
+    }
+  };
+
   const handleAddItemWithProduct = async (productToAdd?: Partial<OrderItem>) => {
     const itemToAdd = productToAdd || newItem;
     
@@ -1088,6 +1108,18 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       updated[index] = { ...current, total };
       return updated;
     });
+  };
+
+  const handleUpdateItemUnitPrice = (index: number, unitPrice: number) => {
+    const current = items[index];
+    if (!current) return;
+    const base = Number(current.preco) || 0;
+    if (!base) {
+      handleUpdateItem(index, { preco: unitPrice, descontoPerc: 0 });
+      return;
+    }
+    const descontoPerc = calculateDescontoFromUnitPrice(base, unitPrice);
+    handleUpdateItem(index, { descontoPerc });
   };
 
   const handleChangeItemTabela = async (index: number, tabelaId: string) => {
@@ -1726,6 +1758,13 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                         className="h-8 w-20 text-right"
                         value={item.descontoPerc}
                         onChange={(e) => handleUpdateItem(idx, { descontoPerc: parseFloat(e.target.value) || 0 })}
+                        onFocus={(e) => selectZeroValue(e.currentTarget)}
+                        onMouseDown={(e) => {
+                          if (Number(e.currentTarget.value) === 0) {
+                            e.preventDefault();
+                            selectZeroValue(e.currentTarget);
+                          }
+                        }}
                         min={0}
                         max={100}
                         step="any"
@@ -1738,8 +1777,8 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                       type="number"
                       inputMode="decimal"
                       className="h-8 w-28 ml-auto text-right"
-                      value={item.preco}
-                      onChange={(e) => handleUpdateItem(idx, { preco: parseFloat(e.target.value) || 0 })}
+                      value={calculateUnitPrice(item)}
+                      onChange={(e) => handleUpdateItemUnitPrice(idx, parseFloat(e.target.value) || 0)}
                       min={0}
                       step="any"
                     />

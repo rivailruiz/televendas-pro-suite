@@ -86,6 +86,12 @@ const textOrUndefined = (val: any): string | undefined => {
   return undefined;
 };
 
+const numberOrUndefined = (val: any): number | undefined => {
+  if (val === undefined || val === null || val === '') return undefined;
+  const num = Number(val);
+  return Number.isFinite(num) ? num : undefined;
+};
+
 const extractFormaPagtoDescricao = (raw: any): string | undefined => {
   const formaObj =
     raw?.formaPagamento && typeof raw.formaPagamento === 'object'
@@ -523,14 +529,41 @@ export const ordersService = {
         const descontoRaw = it?.descontoPerc ?? it?.percentual_desconto ?? 0;
         const tabelaRaw =
           it?.tabela_preco_id ?? it?.tabelaId ?? order?.tabela ?? undefined;
+        const precoBaseRaw =
+          it?.preco ?? it?.preco_tabela ?? it?.precoTabela ?? it?.valor_unitario ?? it?.valorUnitario;
+        const precoUnitarioRaw =
+          it?.precoUnitario ??
+          it?.preco_unitario ??
+          it?.liquido ??
+          it?.valor_liquido ??
+          it?.valorLiquido;
+        const valorDescontoRaw = it?.valorDesconto ?? it?.valor_desconto;
 
         const produtoId = Number(produtoIdRaw) || 0;
         const quant = Number(quantRaw) || 0;
         const descontoPerc = Number(descontoRaw) || 0;
+        const precoBase = numberOrUndefined(precoBaseRaw) ?? 0;
         const tabelaPrecoId =
           tabelaRaw !== undefined && tabelaRaw !== null && tabelaRaw !== ''
             ? Number(tabelaRaw) || 0
             : undefined;
+        const precoUnitario =
+          numberOrUndefined(precoUnitarioRaw) ??
+          (precoBase ? precoBase * (1 - descontoPerc / 100) : undefined);
+        const brutoTotal =
+          numberOrUndefined(it?.valor_bruto_calc) ??
+          (precoBase && quant ? precoBase * quant : undefined);
+        let valorDesconto = numberOrUndefined(valorDescontoRaw);
+        if (valorDesconto === undefined) {
+          if (brutoTotal !== undefined && precoUnitario !== undefined && quant) {
+            const diff = brutoTotal - precoUnitario * quant;
+            if (Number.isFinite(diff)) {
+              valorDesconto = Math.max(0, diff);
+            }
+          } else if (brutoTotal !== undefined && descontoPerc) {
+            valorDesconto = brutoTotal * (descontoPerc / 100);
+          }
+        }
 
         return {
           // Campos esperados pelo pedidoCreateSchema / PedidoCreateItemInput
@@ -539,6 +572,8 @@ export const ordersService = {
           descontoPerc,
           obs: it?.obs ? String(it.obs) : undefined,
           tabelaPrecoId,
+          precoUnitario,
+          valorDesconto,
         };
       });
     };
@@ -636,14 +671,41 @@ export const ordersService = {
         const descontoRaw = it?.descontoPerc ?? it?.percentual_desconto ?? 0;
         const tabelaRaw =
           it?.tabela_preco_id ?? it?.tabelaId ?? order?.tabela ?? undefined;
+        const precoBaseRaw =
+          it?.preco ?? it?.preco_tabela ?? it?.precoTabela ?? it?.valor_unitario ?? it?.valorUnitario;
+        const precoUnitarioRaw =
+          it?.precoUnitario ??
+          it?.preco_unitario ??
+          it?.liquido ??
+          it?.valor_liquido ??
+          it?.valorLiquido;
+        const valorDescontoRaw = it?.valorDesconto ?? it?.valor_desconto;
 
         const produtoId = Number(produtoIdRaw) || 0;
         const quant = Number(quantRaw) || 0;
         const descontoPerc = Number(descontoRaw) || 0;
+        const precoBase = numberOrUndefined(precoBaseRaw) ?? 0;
         const tabelaPrecoId =
           tabelaRaw !== undefined && tabelaRaw !== null && tabelaRaw !== ''
             ? Number(tabelaRaw) || 0
             : undefined;
+        const precoUnitario =
+          numberOrUndefined(precoUnitarioRaw) ??
+          (precoBase ? precoBase * (1 - descontoPerc / 100) : undefined);
+        const brutoTotal =
+          numberOrUndefined(it?.valor_bruto_calc) ??
+          (precoBase && quant ? precoBase * quant : undefined);
+        let valorDesconto = numberOrUndefined(valorDescontoRaw);
+        if (valorDesconto === undefined) {
+          if (brutoTotal !== undefined && precoUnitario !== undefined && quant) {
+            const diff = brutoTotal - precoUnitario * quant;
+            if (Number.isFinite(diff)) {
+              valorDesconto = Math.max(0, diff);
+            }
+          } else if (brutoTotal !== undefined && descontoPerc) {
+            valorDesconto = brutoTotal * (descontoPerc / 100);
+          }
+        }
 
         return {
           produtoId,
@@ -651,6 +713,8 @@ export const ordersService = {
           descontoPerc,
           obs: it?.obs ? String(it.obs) : undefined,
           tabelaPrecoId,
+          precoUnitario,
+          valorDesconto,
         };
       });
     };
