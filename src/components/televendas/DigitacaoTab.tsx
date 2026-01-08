@@ -104,6 +104,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   const [items, setItems] = useState<OrderItem[]>([]);
   const [newItem, setNewItem] = useState<Partial<OrderItem>>(createEmptyNewItem);
   const [observacoes, setObservacoes] = useState(createEmptyObservacoes);
+  const [unitPriceDrafts, setUnitPriceDrafts] = useState<Record<number, string>>({});
 
   // Operações (metadata)
   const [operacoes, setOperacoes] = useState<Operacao[]>([]);
@@ -832,13 +833,38 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     if (!base) return 0;
     const desconto = Number(item.descontoPerc) || 0;
     const unit = base * (1 - desconto / 100);
-    return Number.isFinite(unit) ? unit : 0;
+    const rounded = Math.round(unit * 100) / 100;
+    return Number.isFinite(rounded) ? rounded : 0;
   };
 
   const calculateDescontoFromUnitPrice = (base: number, unit: number) => {
     if (!base || !Number.isFinite(base) || base <= 0) return 0;
     const perc = ((base - unit) / base) * 100;
     return Number.isFinite(perc) ? perc : 0;
+  };
+
+  const formatMoneyInput = (value: number) => {
+    const num = Number.isFinite(value) ? value : 0;
+    return num.toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  const parseMoneyInput = (value: string) => {
+    const cleaned = value.replace(/[^\d,.-]/g, '');
+    if (!cleaned) return 0;
+    const lastComma = cleaned.lastIndexOf(',');
+    const lastDot = cleaned.lastIndexOf('.');
+    const sepIndex = Math.max(lastComma, lastDot);
+    if (sepIndex >= 0) {
+      const intPart = cleaned.slice(0, sepIndex).replace(/[^\d-]/g, '');
+      const fracPart = cleaned.slice(sepIndex + 1).replace(/[^\d]/g, '');
+      const normalized = `${intPart || '0'}.${fracPart}`;
+      return Number(normalized) || 0;
+    }
+    const normalized = cleaned.replace(/[^\d-]/g, '');
+    return Number(normalized) || 0;
   };
 
   const selectZeroValue = (input: HTMLInputElement) => {
@@ -1120,6 +1146,19 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     }
     const descontoPerc = calculateDescontoFromUnitPrice(base, unitPrice);
     handleUpdateItem(index, { descontoPerc });
+  };
+
+  const updateUnitPriceDraft = (index: number, value: string) => {
+    setUnitPriceDrafts((prev) => ({ ...prev, [index]: value }));
+  };
+
+  const clearUnitPriceDraft = (index: number) => {
+    setUnitPriceDrafts((prev) => {
+      if (!(index in prev)) return prev;
+      const next = { ...prev };
+      delete next[index];
+      return next;
+    });
   };
 
   const handleChangeItemTabela = async (index: number, tabelaId: string) => {
@@ -1774,13 +1813,35 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                   </TableCell>
                   <TableCell className="text-right">
                     <Input
-                      type="number"
+                      type="text"
                       inputMode="decimal"
                       className="h-8 w-28 ml-auto text-right"
-                      value={calculateUnitPrice(item)}
-                      onChange={(e) => handleUpdateItemUnitPrice(idx, parseFloat(e.target.value) || 0)}
-                      min={0}
-                      step="any"
+                      value={
+                        unitPriceDrafts[idx] ?? formatMoneyInput(calculateUnitPrice(item))
+                      }
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        updateUnitPriceDraft(idx, raw);
+                        if (raw.trim() !== '') {
+                          handleUpdateItemUnitPrice(idx, parseMoneyInput(raw));
+                        }
+                      }}
+                      onFocus={(e) => {
+                        if (unitPriceDrafts[idx] == null) {
+                          updateUnitPriceDraft(
+                            idx,
+                            formatMoneyInput(calculateUnitPrice(item)),
+                          );
+                          requestAnimationFrame(() => e.currentTarget.select());
+                        }
+                      }}
+                      onBlur={() => {
+                        const raw = unitPriceDrafts[idx];
+                        if (raw != null && raw.trim() !== '') {
+                          handleUpdateItemUnitPrice(idx, parseMoneyInput(raw));
+                        }
+                        clearUnitPriceDraft(idx);
+                      }}
                     />
                   </TableCell>
                   <TableCell className="text-right font-semibold">{formatCurrency(item.total)}</TableCell>
