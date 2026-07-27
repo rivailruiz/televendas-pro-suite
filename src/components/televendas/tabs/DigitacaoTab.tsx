@@ -318,30 +318,32 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     [enrichItemWithTabelaInfo],
   );
 
-  const draftKey = useMemo(() => {
-    const session = authService.getSession();
-    const userId = session?.usuario ?? 'unknown';
-    return `televendas_draft_pedido_${userId}`;
-  }, []);
+  // Rascunho de pedido em digitação: persistido no banco (por empresa +
+  // usuário) em vez de só no localStorage do navegador, para o vendedor
+  // retomar de qualquer computador/dispositivo.
+  const [draftAvailable, setDraftAvailable] = useState<{ savedAt: string } | null>(null);
+  const [rascunhoDados, setRascunhoDados] = useState<{ formData: any; items: OrderItem[]; observacoes: any } | null>(null);
 
-  const [draftAvailable, setDraftAvailable] = useState<{ savedAt: string } | null>(() => {
-    if (currentOrder) return null;
-    try {
-      const key = `televendas_draft_pedido_${authService.getSession()?.usuario ?? 'unknown'}`;
-      const raw = localStorage.getItem(key);
-      if (!raw) return null;
-      const draft = JSON.parse(raw);
-      if (draft?.savedAt && (draft?.formData?.clienteId > 0 || (Array.isArray(draft?.items) && draft.items.length > 0))) {
-        return { savedAt: draft.savedAt };
+  useEffect(() => {
+    if (currentOrder) return;
+    let active = true;
+    ordersService.getRascunho().then((rascunho) => {
+      if (!active || !rascunho?.dados) return;
+      const dados = rascunho.dados;
+      if (dados?.formData?.clienteId > 0 || (Array.isArray(dados?.items) && dados.items.length > 0)) {
+        setRascunhoDados(dados);
+        setDraftAvailable({ savedAt: rascunho.atualizadoEm });
       }
-    } catch {}
-    return null;
-  });
+    }).catch(() => {});
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentOrder]);
 
   const clearDraft = useCallback(() => {
-    try { localStorage.removeItem(draftKey); } catch {}
+    ordersService.deleteRascunho().catch(() => {});
+    setRascunhoDados(null);
     setDraftAvailable(null);
-  }, [draftKey]);
+  }, []);
 
   const resetFormState = useCallback(() => {
     setFormData({
@@ -362,19 +364,17 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   }, [sessionRepresentante, clearDraft]);
 
   const restoreDraft = useCallback(() => {
+    if (!rascunhoDados) return;
     try {
-      const raw = localStorage.getItem(draftKey);
-      if (!raw) return;
-      const draft = JSON.parse(raw);
-      if (draft.formData) setFormData(draft.formData);
-      if (Array.isArray(draft.items)) setItems(draft.items);
-      if (draft.observacoes) setObservacoes(draft.observacoes);
+      if (rascunhoDados.formData) setFormData(rascunhoDados.formData);
+      if (Array.isArray(rascunhoDados.items)) setItems(rascunhoDados.items);
+      if (rascunhoDados.observacoes) setObservacoes(rascunhoDados.observacoes);
       setDraftAvailable(null);
       toast.success('Rascunho restaurado');
     } catch {
       toast.error('Não foi possível restaurar o rascunho');
     }
-  }, [draftKey]);
+  }, [rascunhoDados]);
 
   const handleDuplicateOrder = useCallback(async (purchaseOrder: PurchaseOrder) => {
     // A duplicação vira um pedido novo: usa data do dia (padrão do backend ao criar),
@@ -779,7 +779,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     }));
   }, [sessionRepresentante]);
 
-  // Auto-save draft for new orders (debounced 1s)
+  // Auto-save draft for new orders no banco (debounced 1s)
   useEffect(() => {
     if (currentOrder) return;
     const hasData = formData.clienteId > 0 || items.length > 0;
@@ -789,17 +789,10 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       return;
     }
     const timer = setTimeout(() => {
-      try {
-        localStorage.setItem(draftKey, JSON.stringify({
-          formData,
-          items,
-          observacoes,
-          savedAt: new Date().toISOString(),
-        }));
-      } catch {}
+      ordersService.saveRascunho({ formData, items, observacoes }).catch(() => {});
     }, 1000);
     return () => clearTimeout(timer);
-  }, [formData, items, observacoes, currentOrder, draftKey, clearDraft, draftAvailable]);
+  }, [formData, items, observacoes, currentOrder, clearDraft, draftAvailable]);
 
   useEffect(() => {
     if (!clientSearchOpen) return;

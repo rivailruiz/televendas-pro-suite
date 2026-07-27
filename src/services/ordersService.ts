@@ -913,6 +913,61 @@ export const ordersService = {
     return arr.map((p: any) => ({ parcela: Number(p.parcela), vencto: String(p.vencto), valor: Number(p.valor) }));
   },
 
+  // Rascunho de pedido em digitação, salvo no banco (por empresa + usuário)
+  // em vez de só no localStorage, para o vendedor retomar de qualquer
+  // computador/dispositivo.
+  getRascunho: async (): Promise<{ dados: any; atualizadoEm: string } | null> => {
+    const empresa = authService.getEmpresa();
+    if (!empresa) return Promise.reject('Empresa não selecionada');
+    const token = authService.getToken();
+    if (!token) return Promise.reject('Token ausente');
+    const url = `${API_BASE}/api/pedidos/rascunho?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
+    const res = await apiClient.fetch(url, { method: 'GET', headers: { accept: 'application/json' } });
+    if (!res.ok) {
+      if (res.status === 404) return null;
+      let message = 'Falha ao buscar rascunho do pedido';
+      try { const err = await res.json(); message = err?.message || err?.error?.message || err?.error || message; } catch {}
+      return Promise.reject(message);
+    }
+    const data = await res.json();
+    return data && data.dados ? { dados: data.dados, atualizadoEm: String(data.atualizadoEm) } : null;
+  },
+
+  saveRascunho: async (dados: any): Promise<void> => {
+    const empresa = authService.getEmpresa();
+    if (!empresa) return Promise.reject('Empresa não selecionada');
+    const token = authService.getToken();
+    if (!token) return Promise.reject('Token ausente');
+    const url = `${API_BASE}/api/pedidos/rascunho`;
+    const headers: Record<string, string> = {
+      accept: 'application/json',
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    };
+    const res = await apiClient.fetch(url, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ empresaId: empresa.empresa_id, dados }),
+    });
+    if (!res.ok) {
+      let message = 'Falha ao salvar rascunho do pedido';
+      try { const err = await res.json(); message = err?.message || err?.error?.message || err?.error || message; } catch {}
+      return Promise.reject(message);
+    }
+  },
+
+  deleteRascunho: async (): Promise<void> => {
+    const empresa = authService.getEmpresa();
+    if (!empresa) return;
+    const token = authService.getToken();
+    if (!token) return;
+    const url = `${API_BASE}/api/pedidos/rascunho?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
+    const headers: Record<string, string> = { accept: 'application/json', Authorization: `Bearer ${token}` };
+    try {
+      await apiClient.fetch(url, { method: 'DELETE', headers });
+    } catch {}
+  },
+
   duplicate: (id: number) => {
     const pedido = pedidos.find(p => p.id === id);
     if (pedido) {
