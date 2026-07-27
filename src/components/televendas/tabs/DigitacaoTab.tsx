@@ -1128,12 +1128,17 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     return item.preco * item.quant * (1 - desconto);
   };
 
+  // Preço Unitário é arredondado para 4 casas (não 2): o legado trabalha
+  // %Desconto com até 5 casas e Preço Unitário com até 4, e arredondar para
+  // menos que isso aqui acumula diferença no total do pedido item a item
+  // (reportado por Marcelo em 27/07/2026: R$59.801,76 no legado vs
+  // R$59.804 no ADS Vendas para o mesmo pedido).
   const calculateUnitPrice = (item: Partial<OrderItem>) => {
     const base = Number(item.preco) || 0;
     if (!base) return 0;
     const desconto = Number(item.descontoPerc) || 0;
     const unit = base * (1 - desconto / 100);
-    const rounded = Math.round(unit * 100) / 100;
+    const rounded = Math.round(unit * 10000) / 10000;
     return Number.isFinite(rounded) ? rounded : 0;
   };
 
@@ -1143,11 +1148,14 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     return Number.isFinite(perc) ? perc : 0;
   };
 
-  const formatMoneyInput = (value: number) => {
+  // decimals: %Desconto usa 5 casas e Preço Unitário usa 4 casas no
+  // legado (padrão de 2 casas é insuficiente e causa arredondamento
+  // acumulado no total do pedido).
+  const formatMoneyInput = (value: number, decimals = 2) => {
     const num = Number.isFinite(value) ? value : 0;
     return num.toLocaleString('pt-BR', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
     });
   };
 
@@ -1281,6 +1289,10 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       quant < quantidadeMinimaResolvida
     ) {
       toast.error(`Quantidade mínima para este produto é ${quantidadeMinimaResolvida}.`);
+      return;
+    }
+    if (!precoTabela || precoTabela <= 0) {
+      toast.error('Produto sem preço cadastrado nesta tabela. Selecione outra tabela ou cadastre o preço antes de adicionar o item.');
       return;
     }
     const descontoPerc = clampDesconto(
@@ -2238,7 +2250,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                 inputMode="decimal"
                 value={
                   newItemDescontoDraft ??
-                  formatMoneyInput(Number.isFinite(newItem.descontoPerc) ? (newItem.descontoPerc as number) : 0)
+                  formatMoneyInput(Number.isFinite(newItem.descontoPerc) ? (newItem.descontoPerc as number) : 0, 5)
                 }
                 onChange={(e) => {
                   const raw = e.target.value;
@@ -2248,7 +2260,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                     // Se o valor foi limitado, o draft reflete o valor real
                     // aplicado (não o que o usuário digitou) para que o campo
                     // nunca mostre um número diferente do que será salvo.
-                    setNewItemDescontoDraft(limited !== parsed ? formatMoneyInput(limited) : raw);
+                    setNewItemDescontoDraft(limited !== parsed ? formatMoneyInput(limited, 5) : raw);
                     setNewItem({ ...newItem, descontoPerc: limited });
                   } else {
                     setNewItemDescontoDraft(raw);
@@ -2257,7 +2269,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                 onFocus={(e) => {
                   if (newItemDescontoDraft == null) {
                     setNewItemDescontoDraft(
-                      formatMoneyInput(Number.isFinite(newItem.descontoPerc) ? (newItem.descontoPerc as number) : 0),
+                      formatMoneyInput(Number.isFinite(newItem.descontoPerc) ? (newItem.descontoPerc as number) : 0, 5),
                     );
                     requestAnimationFrame(() => e.currentTarget.select());
                   }
@@ -2370,7 +2382,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                         type="text"
                         inputMode="decimal"
                         className="h-8 w-20 text-right"
-                        value={descontoDrafts[idx] ?? formatMoneyInput(item.descontoPerc)}
+                        value={descontoDrafts[idx] ?? formatMoneyInput(item.descontoPerc, 5)}
                         onChange={(e) => {
                           const raw = e.target.value;
                           if (raw.trim() !== '') {
@@ -2379,7 +2391,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                             // Se o valor foi limitado, o draft reflete o valor real
                             // aplicado (não o que o usuário digitou) para que o campo
                             // nunca mostre um número diferente do que será salvo.
-                            updateDescontoDraft(idx, limited !== parsed ? formatMoneyInput(limited) : raw);
+                            updateDescontoDraft(idx, limited !== parsed ? formatMoneyInput(limited, 5) : raw);
                             handleUpdateItem(idx, { descontoPerc: limited });
                           } else {
                             updateDescontoDraft(idx, raw);
@@ -2387,7 +2399,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                         }}
                         onFocus={(e) => {
                           if (descontoDrafts[idx] == null) {
-                            updateDescontoDraft(idx, formatMoneyInput(item.descontoPerc));
+                            updateDescontoDraft(idx, formatMoneyInput(item.descontoPerc, 5));
                             requestAnimationFrame(() => e.currentTarget.select());
                           }
                         }}
@@ -2408,7 +2420,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                       inputMode="decimal"
                       className="h-8 w-28 ml-auto text-right"
                       value={
-                        unitPriceDrafts[idx] ?? formatMoneyInput(calculateUnitPrice(item))
+                        unitPriceDrafts[idx] ?? formatMoneyInput(calculateUnitPrice(item), 4)
                       }
                       onChange={(e) => {
                         const raw = e.target.value;
@@ -2421,7 +2433,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                         if (unitPriceDrafts[idx] == null) {
                           updateUnitPriceDraft(
                             idx,
-                            formatMoneyInput(calculateUnitPrice(item)),
+                            formatMoneyInput(calculateUnitPrice(item), 4),
                           );
                           requestAnimationFrame(() => e.currentTarget.select());
                         }
