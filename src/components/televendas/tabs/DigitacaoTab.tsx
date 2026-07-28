@@ -1619,6 +1619,24 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       return;
     }
 
+    // Se o prazo negociado já foi definido, a soma das parcelas precisa
+    // fechar com o total ATUAL do pedido antes de salvar — editar itens
+    // depois de negociar (ou o próprio bug de total mudando sozinho) pode
+    // deixar a negociação desatualizada. Sem essa checagem aqui, o pedido
+    // era salvo mesmo divergente e só a gravação das parcelas falhava
+    // depois, deixando o pedido salvo com o prazo negociado incoerente.
+    if (selectedPrazoPagamento?.prazoNegociado && parcelasNegociadas.length > 0) {
+      const totalParcelas = parcelasNegociadas.reduce((sum, p) => sum + (Number(p.valor) || 0), 0);
+      if (Math.abs(totalParcelas - totals.liquido) > 0.01) {
+        toast.error(
+          `A soma das parcelas do prazo negociado (${formatCurrency(totalParcelas)}) não bate com o total do pedido (${formatCurrency(totals.liquido)}). Ajuste o prazo negociado antes de salvar.`,
+        );
+        setPrazoNegociadoAutoSave(true);
+        setPrazoNegociadoOpen(true);
+        return;
+      }
+    }
+
     await proceedSave();
   };
 
