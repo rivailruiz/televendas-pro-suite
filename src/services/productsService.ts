@@ -108,6 +108,7 @@ interface ProductTabelaPrecoResponse {
   preco: number;
   descontoMaximo?: number;
   quantidadeMinima?: number;
+  multiploDeVendas?: number;
   hasEscala?: boolean;
   escalaTiers?: EscalaTier[];
 }
@@ -735,6 +736,10 @@ async function fetchPrecoByTabela({
       data?.quantidadeMinima !== undefined && data?.quantidadeMinima !== null
         ? Number(data.quantidadeMinima)
         : undefined;
+    const multiploDeVendasResp =
+      data?.multiploDeVendas !== undefined && data?.multiploDeVendas !== null
+        ? Number(data.multiploDeVendas)
+        : undefined;
     const escalaTiersResp: EscalaTier[] = Array.isArray(data?.escalaTiers)
       ? data.escalaTiers.map((t: any) => ({
           quantidade: Number(t.quantidade),
@@ -749,6 +754,7 @@ async function fetchPrecoByTabela({
       preco: precoResp,
       descontoMaximo: descontoMaximoResp,
       quantidadeMinima: quantidadeMinimaResp,
+      multiploDeVendas: multiploDeVendasResp,
       hasEscala: Boolean(data?.hasEscala) || escalaTiersResp.length > 0,
       escalaTiers: escalaTiersResp,
     };
@@ -850,6 +856,7 @@ export const productsService = {
     preco: number;
     descontoMaximo?: number;
     quantidadeMinima?: number;
+    multiploDeVendas?: number;
     hasEscala: boolean;
     escalaTiers: EscalaTier[];
   }> => {
@@ -858,6 +865,7 @@ export const productsService = {
       preco: data.preco,
       descontoMaximo: data.descontoMaximo,
       quantidadeMinima: data.quantidadeMinima,
+      multiploDeVendas: data.multiploDeVendas,
       hasEscala: Boolean(data.hasEscala),
       escalaTiers: data.escalaTiers ?? [],
     };

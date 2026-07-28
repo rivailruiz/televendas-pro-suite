@@ -39,6 +39,7 @@ type OrderItem = {
   descontoPerc: number;
   descontoMaximo?: number;
   quantidadeMinima?: number;
+  multiploDeVendas?: number;
   hasEscala?: boolean;
   escalaTiers?: EscalaTier[];
   preco: number;
@@ -251,6 +252,13 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     (val?: number) => (typeof val === 'number' && !Number.isNaN(val) ? val : undefined),
     [],
   );
+  // Múltiplo de vendas do cadastro de produto: quantidade precisa ser
+  // múltiplo desse valor (ex.: múltiplo 6 -> só aceita 6, 12, 18...).
+  const isMultiploDeVendasValido = useCallback((quant: number, multiplo?: number) => {
+    if (!multiplo || multiplo <= 1) return true;
+    const resto = Math.round(quant / multiplo) * multiplo - quant;
+    return Math.abs(resto) < 0.0001;
+  }, []);
   const clampDesconto = useCallback(
     (valor: number, max?: number) => {
       // Never allow negative discounts
@@ -305,6 +313,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
         ...item,
         descontoMaximo: normalizeMaxDesconto(info.descontoMaximo ?? item.descontoMaximo),
         quantidadeMinima: info.quantidadeMinima ?? item.quantidadeMinima,
+        multiploDeVendas: info.multiploDeVendas ?? item.multiploDeVendas,
         hasEscala: info.hasEscala,
         escalaTiers: info.escalaTiers,
       };
@@ -1067,6 +1076,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       estoque: typeof product.estoque === 'number' ? product.estoque : undefined,
       descontoMaximo: maxDesconto,
       quantidadeMinima: product.quantidadeMinima,
+      multiploDeVendas: product.multiploDeVendas,
       hasEscala,
       escalaTiers,
       descontoPerc,
@@ -1097,6 +1107,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
         tabelaId,
         descontoMaximo: normalizeMaxDesconto(info.descontoMaximo),
         quantidadeMinima: info.quantidadeMinima,
+        multiploDeVendas: info.multiploDeVendas ?? prev.multiploDeVendas,
         hasEscala: info.hasEscala,
         escalaTiers: info.escalaTiers,
         descontoPerc: clampDesconto(
@@ -1209,12 +1220,18 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       toast.error(`Quantidade mínima para este produto é ${quantidadeMinima}.`);
       return;
     }
+    const multiploDeVendas = itemToAdd.multiploDeVendas;
+    if (!isMultiploDeVendasValido(quant, multiploDeVendas)) {
+      toast.error(`Quantidade precisa ser múltiplo de ${multiploDeVendas} para este produto.`);
+      return;
+    }
     const descricao = itemToAdd.descricao || '';
     const un = itemToAdd.un || '';
     let maxDesconto = normalizeMaxDesconto(itemToAdd.descontoMaximo);
     let hasEscala = Boolean(itemToAdd.hasEscala);
     let escalaTiers: EscalaTier[] = itemToAdd.escalaTiers ?? [];
     let quantidadeMinimaResolvida = quantidadeMinima;
+    let multiploDeVendasResolvido = multiploDeVendas;
     const preco = itemToAdd.preco || 0;
     const obs = itemToAdd.obs;
     const tabelaSelecionada = getPreferredTabelaForItem(itemToAdd);
@@ -1269,6 +1286,9 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
         if (info.quantidadeMinima != null) {
           quantidadeMinimaResolvida = info.quantidadeMinima;
         }
+        if (info.multiploDeVendas != null) {
+          multiploDeVendasResolvido = info.multiploDeVendas;
+        }
       } catch (e: any) {
         toast.error(
           String(e) ||
@@ -1282,6 +1302,10 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       quant < quantidadeMinimaResolvida
     ) {
       toast.error(`Quantidade mínima para este produto é ${quantidadeMinimaResolvida}.`);
+      return;
+    }
+    if (!isMultiploDeVendasValido(quant, multiploDeVendasResolvido)) {
+      toast.error(`Quantidade precisa ser múltiplo de ${multiploDeVendasResolvido} para este produto.`);
       return;
     }
     if (!precoTabela || precoTabela <= 0) {
@@ -1309,6 +1333,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           preco: precoTabela,
           descontoMaximo: maxDesconto,
           quantidadeMinima: quantidadeMinimaResolvida,
+          multiploDeVendas: multiploDeVendasResolvido,
           hasEscala,
           escalaTiers,
           total: 0,
@@ -1335,6 +1360,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       let hasEscalaToApply = currentItem.hasEscala ?? hasEscala;
       let escalaTiersToApply = currentItem.escalaTiers ?? escalaTiers;
       let quantidadeMinimaToApply = currentItem.quantidadeMinima ?? quantidadeMinimaResolvida;
+      let multiploDeVendasToApply = currentItem.multiploDeVendas ?? multiploDeVendasResolvido;
       if (tabelaChanged && tabelaToApply) {
         try {
           const info = await productsService.getTabelaInfo(
@@ -1346,6 +1372,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           hasEscalaToApply = info.hasEscala;
           escalaTiersToApply = info.escalaTiers;
           quantidadeMinimaToApply = info.quantidadeMinima;
+          multiploDeVendasToApply = info.multiploDeVendas ?? multiploDeVendasToApply;
         } catch (e: any) {
           toast.error(
             String(e) ||
@@ -1371,6 +1398,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           estoque: current.estoque ?? itemToAdd.estoque,
           descontoMaximo: maxDescontoToApply,
           quantidadeMinima: quantidadeMinimaToApply,
+          multiploDeVendas: multiploDeVendasToApply,
           hasEscala: hasEscalaToApply,
           escalaTiers: escalaTiersToApply,
         };
@@ -1424,6 +1452,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
         let hasEscala = Boolean(product.hasEscala);
         let escalaTiers: EscalaTier[] = product.escalaTiers ?? [];
         let quantidadeMinima = product.quantidadeMinima;
+        let multiploDeVendas = product.multiploDeVendas;
         const tabelaToUse = newItemTabelaId || getDefaultTabelaId();
         if (tabelaToUse) {
           try {
@@ -1433,6 +1462,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
             hasEscala = info.hasEscala;
             escalaTiers = info.escalaTiers;
             quantidadeMinima = info.quantidadeMinima;
+            multiploDeVendas = info.multiploDeVendas ?? multiploDeVendas;
           } catch {
             precoFinal = product.preco;
           }
@@ -1453,6 +1483,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           estoque: typeof product.estoque === 'number' ? product.estoque : undefined,
           descontoMaximo: maxDesconto,
           quantidadeMinima,
+          multiploDeVendas,
           hasEscala,
           escalaTiers,
           descontoPerc,
@@ -1504,6 +1535,9 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       ) {
         toast.warning(`Quantidade mínima para este produto é ${current.quantidadeMinima}.`);
       }
+      if (patch.quant != null && !isMultiploDeVendasValido(current.quant, current.multiploDeVendas)) {
+        toast.warning(`Quantidade precisa ser múltiplo de ${current.multiploDeVendas} para este produto.`);
+      }
       const total = calculateItemTotal(current);
       updated[index] = { ...current, total };
       return updated;
@@ -1550,6 +1584,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
 
   const handleChangeItemTabela = async (index: number, tabelaId: string) => {
     const current = items[index];
+    const previousTabelaId = current?.tabelaId;
     // Atualiza primeiro a tabela selecionada no item
     handleUpdateItem(index, { tabelaId });
 
@@ -1562,10 +1597,16 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
         current.produtoId,
         tabelaNum,
       );
+      if (!info.preco || info.preco <= 0) {
+        toast.error('Produto sem preço cadastrado nesta tabela. Selecione outra tabela.');
+        handleUpdateItem(index, { tabelaId: previousTabelaId });
+        return;
+      }
       handleUpdateItem(index, {
         preco: info.preco,
         descontoMaximo: normalizeMaxDesconto(info.descontoMaximo),
         quantidadeMinima: info.quantidadeMinima,
+        multiploDeVendas: info.multiploDeVendas,
         hasEscala: info.hasEscala,
         escalaTiers: info.escalaTiers,
       });
@@ -1574,6 +1615,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
         String(e) ||
           'Não foi possível atualizar o preço para a tabela selecionada',
       );
+      handleUpdateItem(index, { tabelaId: previousTabelaId });
     }
   };
 
@@ -1600,8 +1642,35 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   const selectedPrazoPagamento = prazos.find((p) => String(p.id) === String(formData.prazoPagtoId));
 
   const handleSave = async () => {
-    if (!formData.operacao || !formData.clienteId || !formData.representanteId || items.length === 0) {
+    // Igual ao legado: item com quantidade zero é removido do pedido ao
+    // salvar, em vez de tentar gravar um item com quantidade zero.
+    const itensValidos = items.filter((it) => (it.quant || 0) > 0);
+    if (itensValidos.length !== items.length) {
+      setItems(itensValidos);
+      toast.info(
+        `${items.length - itensValidos.length} item(ns) com quantidade zero foram removidos do pedido.`,
+      );
+    }
+
+    if (!formData.operacao || !formData.clienteId || !formData.representanteId || itensValidos.length === 0) {
       toast.error('Preencha operação, cliente, representante e adicione pelo menos um item');
+      return;
+    }
+    // Trava final: nenhum item pode ir para o pedido com preço zerado,
+    // independente de qual caminho o colocou nessa situação.
+    const semPreco = itensValidos.find((it) => !it.preco || it.preco <= 0);
+    if (semPreco) {
+      toast.error(`Produto "${semPreco.descricao}" está sem preço válido. Remova o item ou selecione outra tabela antes de salvar.`);
+      return;
+    }
+    // Trava final: quantidade de cada item precisa respeitar o múltiplo de
+    // vendas do produto (cadastro de produto), independente de qual
+    // caminho colocou o item no pedido.
+    const foraDoMultiplo = itensValidos.find((it) => !isMultiploDeVendasValido(it.quant, it.multiploDeVendas));
+    if (foraDoMultiplo) {
+      toast.error(
+        `Produto "${foraDoMultiplo.descricao}": quantidade ${foraDoMultiplo.quant} precisa ser múltiplo de ${foraDoMultiplo.multiploDeVendas}.`,
+      );
       return;
     }
     // Valida prazo máximo conforme a tabela selecionada
@@ -1637,11 +1706,12 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       }
     }
 
-    await proceedSave();
+    await proceedSave(undefined, itensValidos);
   };
 
-  const proceedSave = async (parcelasOverride?: OrderParcela[]) => {
+  const proceedSave = async (parcelasOverride?: OrderParcela[], itemsOverride?: OrderItem[]) => {
     const parcelasToSave = parcelasOverride ?? parcelasNegociadas;
+    const itensParaSalvar = itemsOverride ?? items;
     const order = {
       data: new Date().toISOString().split('T')[0],
       operacao: formData.operacao,
@@ -1660,7 +1730,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       boleto: false,
       rede: formData.rede,
       valor: totals.liquido,
-      itens: items.map((item, idx) => ({
+      itens: itensParaSalvar.map((item, idx) => ({
         produtoId: item.produtoId,
         descricao: item.descricao,
         av: 1,
@@ -2166,6 +2236,10 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                   setProductSearchOpen(false);
                   for (const product of products) {
                     const maxDesconto = normalizeMaxDesconto(product.descontoMaximo);
+                    let defaultQuant = product.quantidadeMinima && product.quantidadeMinima > 1 ? product.quantidadeMinima : 1;
+                    if (product.multiploDeVendas && product.multiploDeVendas > 1) {
+                      defaultQuant = Math.ceil(defaultQuant / product.multiploDeVendas) * product.multiploDeVendas;
+                    }
                     const item: Partial<OrderItem> = {
                       produtoId: product.id,
                       codigoProduto: product.codigoProduto ?? '',
@@ -2173,10 +2247,11 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                       un: product.un,
                       preco: product.preco,
                       estoque: typeof product.estoque === 'number' ? product.estoque : undefined,
-                      quant: product.quantidadeMinima && product.quantidadeMinima > 1 ? product.quantidadeMinima : 1,
+                      quant: defaultQuant,
                       descontoPerc: 0,
                       descontoMaximo: maxDesconto,
                       quantidadeMinima: product.quantidadeMinima,
+                      multiploDeVendas: product.multiploDeVendas,
                     };
                     await handleAddItemWithProduct(item);
                   }
