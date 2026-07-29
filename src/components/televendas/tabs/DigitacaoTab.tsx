@@ -40,6 +40,7 @@ type OrderItem = {
   descontoMaximo?: number;
   quantidadeMinima?: number;
   multiploDeVendas?: number;
+  fatorVenda?: number;
   hasEscala?: boolean;
   escalaTiers?: EscalaTier[];
   preco: number;
@@ -143,7 +144,7 @@ const extractPrazoPagtoId = (data: any) =>
   null;
 
 export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
-  const { orders, setOrders, currentOrder, setCurrentOrder } = useStore();
+  const { orders, setOrders, currentOrder, setCurrentOrder, orderToDuplicate, setOrderToDuplicate } = useStore();
   const [formData, setFormData] = useState(createEmptyFormData);
   
   const [items, setItems] = useState<OrderItem[]>([]);
@@ -152,6 +153,13 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   const [unitPriceDrafts, setUnitPriceDrafts] = useState<Record<number, string>>({});
   const [descontoDrafts, setDescontoDrafts] = useState<Record<number, string>>({});
   const [newItemDescontoDraft, setNewItemDescontoDraft] = useState<string | null>(null);
+  // "Caixas" é só um atalho de digitação: quando o produto tem fator de
+  // venda (unidades por caixa fechada) > 1, o vendedor pode informar a
+  // quantidade em caixas e o sistema converte para unidades automaticamente
+  // (quant = caixas x fatorVenda) em vez de fazer a conta na mão (reunião
+  // 28/07/2026). O campo em si não é enviado ao backend — só ajusta `quant`.
+  const [caixasDrafts, setCaixasDrafts] = useState<Record<number, string>>({});
+  const [newItemCaixasDraft, setNewItemCaixasDraft] = useState<string>('');
 
   // Operações (metadata)
   const [operacoes, setOperacoes] = useState<Operacao[]>([]);
@@ -314,6 +322,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
         descontoMaximo: normalizeMaxDesconto(info.descontoMaximo ?? item.descontoMaximo),
         quantidadeMinima: info.quantidadeMinima ?? item.quantidadeMinima,
         multiploDeVendas: info.multiploDeVendas ?? item.multiploDeVendas,
+        fatorVenda: info.fatorVenda ?? item.fatorVenda,
         hasEscala: info.hasEscala,
         escalaTiers: info.escalaTiers,
       };
@@ -363,6 +372,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     setItems([]);
     setNewItem(createEmptyNewItem());
     setNewItemDescontoDraft(null);
+    setNewItemCaixasDraft('');
     setObservacoes(createEmptyObservacoes());
     setPreferredFormaId(null);
     setPreferredPrazoId(null);
@@ -696,6 +706,93 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     }
     prevOrderIdRef.current = currentOrder?.id ?? null;
   }, [currentOrder, resetFormState]);
+
+  // Duplicar pedido do histórico: carrega cliente/itens do pedido original
+  // como um pedido NOVO (currentOrder fica null, então o Salvar cria um
+  // pedido novo em vez de atualizar o original) — evita ter que reselecionar
+  // cliente/representante e redigitar os itens na mão (reunião 28/07/2026).
+  useEffect(() => {
+    if (!orderToDuplicate) return;
+    let active = true;
+    const orderId = orderToDuplicate.id;
+    const duplicate = async () => {
+      try {
+        const detail = await ordersService.getById(orderId);
+        if (!active) return;
+        const detailFormaId = extractFormaPagtoId(detail);
+        const detailPrazoId = extractPrazoPagtoId(detail);
+        setCurrentOrder(null);
+        setFormData((prev) => ({
+          ...prev,
+          operacao: detail.operacao || detail.operacaoDescricao || detail.operacaoCodigo || prev.operacao,
+          operacaoId: detail.operacaoId ?? prev.operacaoId ?? '',
+          clienteId: detail.clienteId || 0,
+          clienteNome: detail.clienteNome || '',
+          representanteId: detail.representanteId ?? detail.representanteCodigo ?? '',
+          representanteNome: detail.representanteNome || '',
+          tabela: detail.tabela || prev.tabela || '',
+          formaPagamento: detail.formaPagamento || prev.formaPagamento || '',
+          formaPagtoId: detailFormaId ?? prev.formaPagtoId ?? '',
+          prazo: detail.prazo || prev.prazo || '',
+          prazoPagtoId: detailPrazoId ?? prev.prazoPagtoId ?? '',
+          boleto: '',
+          rede: detail.rede || '',
+        }));
+        if (detailFormaId != null) setPreferredFormaId(detailFormaId);
+        if (detailPrazoId != null) setPreferredPrazoId(detailPrazoId);
+        const detailItens = Array.isArray(detail.itens) ? detail.itens : [];
+        const mapped = detailItens.map((it: any) => ({
+          produtoId: it.produtoId,
+          codigoProduto:
+            it.codigoProduto ??
+            it.codigo_produto ??
+            it.produto_codigo ??
+            it.produtoCod ??
+            it.produto_cod ??
+            '',
+          descricao: it.descricao,
+          un: it.un,
+          quant: it.quant,
+          descontoPerc: Number(it.descontoPerc ?? 0) || 0,
+          preco: it.preco,
+          estoque: typeof it.estoque === 'number' ? it.estoque : undefined,
+          total: it.total,
+          obs: it.obs,
+          descontoMaximo: normalizeMaxDesconto((it as any)?.descontoMaximo ?? (it as any)?.desconto_maximo ?? (it as any)?.desconto_max),
+          tabelaId:
+            it.tabela_preco_id ??
+            it.tabela_precoId ??
+            it.tabela_preco ??
+            it.tabelaPrecoId ??
+            it.tabelaPreco_id ??
+            it.tabelaId ??
+            it.tabela_id ??
+            it.tabela,
+        })) as OrderItem[];
+        setItems(mapped);
+        enrichItemsWithTabelaInfo(mapped).then((enriched) => {
+          if (active) setItems(enriched);
+        });
+        setObservacoes({
+          cliente: detail.observacaoCliente || '',
+          pedido: detail.observacaoPedido || '',
+          nf: detail.observacaoNF || '',
+        });
+        // Pedido duplicado começa sem prazo negociado (é uma negociação nova).
+        setParcelasNegociadas([]);
+        toast.success(`Pedido ${orderId} duplicado — revise os itens e salve como um novo pedido.`);
+      } catch (e: any) {
+        toast.error(`Erro ao duplicar pedido: ${String(e?.message || e)}`);
+      } finally {
+        if (active) setOrderToDuplicate(null);
+      }
+    };
+    duplicate();
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderToDuplicate]);
 
   // Carrega formas de pagamento ao montar
   useEffect(() => {
@@ -1077,11 +1174,13 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       descontoMaximo: maxDesconto,
       quantidadeMinima: product.quantidadeMinima,
       multiploDeVendas: product.multiploDeVendas,
+      fatorVenda: product.fatorVenda,
       hasEscala,
       escalaTiers,
       descontoPerc,
     });
     setNewItemPreco(product.preco);
+    setNewItemCaixasDraft('');
     // Set default tabela if available
     const defaultTabela = getDefaultTabelaId();
     if (defaultTabela) {
@@ -1108,6 +1207,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
         descontoMaximo: normalizeMaxDesconto(info.descontoMaximo),
         quantidadeMinima: info.quantidadeMinima,
         multiploDeVendas: info.multiploDeVendas ?? prev.multiploDeVendas,
+        fatorVenda: info.fatorVenda ?? prev.fatorVenda,
         hasEscala: info.hasEscala,
         escalaTiers: info.escalaTiers,
         descontoPerc: clampDesconto(
@@ -1232,6 +1332,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     let escalaTiers: EscalaTier[] = itemToAdd.escalaTiers ?? [];
     let quantidadeMinimaResolvida = quantidadeMinima;
     let multiploDeVendasResolvido = multiploDeVendas;
+    let fatorVendaResolvido = itemToAdd.fatorVenda;
     const preco = itemToAdd.preco || 0;
     const obs = itemToAdd.obs;
     const tabelaSelecionada = getPreferredTabelaForItem(itemToAdd);
@@ -1289,6 +1390,9 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
         if (info.multiploDeVendas != null) {
           multiploDeVendasResolvido = info.multiploDeVendas;
         }
+        if (info.fatorVenda != null) {
+          fatorVendaResolvido = info.fatorVenda;
+        }
       } catch (e: any) {
         toast.error(
           String(e) ||
@@ -1308,7 +1412,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       toast.error(`Quantidade precisa ser múltiplo de ${multiploDeVendasResolvido} para este produto.`);
       return;
     }
-    if (!precoTabela || precoTabela <= 0) {
+    if (!precoTabela || precoTabela <= 0.01) {
       toast.error('Produto sem preço cadastrado nesta tabela. Selecione outra tabela ou cadastre o preço antes de adicionar o item.');
       return;
     }
@@ -1334,6 +1438,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           descontoMaximo: maxDesconto,
           quantidadeMinima: quantidadeMinimaResolvida,
           multiploDeVendas: multiploDeVendasResolvido,
+          fatorVenda: fatorVendaResolvido,
           hasEscala,
           escalaTiers,
           total: 0,
@@ -1361,6 +1466,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       let escalaTiersToApply = currentItem.escalaTiers ?? escalaTiers;
       let quantidadeMinimaToApply = currentItem.quantidadeMinima ?? quantidadeMinimaResolvida;
       let multiploDeVendasToApply = currentItem.multiploDeVendas ?? multiploDeVendasResolvido;
+      let fatorVendaToApply = currentItem.fatorVenda ?? fatorVendaResolvido;
       if (tabelaChanged && tabelaToApply) {
         try {
           const info = await productsService.getTabelaInfo(
@@ -1373,6 +1479,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           escalaTiersToApply = info.escalaTiers;
           quantidadeMinimaToApply = info.quantidadeMinima;
           multiploDeVendasToApply = info.multiploDeVendas ?? multiploDeVendasToApply;
+          fatorVendaToApply = info.fatorVenda ?? fatorVendaToApply;
         } catch (e: any) {
           toast.error(
             String(e) ||
@@ -1399,6 +1506,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           descontoMaximo: maxDescontoToApply,
           quantidadeMinima: quantidadeMinimaToApply,
           multiploDeVendas: multiploDeVendasToApply,
+          fatorVenda: fatorVendaToApply,
           hasEscala: hasEscalaToApply,
           escalaTiers: escalaTiersToApply,
         };
@@ -1418,6 +1526,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     }
     setNewItem({ produtoId: 0, quant: 1, descontoPerc: 0, descontoMaximo: undefined });
     setNewItemDescontoDraft(null);
+    setNewItemCaixasDraft('');
     setProductCodeInput('');
     setNewItemTabelaId('');
     setNewItemPreco(null);
@@ -1453,6 +1562,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
         let escalaTiers: EscalaTier[] = product.escalaTiers ?? [];
         let quantidadeMinima = product.quantidadeMinima;
         let multiploDeVendas = product.multiploDeVendas;
+        let fatorVenda = product.fatorVenda;
         const tabelaToUse = newItemTabelaId || getDefaultTabelaId();
         if (tabelaToUse) {
           try {
@@ -1463,6 +1573,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
             escalaTiers = info.escalaTiers;
             quantidadeMinima = info.quantidadeMinima;
             multiploDeVendas = info.multiploDeVendas ?? multiploDeVendas;
+            fatorVenda = info.fatorVenda ?? fatorVenda;
           } catch {
             precoFinal = product.preco;
           }
@@ -1484,6 +1595,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           descontoMaximo: maxDesconto,
           quantidadeMinima,
           multiploDeVendas,
+          fatorVenda,
           hasEscala,
           escalaTiers,
           descontoPerc,
@@ -1556,6 +1668,19 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     handleUpdateItem(index, { descontoPerc });
   };
 
+  const updateCaixasDraft = (index: number, value: string) => {
+    setCaixasDrafts((prev) => ({ ...prev, [index]: value }));
+  };
+
+  const clearCaixasDraft = (index: number) => {
+    setCaixasDrafts((prev) => {
+      if (!(index in prev)) return prev;
+      const next = { ...prev };
+      delete next[index];
+      return next;
+    });
+  };
+
   const updateUnitPriceDraft = (index: number, value: string) => {
     setUnitPriceDrafts((prev) => ({ ...prev, [index]: value }));
   };
@@ -1597,7 +1722,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
         current.produtoId,
         tabelaNum,
       );
-      if (!info.preco || info.preco <= 0) {
+      if (!info.preco || info.preco <= 0.01) {
         toast.error('Produto sem preço cadastrado nesta tabela. Selecione outra tabela.');
         handleUpdateItem(index, { tabelaId: previousTabelaId });
         return;
@@ -1607,6 +1732,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
         descontoMaximo: normalizeMaxDesconto(info.descontoMaximo),
         quantidadeMinima: info.quantidadeMinima,
         multiploDeVendas: info.multiploDeVendas,
+        fatorVenda: info.fatorVenda,
         hasEscala: info.hasEscala,
         escalaTiers: info.escalaTiers,
       });
@@ -1658,7 +1784,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     }
     // Trava final: nenhum item pode ir para o pedido com preço zerado,
     // independente de qual caminho o colocou nessa situação.
-    const semPreco = itensValidos.find((it) => !it.preco || it.preco <= 0);
+    const semPreco = itensValidos.find((it) => !it.preco || it.preco <= 0.01);
     if (semPreco) {
       toast.error(`Produto "${semPreco.descricao}" está sem preço válido. Remova o item ou selecione outra tabela antes de salvar.`);
       return;
@@ -1694,7 +1820,12 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     // deixar a negociação desatualizada. Sem essa checagem aqui, o pedido
     // era salvo mesmo divergente e só a gravação das parcelas falhava
     // depois, deixando o pedido salvo com o prazo negociado incoerente.
-    if (selectedPrazoPagamento?.prazoNegociado && parcelasNegociadas.length > 0) {
+    // Não depende de selectedPrazoPagamento?.prazoNegociado (que pode ainda
+    // não ter carregado da API no momento do clique em Salvar — reportado em
+    // 28/07/2026: editar o prazo negociado e depois aumentar a quantidade
+    // ainda deixava salvar) — a existência de parcelasNegociadas já é sinal
+    // suficiente de que este pedido tem uma negociação em andamento.
+    if (parcelasNegociadas.length > 0) {
       const totalParcelas = parcelasNegociadas.reduce((sum, p) => sum + (Number(p.valor) || 0), 0);
       if (Math.abs(totalParcelas - totals.liquido) > 0.01) {
         toast.error(
@@ -2252,6 +2383,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                       descontoMaximo: maxDesconto,
                       quantidadeMinima: product.quantidadeMinima,
                       multiploDeVendas: product.multiploDeVendas,
+                      fatorVenda: product.fatorVenda,
                     };
                     await handleAddItemWithProduct(item);
                   }
@@ -2321,8 +2453,35 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                     quant,
                     descontoPerc: clampDesconto(prev.descontoPerc || 0, resolveEffectiveMaxDesconto(prev, quant)),
                   }));
+                  setNewItemCaixasDraft('');
                 }}
               />
+              {newItem.fatorVenda != null && newItem.fatorVenda > 1 && (
+                <div className="flex items-center gap-1 mt-1">
+                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                    cx de {newItem.fatorVenda}
+                  </span>
+                  <Input
+                    type="number"
+                    className="h-7 text-xs"
+                    placeholder="caixas"
+                    value={newItemCaixasDraft}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      setNewItemCaixasDraft(raw);
+                      const caixas = parseFloat(raw);
+                      if (Number.isFinite(caixas) && newItem.fatorVenda) {
+                        const quant = caixas * newItem.fatorVenda;
+                        setNewItem((prev) => ({
+                          ...prev,
+                          quant,
+                          descontoPerc: clampDesconto(prev.descontoPerc || 0, resolveEffectiveMaxDesconto(prev, quant)),
+                        }));
+                      }
+                    }}
+                  />
+                </div>
+              )}
             </div>
             <div>
               <label className="text-sm font-medium mb-2 flex items-center gap-1.5">
@@ -2452,15 +2611,44 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                     })()}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Input
-                      type="number"
-                      inputMode="decimal"
-                      className="h-8 w-24 ml-auto text-right"
-                      value={item.quant}
-                      onChange={(e) => handleUpdateItem(idx, { quant: parseFloat(e.target.value) || 0 })}
-                      min={0}
-                      step="any"
-                    />
+                    <div className="flex flex-col items-end gap-1">
+                      <Input
+                        type="number"
+                        inputMode="decimal"
+                        className="h-8 w-24 ml-auto text-right"
+                        value={item.quant}
+                        onChange={(e) => {
+                          handleUpdateItem(idx, { quant: parseFloat(e.target.value) || 0 });
+                          clearCaixasDraft(idx);
+                        }}
+                        min={0}
+                        step="any"
+                      />
+                      {item.fatorVenda != null && item.fatorVenda > 1 && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                            cx de {item.fatorVenda}
+                          </span>
+                          <Input
+                            type="number"
+                            inputMode="decimal"
+                            className="h-6 w-16 text-right text-xs"
+                            placeholder="caixas"
+                            value={caixasDrafts[idx] ?? ''}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              updateCaixasDraft(idx, raw);
+                              const caixas = parseFloat(raw);
+                              if (Number.isFinite(caixas) && item.fatorVenda) {
+                                handleUpdateItem(idx, { quant: caixas * item.fatorVenda });
+                              }
+                            }}
+                            min={0}
+                            step="any"
+                          />
+                        </div>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center gap-1 justify-end">

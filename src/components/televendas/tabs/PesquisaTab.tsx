@@ -17,7 +17,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { Search, X, FileEdit, Trash2, Mail, Download, Printer, File, Eye, Loader2 } from 'lucide-react';
+import { Search, X, FileEdit, Trash2, Mail, Download, Printer, File, Eye, Loader2, Copy } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ordersService, type Order } from '@/services/ordersService';
 import { clientsService, type Client } from '@/services/clientsService';
@@ -44,7 +44,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   const getTodayStr = () => new Date().toLocaleDateString('sv-SE');
   const today = getTodayStr();
   const ORDER_LIMIT = 100;
-  const { orders, selectedOrders, setOrders, toggleOrderSelection, clearSelection, setCurrentOrder } = useStore();
+  const { orders, selectedOrders, setOrders, toggleOrderSelection, clearSelection, setCurrentOrder, setOrderToDuplicate } = useStore();
   
   // Recupera filtros de data salvos ou usa data de hoje
   const getSavedDateFilters = () => {
@@ -878,7 +878,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                 <TableHead className="hidden lg:table-cell w-24">Cód. Cliente</TableHead>
                 <TableHead>Nome</TableHead>
                 <TableHead className="w-24 text-right">Valor</TableHead>
-                <TableHead className="w-28 text-center">Ações</TableHead>
+                <TableHead className="w-32 text-center">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -919,7 +919,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                       <TableCell className="hidden lg:table-cell w-24 text-xs">{formatClienteCodigo(order)}</TableCell>
                       <TableCell className="text-sm truncate max-w-[150px]">{order.clienteNome}</TableCell>
                       <TableCell className="w-24 text-right font-medium text-xs">{formatCurrency(order.valor)}</TableCell>
-                      <TableCell className="w-28">
+                      <TableCell className="w-32">
                         <TooltipProvider>
                           <div className="flex items-center justify-center gap-0.5">
                             <Tooltip>
@@ -938,6 +938,23 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent>Alterar</TooltipContent>
+                            </Tooltip>
+
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 hidden sm:flex"
+                                  onClick={() => {
+                                    setOrderToDuplicate(order);
+                                    if (onNavigateToDigitacao) onNavigateToDigitacao();
+                                  }}
+                                >
+                                  <Copy className="h-3.5 w-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Duplicar</TooltipContent>
                             </Tooltip>
 
                             <Tooltip>
