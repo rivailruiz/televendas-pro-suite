@@ -1858,12 +1858,11 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     // deixar a negociação desatualizada. Sem essa checagem aqui, o pedido
     // era salvo mesmo divergente e só a gravação das parcelas falhava
     // depois, deixando o pedido salvo com o prazo negociado incoerente.
-    // Não depende de selectedPrazoPagamento?.prazoNegociado (que pode ainda
-    // não ter carregado da API no momento do clique em Salvar — reportado em
-    // 28/07/2026: editar o prazo negociado e depois aumentar a quantidade
-    // ainda deixava salvar) — a existência de parcelasNegociadas já é sinal
-    // suficiente de que este pedido tem uma negociação em andamento.
-    if (parcelasNegociadas.length > 0) {
+    // Depende de selectedPrazoPagamento?.prazoNegociado: sem essa condição,
+    // trocar a forma/prazo de pagamento para "à vista" com parcelasNegociadas
+    // ainda populadas (de uma negociação anterior) continuava bloqueando o
+    // save por engano (reportado em 30/07/2026).
+    if (selectedPrazoPagamento?.prazoNegociado && parcelasNegociadas.length > 0) {
       const totalParcelas = parcelasNegociadas.reduce((sum, p) => sum + (Number(p.valor) || 0), 0);
       if (Math.abs(totalParcelas - totals.liquido) > 0.01) {
         toast.error(
@@ -1922,7 +1921,11 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
         icmsRepasse: 0,
         liquido: totals.liquido
       },
-      observacoes
+      observacoes,
+      // Vai junto com o update do pedido para o backend validar a
+      // divergência contra a negociação NOVA (que ainda não foi persistida
+      // em vendas_parcelas nesse momento) em vez da já salva no banco.
+      parcelasNovas: parcelasToSave,
     };
 
     try {
@@ -2271,11 +2274,28 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                       (f) =>
                         String(f.codigo || '').trim() === String(v).trim(),
                     );
-                  setFormData({
-                    ...formData,
+                  // Forma "somente à vista" (ou vinculada a um prazo
+                  // específico no cadastro) não é compatível com prazo
+                  // negociado: descarta a negociação anterior e, se a forma
+                  // aponta pra um prazo, aplica esse prazo também. Sem isso,
+                  // trocar pra uma forma à vista deixava o prazo negociado
+                  // antigo selecionado e continuava bloqueando o save por
+                  // divergência (reportado em 30/07/2026).
+                  const prazoVinculado =
+                    match?.prazoPagtoId != null
+                      ? prazos.find((p) => String(p.id) === String(match.prazoPagtoId))
+                      : undefined;
+                  if (match?.somenteAvista) {
+                    setParcelasNegociadas([]);
+                  }
+                  setFormData((prev) => ({
+                    ...prev,
                     formaPagamento: v,
                     formaPagtoId: match ? match.id : '',
-                  });
+                    ...(prazoVinculado
+                      ? { prazo: prazoVinculado.descricao, prazoPagtoId: prazoVinculado.id }
+                      : {}),
+                  }));
                 }}
                 disabled={loadingFormas || !!formasError}
               >

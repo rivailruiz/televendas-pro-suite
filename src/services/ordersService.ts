@@ -792,6 +792,15 @@ export const ordersService = {
       observacaoPedido: order?.observacoes?.pedido || undefined,
       observacaoNF: order?.observacoes?.nf || undefined,
       itens: buildItens(order?.itens),
+      // Parcelas do prazo negociado que serão gravadas logo em seguida (ver
+      // ordersService.saveParcelas) — enviadas junto para o backend validar
+      // a divergência contra a negociação NOVA em vez da já salva no banco
+      // (senão renegociar prazo + editar itens no mesmo save era rejeitado
+      // por engano, comparando com a negociação antiga; reportado em
+      // 30/07/2026).
+      parcelasNovas: Array.isArray(order?.parcelasNovas) && order.parcelasNovas.length > 0
+        ? order.parcelasNovas.map((p: any) => ({ valor: Number(p?.valor) || 0 }))
+        : undefined,
     };
 
     try {
