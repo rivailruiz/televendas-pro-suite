@@ -155,11 +155,13 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   const [newItemDescontoDraft, setNewItemDescontoDraft] = useState<string | null>(null);
   // "Caixas" é só um atalho de digitação: quando o produto tem fator de
   // venda (unidades por caixa fechada) > 1, o vendedor pode informar a
-  // quantidade em caixas e o sistema converte para unidades automaticamente
-  // (quant = caixas x fatorVenda) em vez de fazer a conta na mão (reunião
-  // 28/07/2026). O campo em si não é enviado ao backend — só ajusta `quant`.
-  const [caixasDrafts, setCaixasDrafts] = useState<Record<number, string>>({});
-  const [newItemCaixasDraft, setNewItemCaixasDraft] = useState<string>('');
+  // quantidade em caixas numa modal e o sistema converte para unidades
+  // automaticamente (quant = caixas x fatorVenda) em vez de fazer a conta na
+  // mão (reunião 28/07/2026). O valor em si não é enviado ao backend — só
+  // ajusta `quant`. target 'new' = linha de novo item; number = índice do
+  // item já na lista.
+  const [caixasModalTarget, setCaixasModalTarget] = useState<'new' | number | null>(null);
+  const [caixasModalValue, setCaixasModalValue] = useState('');
 
   // Operações (metadata)
   const [operacoes, setOperacoes] = useState<Operacao[]>([]);
@@ -1668,17 +1670,45 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     handleUpdateItem(index, { descontoPerc });
   };
 
-  const updateCaixasDraft = (index: number, value: string) => {
-    setCaixasDrafts((prev) => ({ ...prev, [index]: value }));
+  const getFatorVendaForCaixasTarget = (target: 'new' | number): number | undefined =>
+    target === 'new' ? newItem.fatorVenda : items[target]?.fatorVenda;
+
+  const openCaixasModal = (target: 'new' | number) => {
+    const fatorVenda = getFatorVendaForCaixasTarget(target);
+    const quantAtual = target === 'new' ? newItem.quant : items[target]?.quant;
+    const caixasAtuais = fatorVenda ? (quantAtual || 0) / fatorVenda : undefined;
+    setCaixasModalValue(
+      caixasAtuais != null && Number.isInteger(caixasAtuais) && caixasAtuais > 0
+        ? String(caixasAtuais)
+        : '',
+    );
+    setCaixasModalTarget(target);
   };
 
-  const clearCaixasDraft = (index: number) => {
-    setCaixasDrafts((prev) => {
-      if (!(index in prev)) return prev;
-      const next = { ...prev };
-      delete next[index];
-      return next;
-    });
+  const closeCaixasModal = () => {
+    setCaixasModalTarget(null);
+    setCaixasModalValue('');
+  };
+
+  const confirmCaixasModal = () => {
+    if (caixasModalTarget == null) return;
+    const fatorVenda = getFatorVendaForCaixasTarget(caixasModalTarget);
+    const caixas = parseFloat(caixasModalValue);
+    if (!fatorVenda || !Number.isFinite(caixas) || caixas < 0) {
+      closeCaixasModal();
+      return;
+    }
+    const quant = caixas * fatorVenda;
+    if (caixasModalTarget === 'new') {
+      setNewItem((prev) => ({
+        ...prev,
+        quant,
+        descontoPerc: clampDesconto(prev.descontoPerc || 0, resolveEffectiveMaxDesconto(prev, quant)),
+      }));
+    } else {
+      handleUpdateItem(caixasModalTarget, { quant });
+    }
+    closeCaixasModal();
   };
 
   const updateUnitPriceDraft = (index: number, value: string) => {
@@ -1766,6 +1796,14 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   }, { bruto: 0, descontos: 0, liquido: 0 });
 
   const selectedPrazoPagamento = prazos.find((p) => String(p.id) === String(formData.prazoPagtoId));
+
+  const caixasModalFatorVenda =
+    caixasModalTarget != null ? getFatorVendaForCaixasTarget(caixasModalTarget) : undefined;
+  const caixasModalNumero = parseFloat(caixasModalValue);
+  const caixasModalUnidades =
+    caixasModalFatorVenda != null && Number.isFinite(caixasModalNumero) && caixasModalNumero >= 0
+      ? caixasModalNumero * caixasModalFatorVenda
+      : undefined;
 
   const handleSave = async () => {
     // Igual ao legado: item com quantidade zero é removido do pedido ao
@@ -2443,45 +2481,32 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
             
             <div>
               <label className="text-sm font-medium mb-2 block">Quant.</label>
-              <Input
-                type="number"
-                value={newItem.quant || ''}
-                onChange={(e) => {
-                  const quant = parseFloat(e.target.value) || 0;
-                  setNewItem((prev) => ({
-                    ...prev,
-                    quant,
-                    descontoPerc: clampDesconto(prev.descontoPerc || 0, resolveEffectiveMaxDesconto(prev, quant)),
-                  }));
-                  setNewItemCaixasDraft('');
-                }}
-              />
-              {newItem.fatorVenda != null && newItem.fatorVenda > 1 && (
-                <div className="flex items-center gap-1 mt-1">
-                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                    cx de {newItem.fatorVenda}
-                  </span>
-                  <Input
-                    type="number"
-                    className="h-7 text-xs"
-                    placeholder="caixas"
-                    value={newItemCaixasDraft}
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      setNewItemCaixasDraft(raw);
-                      const caixas = parseFloat(raw);
-                      if (Number.isFinite(caixas) && newItem.fatorVenda) {
-                        const quant = caixas * newItem.fatorVenda;
-                        setNewItem((prev) => ({
-                          ...prev,
-                          quant,
-                          descontoPerc: clampDesconto(prev.descontoPerc || 0, resolveEffectiveMaxDesconto(prev, quant)),
-                        }));
-                      }
-                    }}
-                  />
-                </div>
-              )}
+              <div className="flex items-center gap-1">
+                <Input
+                  type="number"
+                  value={newItem.quant || ''}
+                  onChange={(e) => {
+                    const quant = parseFloat(e.target.value) || 0;
+                    setNewItem((prev) => ({
+                      ...prev,
+                      quant,
+                      descontoPerc: clampDesconto(prev.descontoPerc || 0, resolveEffectiveMaxDesconto(prev, quant)),
+                    }));
+                  }}
+                />
+                {newItem.un === 'CX' && newItem.fatorVenda != null && newItem.fatorVenda > 1 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9 shrink-0"
+                    title={`Informar quantidade em caixas (cx de ${newItem.fatorVenda})`}
+                    onClick={() => openCaixasModal('new')}
+                  >
+                    <Package className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
             <div>
               <label className="text-sm font-medium mb-2 flex items-center gap-1.5">
@@ -2611,42 +2636,27 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                     })()}
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex flex-col items-end gap-1">
+                    <div className="flex items-center gap-1 justify-end">
                       <Input
                         type="number"
                         inputMode="decimal"
-                        className="h-8 w-24 ml-auto text-right"
+                        className="h-8 w-24 text-right"
                         value={item.quant}
-                        onChange={(e) => {
-                          handleUpdateItem(idx, { quant: parseFloat(e.target.value) || 0 });
-                          clearCaixasDraft(idx);
-                        }}
+                        onChange={(e) => handleUpdateItem(idx, { quant: parseFloat(e.target.value) || 0 })}
                         min={0}
                         step="any"
                       />
-                      {item.fatorVenda != null && item.fatorVenda > 1 && (
-                        <div className="flex items-center gap-1">
-                          <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                            cx de {item.fatorVenda}
-                          </span>
-                          <Input
-                            type="number"
-                            inputMode="decimal"
-                            className="h-6 w-16 text-right text-xs"
-                            placeholder="caixas"
-                            value={caixasDrafts[idx] ?? ''}
-                            onChange={(e) => {
-                              const raw = e.target.value;
-                              updateCaixasDraft(idx, raw);
-                              const caixas = parseFloat(raw);
-                              if (Number.isFinite(caixas) && item.fatorVenda) {
-                                handleUpdateItem(idx, { quant: caixas * item.fatorVenda });
-                              }
-                            }}
-                            min={0}
-                            step="any"
-                          />
-                        </div>
+                      {item.un === 'CX' && item.fatorVenda != null && item.fatorVenda > 1 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8 shrink-0"
+                          title={`Informar quantidade em caixas (cx de ${item.fatorVenda})`}
+                          onClick={() => openCaixasModal(idx)}
+                        >
+                          <Package className="h-3.5 w-3.5" />
+                        </Button>
                       )}
                     </div>
                   </TableCell>
@@ -2866,6 +2876,42 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           }
         }}
       />
+
+      <Dialog open={caixasModalTarget !== null} onOpenChange={(open) => !open && closeCaixasModal()}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Quantidade em caixas</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Cada caixa fechada tem {caixasModalFatorVenda ?? '—'} unidades.
+            </p>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Caixas</label>
+              <Input
+                type="number"
+                autoFocus
+                value={caixasModalValue}
+                onChange={(e) => setCaixasModalValue(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && confirmCaixasModal()}
+                min={0}
+                step="any"
+              />
+            </div>
+            {caixasModalUnidades != null && (
+              <p className="text-sm text-muted-foreground">= {caixasModalUnidades} unidades</p>
+            )}
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={closeCaixasModal}>
+              Cancelar
+            </Button>
+            <Button type="button" onClick={confirmCaixasModal}>
+              Aplicar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={removeItemConfirm !== null} onOpenChange={(open) => !open && setRemoveItemConfirm(null)}>
         <AlertDialogContent>
