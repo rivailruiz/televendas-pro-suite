@@ -374,7 +374,6 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     setItems([]);
     setNewItem(createEmptyNewItem());
     setNewItemDescontoDraft(null);
-    setNewItemCaixasDraft('');
     setObservacoes(createEmptyObservacoes());
     setPreferredFormaId(null);
     setPreferredPrazoId(null);
@@ -1182,7 +1181,6 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       descontoPerc,
     });
     setNewItemPreco(product.preco);
-    setNewItemCaixasDraft('');
     // Set default tabela if available
     const defaultTabela = getDefaultTabelaId();
     if (defaultTabela) {
@@ -1528,7 +1526,6 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     }
     setNewItem({ produtoId: 0, quant: 1, descontoPerc: 0, descontoMaximo: undefined });
     setNewItemDescontoDraft(null);
-    setNewItemCaixasDraft('');
     setProductCodeInput('');
     setNewItemTabelaId('');
     setNewItemPreco(null);
