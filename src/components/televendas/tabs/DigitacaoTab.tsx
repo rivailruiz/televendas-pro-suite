@@ -2417,6 +2417,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
               <ProductSearchDialog
                 open={productSearchOpen}
                 onOpenChange={setProductSearchOpen}
+                hideProductsWithoutPrice
                 multiSelect={true}
                 onSelectProducts={async (products) => {
                   setProductSearchOpen(false);

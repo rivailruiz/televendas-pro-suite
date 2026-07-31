@@ -64,6 +64,16 @@ interface ProductSearchDialogProps {
   representanteId?: string;
   /** Quando true, restringe o filtro de fornecedor apenas aos marcados como revenda (fluxo de importação em Tabelas de Preço). */
   onlyRevendaFornecedores?: boolean;
+  /**
+   * Quando true, esconde produto sem preço real (0 ou residual de 1
+   * centavo) mesmo quando nenhuma tabela está selecionada no filtro — nesse
+   * caso o preço exibido é o maior entre todas as tabelas do produto, então
+   * sem essa opção um produto sem preço em nenhuma tabela ainda aparecia.
+   * Usar apenas no fluxo de adicionar item ao pedido (Digitar Pedido), não
+   * na importação de produtos pra uma tabela de preço (lá o preço zerado é
+   * justamente o que o usuário quer ver pra cadastrar).
+   */
+  hideProductsWithoutPrice?: boolean;
 }
 
 export const ProductSearchDialog = ({
@@ -78,6 +88,7 @@ export const ProductSearchDialog = ({
   showRecordCounter = false,
   representanteId,
   onlyRevendaFornecedores = false,
+  hideProductsWithoutPrice = false,
 }: ProductSearchDialogProps) => {
   const [filters, setFilters] = useState<ProductFilters>(emptyFilters);
   const [products, setProducts] = useState<Product[]>([]);
@@ -342,8 +353,9 @@ export const ProductSearchDialog = ({
     if (filters.ultimasComprasDesde) {
       params.ultimasComprasDesde = format(filters.ultimasComprasDesde, 'yyyy-MM-dd');
     }
+    if (hideProductsWithoutPrice) params.ocultarSemPreco = true;
     return params;
-  }, [filters, pastaFornecedorIds]);
+  }, [filters, pastaFornecedorIds, hideProductsWithoutPrice]);
 
   const loadProducts = useCallback(async (reset = false) => {
     if (loading) return;

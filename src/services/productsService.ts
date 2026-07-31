@@ -366,6 +366,10 @@ export interface ProductFiltersParams {
   lancamentos?: boolean;
   ultimasComprasDesde?: string;
   tipoBusca?: 'inicial' | 'contido' | 'exata';
+  // Esconde produto sem preço real (0 ou residual) mesmo quando a busca não
+  // está restrita a uma tabela específica — usado na busca de produto pra
+  // adicionar item ao pedido, não na tela de cadastro de produtos.
+  ocultarSemPreco?: boolean;
 }
 
 export interface ProductCadastroFilters {
@@ -662,6 +666,7 @@ async function fetchFromApi({
     if (filters?.estoqueZerado) params.set('estoqueZerado', 'true');
     if (filters?.lancamentos) params.set('lancamento', 'true');
     if (filters?.ultimasComprasDesde) params.set('ultimasComprasDesde', filters.ultimasComprasDesde);
+    if (filters?.ocultarSemPreco) params.set('ocultarSemPreco', 'true');
     
     const url = `${API_BASE}/api/produtos?${params.toString()}`;
     const headers: Record<string, string> = { accept: 'application/json' };
