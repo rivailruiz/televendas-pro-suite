@@ -314,12 +314,19 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
 
   // Busca desconto máximo/escalonado vigentes na tabela para o item e
   // mescla no item (usado ao carregar pedido existente e ao duplicar pedido).
-  const enrichItemWithTabelaInfo = useCallback(async (item: OrderItem): Promise<OrderItem> => {
+  // Ao duplicar (refreshPreco), o preço também é atualizado para o vigente
+  // na tabela — pedido duplicado não deve manter o preço antigo do pedido
+  // original (reunião 03/08/2026). Ao só editar um pedido salvo, o preço
+  // histórico é preservado (não refizemos o preço automaticamente).
+  const enrichItemWithTabelaInfo = useCallback(async (
+    item: OrderItem,
+    opts?: { refreshPreco?: boolean },
+  ): Promise<OrderItem> => {
     const tabelaId = item.tabelaId != null ? Number(item.tabelaId) : undefined;
     if (!item.produtoId || !tabelaId || Number.isNaN(tabelaId)) return item;
     try {
       const info = await productsService.getTabelaInfo(item.produtoId, tabelaId);
-      return {
+      const next: OrderItem = {
         ...item,
         descontoMaximo: normalizeMaxDesconto(info.descontoMaximo ?? item.descontoMaximo),
         quantidadeMinima: info.quantidadeMinima ?? item.quantidadeMinima,
@@ -328,13 +335,19 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
         hasEscala: info.hasEscala,
         escalaTiers: info.escalaTiers,
       };
+      if (opts?.refreshPreco) {
+        next.preco = info.preco || 0;
+        next.total = calculateItemTotal(next);
+      }
+      return next;
     } catch {
       return item;
     }
   }, [normalizeMaxDesconto]);
 
   const enrichItemsWithTabelaInfo = useCallback(
-    (list: OrderItem[]) => Promise.all(list.map((it) => enrichItemWithTabelaInfo(it))),
+    (list: OrderItem[], opts?: { refreshPreco?: boolean }) =>
+      Promise.all(list.map((it) => enrichItemWithTabelaInfo(it, opts))),
     [enrichItemWithTabelaInfo],
   );
 
@@ -771,7 +784,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
             it.tabela,
         })) as OrderItem[];
         setItems(mapped);
-        enrichItemsWithTabelaInfo(mapped).then((enriched) => {
+        enrichItemsWithTabelaInfo(mapped, { refreshPreco: true }).then((enriched) => {
           if (active) setItems(enriched);
         });
         setObservacoes({
@@ -1473,6 +1486,10 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
             produtoId,
             Number(tabelaToApply),
           );
+          if (!info.preco || info.preco <= 0.01) {
+            toast.error('Produto sem preço cadastrado nesta tabela. Selecione outra tabela.');
+            return;
+          }
           precoToApply = info.preco;
           maxDescontoToApply = normalizeMaxDesconto(info.descontoMaximo);
           hasEscalaToApply = info.hasEscala;
@@ -1638,14 +1655,6 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           ? clampDesconto(merged.descontoPerc, resolveEffectiveMaxDesconto(merged, merged.quant || 0))
           : currentBase.descontoPerc;
       const current = { ...merged, descontoPerc } as OrderItem;
-      if (
-        patch.quant != null &&
-        current.quantidadeMinima != null &&
-        current.quantidadeMinima > 0 &&
-        current.quant < current.quantidadeMinima
-      ) {
-        toast.warning(`Quantidade mínima para este produto é ${current.quantidadeMinima}.`);
-      }
       if (patch.quant != null && !isMultiploDeVendasValido(current.quant, current.multiploDeVendas)) {
         toast.warning(`Quantidade precisa ser múltiplo de ${current.multiploDeVendas} para este produto.`);
       }
@@ -2511,6 +2520,16 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                       descontoPerc: clampDesconto(prev.descontoPerc || 0, resolveEffectiveMaxDesconto(prev, quant)),
                     }));
                   }}
+                  onBlur={() => {
+                    if (
+                      newItem.produtoId &&
+                      newItem.quantidadeMinima != null &&
+                      newItem.quantidadeMinima > 0 &&
+                      (newItem.quant || 0) < newItem.quantidadeMinima
+                    ) {
+                      toast.warning(`Quantidade mínima para este produto é ${newItem.quantidadeMinima}.`);
+                    }
+                  }}
                 />
                 {newItem.un === 'CX' && newItem.fatorVenda != null && newItem.fatorVenda > 1 && (
                   <Button
@@ -2661,6 +2680,15 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                         className="h-8 w-24 text-right"
                         value={item.quant}
                         onChange={(e) => handleUpdateItem(idx, { quant: parseFloat(e.target.value) || 0 })}
+                        onBlur={() => {
+                          if (
+                            item.quantidadeMinima != null &&
+                            item.quantidadeMinima > 0 &&
+                            item.quant < item.quantidadeMinima
+                          ) {
+                            toast.warning(`Quantidade mínima para este produto é ${item.quantidadeMinima}.`);
+                          }
+                        }}
                         min={0}
                         step="any"
                       />
