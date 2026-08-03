@@ -94,7 +94,7 @@ const EscalaBadge = ({ tiers }: { tiers: EscalaTier[] }) => (
       <table className="w-full text-xs">
         <thead>
           <tr className="text-muted-foreground">
-            <th className="text-left font-normal pb-1">Qtd. mínima</th>
+            <th className="text-left font-normal pb-1">Quantidade</th>
             <th className="text-right font-normal pb-1">Desconto</th>
             <th className="text-right font-normal pb-1">Comissão</th>
           </tr>
