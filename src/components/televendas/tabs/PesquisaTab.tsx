@@ -185,6 +185,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   // Clientes para busca
   const [clientSearchOpen, setClientSearchOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
+  const [clientSearchField, setClientSearchField] = useState<'nome' | 'fantasia' | 'cnpjCpf' | 'codigoCliente' | 'telefone' | 'bairro'>('nome');
   const [clients, setClients] = useState<Client[]>([]);
   const [loadingClients, setLoadingClients] = useState(false);
   const [clientsError, setClientsError] = useState<string | null>(null);
@@ -315,7 +316,17 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
     setClientsError(null);
     try {
       const nextPage = reset ? 1 : clientPage + 1;
-      const data = await clientsService.find(clientSearch || undefined, nextPage, CLIENT_LIMIT);
+      const filters: Record<string, any> = {};
+      const q = clientSearch.trim();
+      if (q) {
+        if (clientSearchField === 'nome') filters.nome = q;
+        else if (clientSearchField === 'fantasia') filters.fantasia = q;
+        else if (clientSearchField === 'cnpjCpf') filters.query = q;
+        else if (clientSearchField === 'codigoCliente') filters.codigoCliente = q;
+        else if (clientSearchField === 'telefone') filters.fone = q;
+        else if (clientSearchField === 'bairro') filters.bairro = q;
+      }
+      const data = await clientsService.find(filters, nextPage, CLIENT_LIMIT);
       setClients((prev) => {
         const combined = reset ? data : [...prev, ...data];
         const seen = new Set<number>();
@@ -344,6 +355,12 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientSearch]);
+
+  useEffect(() => {
+    if (!clientSearchOpen) return;
+    loadClients(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientSearchField]);
 
   const handleLimparFiltros = () => {
     const newToday = getTodayStr();
@@ -768,17 +785,36 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
             <span className="truncate">{clienteNome || (filters.cliente ? `Cód. ${filters.cliente}` : 'Buscar cliente')}</span>
           </Button>
           <Dialog open={clientSearchOpen} onOpenChange={setClientSearchOpen}>
-            <DialogContent className="w-[95vw] max-w-2xl">
+            <DialogContent className="w-[95vw] max-w-4xl">
               <DialogHeader>
                 <DialogTitle>Buscar Cliente</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
-                <Input
-                  placeholder="Digite nome ou código..."
-                  value={clientSearch}
-                  onChange={(e) => setClientSearch(e.target.value)}
-                  autoFocus
-                />
+                <div className="flex gap-2">
+                  <Select
+                    value={clientSearchField}
+                    onValueChange={(v) => setClientSearchField(v as typeof clientSearchField)}
+                  >
+                    <SelectTrigger className="w-40 shrink-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="nome">Nome</SelectItem>
+                      <SelectItem value="fantasia">Fantasia</SelectItem>
+                      <SelectItem value="cnpjCpf">CNPJ/CPF</SelectItem>
+                      <SelectItem value="codigoCliente">Código</SelectItem>
+                      <SelectItem value="telefone">Telefone</SelectItem>
+                      <SelectItem value="bairro">Bairro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    placeholder="Digite para buscar..."
+                    value={clientSearch}
+                    onChange={(e) => setClientSearch(e.target.value)}
+                    autoFocus
+                    className="flex-1"
+                  />
+                </div>
                 <div className="max-h-96 overflow-auto" onScroll={(e) => {
                   const el = e.currentTarget;
                   if (clientHasMore && !loadingClients && el.scrollTop + el.clientHeight >= el.scrollHeight - 24) {
@@ -795,30 +831,41 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                         <TableRow>
                           <TableHead>Código</TableHead>
                           <TableHead>Nome</TableHead>
+                          <TableHead>Endereço</TableHead>
+                          <TableHead>Bairro</TableHead>
                           <TableHead>Cidade</TableHead>
+                          <TableHead>Telefone</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {clients.map((client) => (
-                          <TableRow
-                            key={client.id}
-                            className="cursor-pointer"
-                            onClick={() => {
-                              const codigo = client.codigoCliente ?? '';
-                              setFilters({ ...filters, cliente: String(codigo) });
-                              setClienteNome(client.nome);
-                              setClientSearchOpen(false);
-                              setClientSearch('');
-                            }}
-                          >
-                            <TableCell>{client.codigoCliente ?? ''}</TableCell>
-                            <TableCell>{client.nome}</TableCell>
-                            <TableCell>{client.cidade}</TableCell>
-                          </TableRow>
-                        ))}
+                        {clients.map((client) => {
+                          const enderecoCompleto = [client.endereco, client.numero]
+                            .filter(Boolean)
+                            .join(', ');
+                          return (
+                            <TableRow
+                              key={client.id}
+                              className="cursor-pointer"
+                              onClick={() => {
+                                const codigo = client.codigoCliente ?? '';
+                                setFilters({ ...filters, cliente: String(codigo) });
+                                setClienteNome(client.nome);
+                                setClientSearchOpen(false);
+                                setClientSearch('');
+                              }}
+                            >
+                              <TableCell>{client.codigoCliente ?? ''}</TableCell>
+                              <TableCell>{client.nome}</TableCell>
+                              <TableCell>{enderecoCompleto || '-'}</TableCell>
+                              <TableCell>{client.bairro || '-'}</TableCell>
+                              <TableCell>{client.cidade}</TableCell>
+                              <TableCell>{client.fone || '-'}</TableCell>
+                            </TableRow>
+                          );
+                        })}
                         {clients.length === 0 && (
                           <TableRow>
-                            <TableCell colSpan={3} className="text-center text-sm text-muted-foreground">
+                            <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
                               Nenhum cliente encontrado
                             </TableCell>
                           </TableRow>
