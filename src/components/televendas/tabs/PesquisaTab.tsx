@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import * as XLSX from 'xlsx';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
@@ -88,6 +90,10 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [deletingOrder, setDeletingOrder] = useState(false);
+  const [emailOrder, setEmailOrder] = useState<Order | null>(null);
+  const [emailTo, setEmailTo] = useState('');
+  const [emailCc, setEmailCc] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
   const [clienteNome, setClienteNome] = useState<string>('');
   const [representanteNome, setRepresentanteNome] = useState<string>('');
 
@@ -381,6 +387,88 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
     localStorage.removeItem('pesquisa-date-filters');
   };
 
+  const situacaoLabel = (situacao?: string) => {
+    if (situacao === 'Faturados') return 'Faturado';
+    if (situacao === 'Cancelados') return 'Cancelado';
+    return 'Pendente';
+  };
+
+  const situacaoBadgeClasses = (situacao?: string) => {
+    if (situacao === 'Faturados') return 'border-transparent bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300';
+    if (situacao === 'Cancelados') return 'border-transparent bg-destructive/15 text-destructive';
+    return 'border-transparent bg-success/15 text-success';
+  };
+
+  const attemptAlterar = (order: Order) => {
+    if (order.situacao === 'Faturados') {
+      toast.error('Pedido já faturado não pode ser editado. Volte o status para pendente antes de editar.');
+      return;
+    }
+    setCurrentOrder(order);
+    if (onNavigateToDigitacao) onNavigateToDigitacao();
+  };
+
+  const attemptExcluir = (order: Order) => {
+    if (order.situacao === 'Faturados') {
+      toast.error('Pedido já faturado não pode ser excluído. Volte o status para pendente antes de excluir.');
+      return;
+    }
+    setOrderToDelete(order);
+    setDeleteConfirmOpen(true);
+  };
+
+  const openEmailDialog = (order: Order) => {
+    setEmailOrder(order);
+    setEmailTo('');
+    setEmailCc('');
+  };
+
+  const handleSendEmail = async () => {
+    if (!emailOrder) return;
+    const to = emailTo.trim();
+    if (!to) {
+      toast.error('Informe o e-mail do destinatário');
+      return;
+    }
+    const cc = emailCc
+      .split(',')
+      .map((v) => v.trim())
+      .filter(Boolean);
+    setSendingEmail(true);
+    try {
+      await ordersService.sendEmail(emailOrder.id, { to, cc: cc.length ? cc : undefined });
+      toast.success(`Pedido ${emailOrder.id} enviado por e-mail para ${to}`);
+      setEmailOrder(null);
+    } catch (error: any) {
+      toast.error(error?.message || String(error) || 'Erro ao enviar e-mail');
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+  const [changingStatus, setChangingStatus] = useState(false);
+
+  const handleChangeStatusSelected = async (situacao: string) => {
+    if (selectedOrders.length === 0) {
+      toast.error('Selecione pelo menos um pedido');
+      return;
+    }
+    setChangingStatus(true);
+    try {
+      if (selectedOrders.length === 1) {
+        await ordersService.updateStatus(selectedOrders[0], situacao);
+      } else {
+        await ordersService.updateStatusBulk(selectedOrders, situacao);
+      }
+      toast.success(`Status atualizado para "${situacaoLabel(situacao)}".`);
+      loadOrders(true);
+    } catch (error: any) {
+      toast.error(error?.message || String(error) || 'Erro ao atualizar status');
+    } finally {
+      setChangingStatus(false);
+    }
+  };
+
   const handleExcluir = async () => {
     if (selectedOrders.length === 0) {
       toast.error('Selecione pelo menos um pedido');
@@ -396,8 +484,35 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
       toast.error('Selecione exatamente um pedido para excluir');
       return;
     }
-    setOrderToDelete(order);
-    setDeleteConfirmOpen(true);
+    attemptExcluir(order);
+  };
+
+  // Exporta o pedido para Excel com as mesmas colunas exibidas na modal
+  // "Ver pedido" (produto, descrição, UN, cód. tabela, cód. fábrica, quant.,
+  // %desc, preço, total) — pedido de Marcelo, reunião 03/08/2026.
+  const exportOrderToExcel = async (order: Order) => {
+    const detail = await ordersService.getById(order.id).catch(() => order);
+    const itens = Array.isArray(detail.itens) ? detail.itens : [];
+    const header = ['Produto', 'Descrição', 'UN', 'Cód. Tabela', 'Cód. Fábrica', 'Quant.', '%Desc', 'Preço', 'Total'];
+    const dataRows = itens.map((it) => [
+      it.codigoProduto ?? '',
+      it.descricao ?? '',
+      it.un ?? '',
+      it.codigoTabelaPreco ?? '',
+      it.codigoFabrica ?? '',
+      Number(it.quant ?? 0),
+      Number(it.descontoPerc ?? 0),
+      Number(it.preco ?? 0),
+      Number(it.total ?? 0),
+    ]);
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([header, ...dataRows]);
+    ws['!cols'] = [
+      { wch: 12 }, { wch: 40 }, { wch: 8 }, { wch: 12 }, { wch: 14 },
+      { wch: 10 }, { wch: 8 }, { wch: 12 }, { wch: 12 },
+    ];
+    XLSX.utils.book_append_sheet(wb, ws, `Pedido ${order.id}`.slice(0, 31));
+    XLSX.writeFile(wb, `pedido_${order.id}.xlsx`);
   };
 
   const handleExportar = async () => {
@@ -407,10 +522,11 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
     }
 
     try {
-      for (const id of selectedOrders) {
-        await ordersService.export(id);
+      const toExport = orders.filter((o) => selectedOrders.includes(o.id));
+      for (const order of toExport) {
+        await exportOrderToExcel(order);
       }
-      toast.success('Pedidos exportados para faturamento');
+      toast.success('Pedidos exportados para Excel');
     } catch (error) {
       toast.error('Erro ao exportar pedidos');
     }
@@ -422,12 +538,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
       toast.error('Selecione exatamente um pedido para alterar');
       return;
     }
-    if (order.transmitido) {
-      toast.error('Pedido já transmitido; não pode ser alterado');
-      return;
-    }
-    setCurrentOrder(order);
-    if (onNavigateToDigitacao) onNavigateToDigitacao();
+    attemptAlterar(order);
   };
 
   const totalSelecionado = orders
@@ -514,6 +625,10 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
       : (order.representanteNome ?? '');
     const formatCodigoProduto = (it: any) =>
       it?.codigoProduto ?? it?.codigo_produto ?? it?.produto_codigo ?? '';
+    const formatCodigoTabela = (it: any) =>
+      it?.codigoTabelaPreco ?? it?.codigo_tabela_preco ?? '';
+    const formatCodigoFabrica = (it: any) =>
+      it?.codigoFabrica ?? it?.codigo_fabrica ?? '';
     const rows = items
       .map(
         (it) => `
@@ -521,6 +636,8 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
             <td>${formatCodigoProduto(it)}</td>
             <td>${String(it.descricao ?? '')}</td>
             <td>${String(it.un ?? '')}</td>
+            <td>${formatCodigoTabela(it)}</td>
+            <td>${formatCodigoFabrica(it)}</td>
             <td style="text-align:right;">${Number(it.quant ?? 0)}</td>
             <td style="text-align:right;">${(Number(it.descontoPerc ?? 0)).toFixed(2)}%</td>
             <td style="text-align:right;">${formatCurrency(it.preco ?? 0)}</td>
@@ -565,6 +682,8 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
               <th>Produto</th>
               <th>Descrição</th>
               <th>UN</th>
+              <th>Cód. Tabela</th>
+              <th>Cód. Fábrica</th>
               <th style="text-align:right;">Quant.</th>
               <th style="text-align:right;">%Desc</th>
               <th style="text-align:right;">Preço</th>
@@ -572,7 +691,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
             </tr>
           </thead>
           <tbody>
-            ${rows || '<tr><td colspan="7" style="text-align:center; color:#6B7280;">Sem itens</td></tr>'}
+            ${rows || '<tr><td colspan="9" style="text-align:center; color:#6B7280;">Sem itens</td></tr>'}
           </tbody>
         </table>
         <div class="totais">
@@ -925,19 +1044,20 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                 <TableHead className="hidden lg:table-cell w-24">Cód. Cliente</TableHead>
                 <TableHead>Nome</TableHead>
                 <TableHead className="w-24 text-right">Valor</TableHead>
+                <TableHead className="w-28">Status</TableHead>
                 <TableHead className="w-32 text-center">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isOrdersInitialLoading ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                     <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                   </TableCell>
                 </TableRow>
               ) : orders.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center h-32 text-muted-foreground">
+                  <TableCell colSpan={10} className="text-center h-32 text-muted-foreground">
                     Nenhum pedido encontrado
                   </TableCell>
                 </TableRow>
@@ -966,6 +1086,11 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                       <TableCell className="hidden lg:table-cell w-24 text-xs">{formatClienteCodigo(order)}</TableCell>
                       <TableCell className="text-sm truncate max-w-[150px]">{order.clienteNome}</TableCell>
                       <TableCell className="w-24 text-right font-medium text-xs">{formatCurrency(order.valor)}</TableCell>
+                      <TableCell className="w-28">
+                        <Badge className={situacaoBadgeClasses(order.situacao)} variant="outline">
+                          {situacaoLabel(order.situacao)}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="w-32">
                         <TooltipProvider>
                           <div className="flex items-center justify-center gap-0.5">
@@ -975,11 +1100,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                                   variant="ghost"
                                   size="icon"
                                   className="h-7 w-7"
-                                  onClick={() => {
-                                    setCurrentOrder(order);
-                                    if (onNavigateToDigitacao) onNavigateToDigitacao();
-                                  }}
-                                  disabled={order.transmitido === true}
+                                  onClick={() => attemptAlterar(order)}
                                 >
                                   <FileEdit className="h-3.5 w-3.5" />
                                 </Button>
@@ -1049,10 +1170,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                                   variant="ghost"
                                   size="icon"
                                   className="h-7 w-7"
-                                  onClick={async () => {
-                                    setOrderToDelete(order);
-                                    setDeleteConfirmOpen(true);
-                                  }}
+                                  onClick={() => attemptExcluir(order)}
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
@@ -1066,6 +1184,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                                   variant="ghost"
                                   size="icon"
                                   className="h-7 w-7 hidden md:flex"
+                                  onClick={() => openEmailDialog(order)}
                                 >
                                   <Mail className="h-3.5 w-3.5" />
                                 </Button>
@@ -1081,9 +1200,8 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                                   className="h-7 w-7 hidden md:flex"
                                   onClick={async () => {
                                     try {
-                                      await ordersService.export(order.id);
-                                      toast.success('Pedido exportado para faturamento');
-                                      loadOrders(true);
+                                      await exportOrderToExcel(order);
+                                      toast.success('Pedido exportado para Excel');
                                     } catch (e: any) {
                                       toast.error(`Erro ao exportar: ${e.message || e}`);
                                     }
@@ -1103,7 +1221,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
               )}
               {isOrdersLoadingMore && (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-4 text-muted-foreground">
+                  <TableCell colSpan={10} className="text-center py-4 text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin mx-auto" />
                   </TableCell>
                 </TableRow>
@@ -1120,6 +1238,20 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
             {selectedOrders.length} pedido(s) selecionado(s)
           </div>
           <div className="flex items-center gap-4">
+            <Select
+              value=""
+              onValueChange={handleChangeStatusSelected}
+              disabled={changingStatus}
+            >
+              <SelectTrigger className="w-[180px] h-9">
+                <SelectValue placeholder="Mudar status..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Pendentes">Pendente</SelectItem>
+                <SelectItem value="Faturados">Faturado</SelectItem>
+                <SelectItem value="Cancelados">Cancelado</SelectItem>
+              </SelectContent>
+            </Select>
             <Button
               variant="outline"
               size="sm"
@@ -1173,6 +1305,8 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                       <TableHead>Produto</TableHead>
                       <TableHead>Descrição</TableHead>
                       <TableHead>UN</TableHead>
+                      <TableHead>Cód. Tabela</TableHead>
+                      <TableHead>Cód. Fábrica</TableHead>
                       <TableHead className="text-right">Quant.</TableHead>
                       <TableHead className="text-right">%Desc</TableHead>
                       <TableHead className="text-right">Preço</TableHead>
@@ -1185,6 +1319,8 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                         <TableCell>{it.codigoProduto ?? ''}</TableCell>
                         <TableCell>{it.descricao}</TableCell>
                         <TableCell>{it.un}</TableCell>
+                        <TableCell>{it.codigoTabelaPreco ?? ''}</TableCell>
+                        <TableCell>{it.codigoFabrica ?? ''}</TableCell>
                         <TableCell className="text-right">{it.quant}</TableCell>
                         <TableCell className="text-right">{(it.descontoPerc ?? 0).toFixed(2)}%</TableCell>
                         <TableCell className="text-right">{formatCurrency(it.preco)}</TableCell>
@@ -1226,6 +1362,48 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!emailOrder} onOpenChange={(open) => { if (!open) setEmailOrder(null); }}>
+        <DialogContent className="w-[95vw] max-w-md">
+          <DialogHeader>
+            <DialogTitle>Enviar pedido por e-mail</DialogTitle>
+          </DialogHeader>
+          {emailOrder && (
+            <div className="space-y-3">
+              <div className="text-sm text-muted-foreground">
+                Pedido #{emailOrder.id} - {emailOrder.clienteNome || 'Cliente não informado'}
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="email-to">Para</Label>
+                <Input
+                  id="email-to"
+                  type="email"
+                  placeholder="destinatario@exemplo.com"
+                  value={emailTo}
+                  onChange={(e) => setEmailTo(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="email-cc">Cc (opcional, separado por vírgula)</Label>
+                <Input
+                  id="email-cc"
+                  placeholder="copia1@exemplo.com, copia2@exemplo.com"
+                  value={emailCc}
+                  onChange={(e) => setEmailCc(e.target.value)}
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setEmailOrder(null)} disabled={sendingEmail}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleSendEmail} disabled={sendingEmail}>
+                  {sendingEmail ? 'Enviando...' : 'Enviar'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -14,6 +14,8 @@ export interface OrderParcela {
 export interface OrderItemUI {
   produtoId: number;
   codigoProduto?: string;
+  codigoFabrica?: string;
+  codigoTabelaPreco?: string;
   descricao: string;
   av: number;
   un: string;
@@ -242,6 +244,8 @@ const normalizeItens = (raw: any): OrderItemUI[] => {
         it?.produtoCod ??
         it?.produto_cod ??
         it?.codigo,
+      codigoFabrica: it?.codigoFabrica ?? it?.codigo_fabrica,
+      codigoTabelaPreco: it?.codigoTabelaPreco ?? it?.codigo_tabela_preco,
       descricao:
         it?.descricao ??
         it?.descricao_produto ??
@@ -856,20 +860,56 @@ export const ordersService = {
     }
   },
 
-  export: (id: number) => {
-    const pedido = pedidos.find(p => p.id === id);
-    if (pedido) {
-      const dataStr = JSON.stringify(pedido, null, 2);
-      const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(dataBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `pedido_${id}_faturamento.json`;
-      link.click();
-      URL.revokeObjectURL(url);
-      return Promise.resolve(true);
+  // Status do pedido: situacao é sempre 'Pendentes' | 'Faturados' | 'Cancelados'
+  // (mesmos valores usados no filtro de listagem).
+  updateStatus: async (id: number, situacao: string): Promise<void> => {
+    const empresa = authService.getEmpresa();
+    if (!empresa) return Promise.reject('Empresa não selecionada');
+    const url = `${API_BASE}/api/pedidos/${encodeURIComponent(id)}/status?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
+    const res = await apiClient.fetch(url, {
+      method: 'PUT',
+      headers: { accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ situacao }),
+    });
+    if (!res.ok) {
+      let message = 'Falha ao atualizar status do pedido';
+      try { const err = await res.json(); message = err?.message || err?.error?.message || err?.error || message; } catch {}
+      return Promise.reject(message);
     }
-    return Promise.reject('Pedido não encontrado');
+  },
+
+  updateStatusBulk: async (ids: number[], situacao: string): Promise<number> => {
+    const empresa = authService.getEmpresa();
+    if (!empresa) return Promise.reject('Empresa não selecionada');
+    const url = `${API_BASE}/api/pedidos/status-em-massa?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
+    const res = await apiClient.fetch(url, {
+      method: 'PUT',
+      headers: { accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids, situacao }),
+    });
+    if (!res.ok) {
+      let message = 'Falha ao atualizar status dos pedidos';
+      try { const err = await res.json(); message = err?.message || err?.error?.message || err?.error || message; } catch {}
+      return Promise.reject(message);
+    }
+    const data = await res.json();
+    return Number(data?.atualizados ?? ids.length);
+  },
+
+  sendEmail: async (id: number, payload: { to: string; cc?: string[] }): Promise<void> => {
+    const empresa = authService.getEmpresa();
+    if (!empresa) return Promise.reject('Empresa não selecionada');
+    const url = `${API_BASE}/api/pedidos/${encodeURIComponent(id)}/email?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
+    const res = await apiClient.fetch(url, {
+      method: 'POST',
+      headers: { accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      let message = 'Falha ao enviar pedido por e-mail';
+      try { const err = await res.json(); message = err?.message || err?.error?.message || err?.error || message; } catch {}
+      return Promise.reject(message);
+    }
   },
 
   // Prazo negociado: parcelas customizadas do pedido (vendas_parcelas)
