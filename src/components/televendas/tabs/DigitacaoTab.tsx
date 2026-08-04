@@ -1594,6 +1594,11 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
             precoFinal = product.preco;
           }
         }
+        if (!precoFinal || precoFinal <= 0.01) {
+          toast.error('Produto sem preço cadastrado nesta tabela. Selecione outra tabela ou cadastre o preço antes de adicionar o item.');
+          setLoadingProductByCode(false);
+          return;
+        }
         // Carrega na linha de edição para revisão (preço/quantidade/desconto) antes de
         // adicionar à lista — mesmo comportamento da seleção pela busca de produto.
         const descontoPerc = clampDesconto(
