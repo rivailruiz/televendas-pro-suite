@@ -797,14 +797,23 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
             it.tabela,
         })) as OrderItem[];
         setItems(mapped);
-        enrichItemsWithTabelaInfo(mapped, { refreshPreco: true }).then((enriched) => {
-          if (!active) return;
+        // Precisa ser aguardado (await) antes do finally chamar
+        // setOrderToDuplicate(null): esse null dispara a limpeza deste efeito
+        // (dependência [orderToDuplicate]), que marca active=false. Se o
+        // enriquecimento não fosse aguardado aqui, o setItems(enriched) abaixo
+        // rodaria depois do active já ter virado false e seria descartado
+        // silenciosamente — o item ficava com o preço antigo do pedido
+        // original sem nenhum aviso (bug real encontrado em teste ao vivo,
+        // reunião 04/08/2026, apesar do fix anterior do T-0015.3 já estar
+        // com a lógica de refreshPreco correta).
+        const enriched = await enrichItemsWithTabelaInfo(mapped, { refreshPreco: true });
+        if (active) {
           setItems(enriched);
           const naoAtualizados = enriched.filter((it) => it.precoDesatualizado).length;
           if (naoAtualizados > 0) {
             toast.warning(`${naoAtualizados} item(ns) ficaram com o preço do pedido original — não foi possível confirmar o preço vigente na tabela. Revise antes de salvar.`);
           }
-        });
+        }
         setObservacoes({
           cliente: detail.observacaoCliente || '',
           pedido: detail.observacaoPedido || '',
