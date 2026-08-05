@@ -1539,6 +1539,12 @@ const validateFormData = (data: ClientFormData): string[] => {
     setExistingClientByCnpj(null);
     setCnpjDuplicateLoading(false);
     const empty = createEmptyFormData(getLoggedCompanyUf());
+    // Mesma regra do filtro de busca: usuário que é só força de vendas
+    // cadastra o cliente travado nele mesmo (não pode escolher outro
+    // representante); admin continua com o campo aberto (reunião 04/08/2026).
+    if (sessionRepresentante) {
+      empty.representantes = [{ id: sessionRepresentante.id, nome: sessionRepresentante.nome || '' }];
+    }
     setFormData(empty);
     setFormSnapshot(empty);
     setCidadesCobranca([]);
@@ -1561,7 +1567,12 @@ const validateFormData = (data: ClientFormData): string[] => {
     const emailValue = formData.email.trim();
     const emailDanfeValue = formData.emailDanfe.trim();
     const tabelaId = formData.tabelaPrincipalId || formData.tabelaIds[0];
-    const representanteIds = formData.representantes.map((rep) => rep.id).filter(Boolean);
+    // Trava final: usuário só força de vendas nunca cria cliente pra outro
+    // representante, mesmo se o estado do form for alterado por outro fluxo
+    // (mesmo padrão da trava de busca de clientes, reunião 04/08/2026).
+    const representanteIds = sessionRepresentante
+      ? [sessionRepresentante.id]
+      : formData.representantes.map((rep) => rep.id).filter(Boolean);
     const representanteId = representanteIds[0];
     const redeId = ensurePositiveId(formData.redeId, 0);
     try {
@@ -3922,9 +3933,9 @@ const validateFormData = (data: ClientFormData): string[] => {
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
                   <div className="col-span-1 md:col-span-6">
                     <label className="text-xs font-medium text-muted-foreground mb-1 block">Representante *</label>
-                    <Dialog open={repSearchOpen && createOpen} onOpenChange={setRepSearchOpen}>
+                    <Dialog open={repSearchOpen && createOpen && !sessionRepresentante} onOpenChange={setRepSearchOpen}>
                       <DialogTrigger asChild>
-                        <Button variant="outline" className="w-full justify-start h-8 text-sm">
+                        <Button variant="outline" className="w-full justify-start h-8 text-sm" disabled={!!sessionRepresentante}>
                           {representanteSummary}
                         </Button>
                       </DialogTrigger>
@@ -4752,9 +4763,9 @@ const validateFormData = (data: ClientFormData): string[] => {
                     </div>
                     <div className="col-span-1 md:col-span-4">
                       <label className="text-xs font-medium text-muted-foreground mb-1 block">Representante *</label>
-                      <Dialog open={repSearchOpen && editOpen} onOpenChange={setRepSearchOpen}>
+                      <Dialog open={repSearchOpen && editOpen && !sessionRepresentante} onOpenChange={setRepSearchOpen}>
                         <DialogTrigger asChild>
-                          <Button variant="outline" className="w-full justify-start h-8 text-sm">
+                          <Button variant="outline" className="w-full justify-start h-8 text-sm" disabled={!!sessionRepresentante}>
                             {representanteSummary}
                           </Button>
                         </DialogTrigger>

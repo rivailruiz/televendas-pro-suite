@@ -476,6 +476,45 @@ export const ordersService = {
       return Promise.reject('Erro de conexão com o servidor');
     }
   },
+  // Total de pedidos que casam com o filtro e a soma dos valores (não só a
+  // página carregada na tela) — usado pela Pesquisa de Pedidos para mostrar
+  // o resumo independente de seleção (reunião 04/08/2026). limit=1 pra não
+  // trazer os itens/dados de todos os pedidos, só o total/soma do backend.
+  getFilteredSummary: async (filters?: any): Promise<{ total: number; somaValor: number }> => {
+    const empresa = authService.getEmpresa();
+    if (!empresa) return Promise.reject('Empresa não selecionada');
+    const token = authService.getToken();
+    if (!token) return Promise.reject('Token ausente');
+    try {
+      const params = new URLSearchParams();
+      params.set('empresaId', String(empresa.empresa_id));
+      if (filters) {
+        if (filters.representante) params.set('representante', String(filters.representante));
+        const pedidoIds = filters.pedidoIds ?? filters.pedidos;
+        if (pedidoIds) params.set('pedidoIds', String(pedidoIds));
+        if (filters.operacoes) params.set('operacoes', String(filters.operacoes));
+        if (typeof filters.especial === 'boolean') params.set('especial', String(filters.especial));
+        if (filters.situacao && filters.situacao !== '__ALL__' && filters.situacao !== 'Todos') {
+          params.set('situacao', String(filters.situacao));
+        }
+        if (filters.dataInicio) params.set('dataInicio', String(filters.dataInicio));
+        if (filters.dataFim) params.set('dataFim', String(filters.dataFim));
+        if (filters.cliente) params.set('cliente', String(filters.cliente));
+      }
+      params.set('page', '1');
+      params.set('limit', '1');
+      const url = `${API_BASE}/api/pedidos?${params.toString()}`;
+      const res = await apiClient.fetch(url, { method: 'GET', headers: { accept: 'application/json' } });
+      if (!res.ok) return Promise.reject('Falha ao buscar resumo de pedidos');
+      const data = await res.json();
+      return {
+        total: Number(data?.total ?? 0) || 0,
+        somaValor: Number(data?.somaValor ?? 0) || 0,
+      };
+    } catch (e) {
+      return Promise.reject('Erro de conexão com o servidor');
+    }
+  },
   // Detalhe do pedido via API (para edição/visualização)
   getById: async (id: number): Promise<Order> => {
     const empresa = authService.getEmpresa();

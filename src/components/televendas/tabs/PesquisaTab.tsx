@@ -21,7 +21,7 @@ import {
 import { toast } from 'sonner';
 import { Search, X, FileEdit, Trash2, Mail, Download, Printer, File, Eye, Loader2, Copy } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ordersService, type Order } from '@/services/ordersService';
+import { ordersService, type Order, type OrderParcela } from '@/services/ordersService';
 import { clientsService, type Client } from '@/services/clientsService';
 import { authService, getEmpresaDisplayName } from '@/services/authService';
 import { useStore } from '@/store/useStore';
@@ -86,6 +86,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   const [previewOrder, setPreviewOrder] = useState<Order | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewParcelas, setPreviewParcelas] = useState<OrderParcela[]>([]);
   const previewRequestId = useRef(0);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
@@ -200,6 +201,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   const [ordersPage, setOrdersPage] = useState(1);
   const [ordersHasMore, setOrdersHasMore] = useState(true);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [filteredSummary, setFilteredSummary] = useState<{ total: number; somaValor: number } | null>(null);
 
   useEffect(() => {
     loadOrders(true);
@@ -233,6 +235,12 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
       setOrders([]);
       setOrdersPage(1);
       setOrdersHasMore(true);
+      // Total de pedidos filtrados e soma dos valores, independente do que
+      // já foi carregado na tela por scroll (reunião 04/08/2026).
+      ordersService
+        .getFilteredSummary(filters)
+        .then((summary) => setFilteredSummary(summary))
+        .catch(() => setFilteredSummary(null));
     }
     setOrdersLoading(true);
     try {
@@ -404,6 +412,10 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
       toast.error('Pedido já faturado não pode ser editado. Volte o status para pendente antes de editar.');
       return;
     }
+    if (order.situacao === 'Cancelados') {
+      toast.error('Pedido cancelado não pode ser editado. Volte o status para pendente antes de editar.');
+      return;
+    }
     setCurrentOrder(order);
     if (onNavigateToDigitacao) onNavigateToDigitacao();
   };
@@ -567,6 +579,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
     setPreviewOpen(true);
     setPreviewLoading(true);
     setPreviewError(null);
+    setPreviewParcelas([]);
     const requestId = ++previewRequestId.current;
     ordersService
       .getById(order.id)
@@ -581,6 +594,18 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
       .finally(() => {
         if (previewRequestId.current !== requestId) return;
         setPreviewLoading(false);
+      });
+    // Parcelas do prazo negociado (vencimento e valor) — reunião 04/08/2026.
+    // Pedido sem prazo negociado simplesmente não tem parcelas cadastradas.
+    ordersService
+      .getParcelas(order.id)
+      .then((parcelas) => {
+        if (previewRequestId.current !== requestId) return;
+        setPreviewParcelas(parcelas);
+      })
+      .catch(() => {
+        if (previewRequestId.current !== requestId) return;
+        setPreviewParcelas([]);
       });
   };
 
@@ -611,7 +636,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
     }
   };
 
-  const buildPrintableHtml = (order: Order) => {
+  const buildPrintableHtml = (order: Order, parcelas: OrderParcela[] = []) => {
     const items = Array.isArray(order.itens) ? order.itens : [];
     const session = authService.getSession();
     const nomeUsuario = session?.nome ?? session?.usuario ?? '';
@@ -645,6 +670,29 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
           </tr>`
       )
       .join('');
+
+    const parcelasRows = parcelas
+      .map(
+        (p) => `
+          <tr>
+            <td>${p.parcela}</td>
+            <td>${formatDate(p.vencto)}</td>
+            <td style="text-align:right;">${formatCurrency(p.valor)}</td>
+          </tr>`
+      )
+      .join('');
+    const parcelasSection = parcelas.length
+      ? `
+        <div style="margin-top:16px;">
+          <div style="font-weight:600; margin-bottom:4px;">Parcelas (prazo negociado)</div>
+          <table style="width:auto; min-width:260px;">
+            <thead>
+              <tr><th>Parc.</th><th>Vencimento</th><th style="text-align:right;">Valor</th></tr>
+            </thead>
+            <tbody>${parcelasRows}</tbody>
+          </table>
+        </div>`
+      : '';
 
     return `<!DOCTYPE html>
       <html lang="pt-br">
@@ -694,6 +742,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
             ${rows || '<tr><td colspan="9" style="text-align:center; color:#6B7280;">Sem itens</td></tr>'}
           </tbody>
         </table>
+        ${parcelasSection}
         <div class="totais">
           <div><span>Total Bruto:</span><span>${formatCurrency(order.totais?.bruto ?? order.valor ?? 0)}</span></div>
           <div><span>Descontos:</span><span>${formatCurrency(order.totais?.descontos ?? 0)} (${(order.totais?.descontosPerc ?? 0).toFixed?.(2) ?? 0}%)</span></div>
@@ -703,18 +752,14 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
       </html>`;
   };
 
-  const handleImpressora = () => {
-    const order = getSingleSelectedOrder();
-    if (!order) {
-      toast.error('Selecione exatamente um pedido para imprimir');
-      return;
-    }
-    const html = buildPrintableHtml(order);
+  const printOrder = async (order: Order) => {
     const win = window.open('', '_blank');
     if (!win) {
       toast.error('Não foi possível abrir a janela de impressão');
       return;
     }
+    const parcelas = await ordersService.getParcelas(order.id).catch(() => [] as OrderParcela[]);
+    const html = buildPrintableHtml(order, parcelas);
     win.document.open();
     win.document.write(html);
     win.document.close();
@@ -723,6 +768,15 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
     setTimeout(() => {
       try { win.print(); } catch {}
     }, 100);
+  };
+
+  const handleImpressora = () => {
+    const order = getSingleSelectedOrder();
+    if (!order) {
+      toast.error('Selecione exatamente um pedido para imprimir');
+      return;
+    }
+    printOrder(order);
   };
 
   return (
@@ -1084,7 +1138,12 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                       <TableCell className="w-16 font-medium text-xs">{order.id}</TableCell>
                       <TableCell className="hidden md:table-cell w-28 text-xs">{formatOperacao(order)}</TableCell>
                       <TableCell className="hidden lg:table-cell w-24 text-xs">{formatClienteCodigo(order)}</TableCell>
-                      <TableCell className="text-sm truncate max-w-[150px]">{order.clienteNome}</TableCell>
+                      <TableCell className="text-sm max-w-[260px]">
+                        <div className="truncate">{order.clienteNome}</div>
+                        {order.representanteNome && (
+                          <div className="truncate text-xs text-muted-foreground">{order.representanteNome}</div>
+                        )}
+                      </TableCell>
                       <TableCell className="w-24 text-right font-medium text-xs">{formatCurrency(order.valor)}</TableCell>
                       <TableCell className="w-28">
                         <Badge className={situacaoBadgeClasses(order.situacao)} variant="outline">
@@ -1147,16 +1206,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                                   variant="ghost"
                                   size="icon"
                                   className="h-7 w-7 hidden sm:flex"
-                                  onClick={() => {
-                                    const html = buildPrintableHtml(order);
-                                    const win = window.open('', '', 'width=800,height=600');
-                                    if (!win) return;
-                                    win.document.write(html);
-                                    win.document.close();
-                                    setTimeout(() => {
-                                      try { win.print(); } catch {}
-                                    }, 100);
-                                  }}
+                                  onClick={() => printOrder(order)}
                                 >
                                   <Printer className="h-3.5 w-3.5" />
                                 </Button>
@@ -1231,6 +1281,16 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
         </div>
       </div>
 
+      {/* Total de pedidos filtrados e soma dos valores, independente de seleção */}
+      {filteredSummary && (
+        <div className="flex items-center justify-between p-3 sm:p-4 bg-card rounded-lg border text-sm">
+          <div className="text-muted-foreground">
+            {filteredSummary.total} pedido(s) encontrado(s)
+          </div>
+          <div className="font-semibold">{formatCurrency(filteredSummary.somaValor)}</div>
+        </div>
+      )}
+
       {/* Resumo de seleção */}
       {selectedOrders.length > 0 && (
         <div className="flex items-center justify-between p-3 sm:p-4 bg-card rounded-lg border">
@@ -1277,7 +1337,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
       )}
 
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="w-[95vw] max-w-4xl">
+        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{previewOrder ? `Pedido #${previewOrder.id}` : 'Pedido'}</DialogTitle>
           </DialogHeader>
@@ -1298,7 +1358,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
               {previewError && (
                 <div className="text-sm text-destructive">{previewError}</div>
               )}
-              <div className="overflow-x-auto scrollbar-thin">
+              <div className="max-h-[40vh] overflow-y-auto overflow-x-auto scrollbar-thin border rounded-md">
                 <Table className="min-w-[800px]">
                   <TableHeader>
                     <TableRow>
@@ -1330,6 +1390,31 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                   </TableBody>
                 </Table>
               </div>
+              {previewParcelas.length > 0 && (
+                <div className="border-t pt-3">
+                  <div className="text-sm font-medium mb-1">Parcelas (prazo negociado)</div>
+                  <div className="max-h-[30vh] overflow-y-auto scrollbar-thin border rounded-md">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-16">Parc.</TableHead>
+                          <TableHead>Vencimento</TableHead>
+                          <TableHead className="text-right">Valor</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {previewParcelas.map((p) => (
+                          <TableRow key={p.parcela}>
+                            <TableCell>{p.parcela}</TableCell>
+                            <TableCell>{formatDate(p.vencto)}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(p.valor)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
               <div className="mt-2 space-y-1 border-t pt-3 text-sm">
                 <div className="flex justify-between"><span>Total Bruto:</span><span>{formatCurrency(previewOrder.totais?.bruto ?? previewOrder.valor ?? 0)}</span></div>
                 <div className="flex justify-between"><span>Descontos:</span><span>{formatCurrency(previewOrder.totais?.descontos ?? 0)} ({(previewOrder.totais?.descontosPerc ?? 0).toFixed(2)}%)</span></div>

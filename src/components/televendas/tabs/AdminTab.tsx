@@ -564,7 +564,7 @@ export function AdminTab() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="text-xs">Nome</TableHead>
-                  <TableHead className="text-xs">Login</TableHead>
+                  <TableHead className="text-xs">E-mail</TableHead>
                   <TableHead className="text-xs text-center w-20">Admin</TableHead>
                   <TableHead className="text-xs text-center w-28">Força Vendas</TableHead>
                   <TableHead className="text-xs text-center w-16">Ativo</TableHead>
@@ -587,7 +587,7 @@ export function AdminTab() {
                         </div>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground max-w-[140px]">
-                        <span className="truncate block">{u.usuario}</span>
+                        <span className="truncate block">{u.email || u.usuario || '—'}</span>
                       </TableCell>
                       <TableCell className="text-center w-20">
                         <Switch

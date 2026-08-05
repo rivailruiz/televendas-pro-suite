@@ -46,6 +46,10 @@ type OrderItem = {
   preco: number;
   total: number;
   obs?: string;
+  // Marcado quando, ao duplicar o pedido, não foi possível confirmar o preço
+  // vigente na tabela (erro de rede/produto sem tabelaId) — o item ficou com
+  // o preço antigo do pedido original e precisa de revisão manual.
+  precoDesatualizado?: boolean;
 };
 
 interface DigitacaoTabProps {
@@ -323,7 +327,12 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     opts?: { refreshPreco?: boolean },
   ): Promise<OrderItem> => {
     const tabelaId = item.tabelaId != null ? Number(item.tabelaId) : undefined;
-    if (!item.produtoId || !tabelaId || Number.isNaN(tabelaId)) return item;
+    if (!item.produtoId || !tabelaId || Number.isNaN(tabelaId)) {
+      // Sem produtoId/tabelaId não dá pra buscar o preço vigente — ao duplicar,
+      // isso deixaria o item silenciosamente com o preço antigo do pedido
+      // original sem nenhum aviso. Marcado para o chamador decidir o que fazer.
+      return opts?.refreshPreco ? { ...item, precoDesatualizado: true } : item;
+    }
     try {
       const info = await productsService.getTabelaInfo(item.produtoId, tabelaId);
       const next: OrderItem = {
@@ -340,7 +349,11 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
         next.total = calculateItemTotal(next);
       }
       return next;
-    } catch {
+    } catch (e) {
+      if (opts?.refreshPreco) {
+        console.error('Falha ao atualizar preço vigente ao duplicar pedido', item.produtoId, tabelaId, e);
+        return { ...item, precoDesatualizado: true };
+      }
       return item;
     }
   }, [normalizeMaxDesconto]);
@@ -785,7 +798,12 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
         })) as OrderItem[];
         setItems(mapped);
         enrichItemsWithTabelaInfo(mapped, { refreshPreco: true }).then((enriched) => {
-          if (active) setItems(enriched);
+          if (!active) return;
+          setItems(enriched);
+          const naoAtualizados = enriched.filter((it) => it.precoDesatualizado).length;
+          if (naoAtualizados > 0) {
+            toast.warning(`${naoAtualizados} item(ns) ficaram com o preço do pedido original — não foi possível confirmar o preço vigente na tabela. Revise antes de salvar.`);
+          }
         });
         setObservacoes({
           cliente: detail.observacaoCliente || '',
