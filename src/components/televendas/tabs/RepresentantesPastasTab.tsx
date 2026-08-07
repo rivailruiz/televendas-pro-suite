@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { representativesService, Representante, RepresentanteFornecedorItem, FornecedorDivisaoItem } from '@/services/representativesService';
 import { suppliersService, Fornecedor } from '@/services/suppliersService';
 import { divisionsService, Divisao } from '@/services/divisionsService';
@@ -53,6 +52,8 @@ export function RepresentantesPastasTab() {
   const [includeLoading, setIncludeLoading] = useState(false);
   const [includeResults, setIncludeResults] = useState<Fornecedor[]>([]);
   const [includeSubmittingId, setIncludeSubmittingId] = useState<number | null>(null);
+  const [includeSelectedById, setIncludeSelectedById] = useState<Record<number, boolean>>({});
+  const [includeSelecionadosLoading, setIncludeSelecionadosLoading] = useState(false);
   const [copyDialogOpen, setCopyDialogOpen] = useState(false);
   const [copyRepSearch, setCopyRepSearch] = useState('');
   const [copyRepLoading, setCopyRepLoading] = useState(false);
@@ -67,8 +68,8 @@ export function RepresentantesPastasTab() {
   const [divisoesLoading, setDivisoesLoading] = useState(false);
   const [divisoesTab, setDivisoesTab] = useState<'pesquisa' | 'dados'>('pesquisa');
   const [divisoesCatalog, setDivisoesCatalog] = useState<Divisao[]>([]);
-  const [divisaoFormDivisaoId, setDivisaoFormDivisaoId] = useState('');
-  const [divisaoFormLoading, setDivisaoFormLoading] = useState(false);
+  const [divisaoSelectedById, setDivisaoSelectedById] = useState<Record<number, boolean>>({});
+  const [divisaoAddSelecionadasLoading, setDivisaoAddSelecionadasLoading] = useState(false);
   const [divisaoDeleteLoading, setDivisaoDeleteLoading] = useState<number | null>(null);
 
   const fornecedorReqRef = useRef(0);
@@ -215,6 +216,26 @@ export function RepresentantesPastasTab() {
     () => includeResults.filter((fornecedor) => !linkedFornecedorIds.has(fornecedor.fornecedor_id)),
     [includeResults, linkedFornecedorIds]
   );
+  const totalIncludeSelecionados = useMemo(
+    () => availableIncludeResults.filter((fornecedor) => includeSelectedById[fornecedor.fornecedor_id]).length,
+    [availableIncludeResults, includeSelectedById],
+  );
+  const allIncludeSelecionados =
+    availableIncludeResults.length > 0 && totalIncludeSelecionados === availableIncludeResults.length;
+  const linkedDivisaoIds = useMemo(
+    () => new Set(divisoesItems.map((item) => item.divisao_id)),
+    [divisoesItems],
+  );
+  const availableDivisoesCatalog = useMemo(
+    () => divisoesCatalog.filter((d) => !linkedDivisaoIds.has(d.divisao_id)),
+    [divisoesCatalog, linkedDivisaoIds],
+  );
+  const totalDivisaoSelecionados = useMemo(
+    () => availableDivisoesCatalog.filter((d) => divisaoSelectedById[d.divisao_id]).length,
+    [availableDivisoesCatalog, divisaoSelectedById],
+  );
+  const allDivisaoSelecionados =
+    availableDivisoesCatalog.length > 0 && totalDivisaoSelecionados === availableDivisoesCatalog.length;
   const filteredCopyReps = useMemo(() => {
     const term = copyRepSearch.trim().toUpperCase();
     if (!term) return copyRepList;
@@ -252,10 +273,12 @@ export function RepresentantesPastasTab() {
     }
     setIncludeDialogOpen(true);
     setIncludeSearch('');
+    setIncludeSelectedById({});
     await loadFornecedoresParaInclusao('');
   };
 
   const handleIncludeSearch = () => {
+    setIncludeSelectedById({});
     loadFornecedoresParaInclusao(includeSearch.trim());
   };
 
@@ -280,6 +303,56 @@ export function RepresentantesPastasTab() {
       toast.error(error?.message || 'Erro ao incluir fornecedor');
     } finally {
       setIncludeSubmittingId(null);
+    }
+  };
+
+  const handleToggleIncludeFornecedor = (fornecedorId: number, checked: boolean) => {
+    setIncludeSelectedById((prev) => {
+      const next = { ...prev };
+      if (checked) next[fornecedorId] = true;
+      else delete next[fornecedorId];
+      return next;
+    });
+  };
+
+  const handleToggleAllIncludeFornecedores = (checked: boolean) => {
+    if (!checked) {
+      setIncludeSelectedById({});
+      return;
+    }
+    const next: Record<number, boolean> = {};
+    availableIncludeResults.forEach((fornecedor) => {
+      next[fornecedor.fornecedor_id] = true;
+    });
+    setIncludeSelectedById(next);
+  };
+
+  const handleIncludeSelecionados = async () => {
+    if (!selectedRepresentanteId) {
+      toast.error('Selecione uma força de vendas');
+      return;
+    }
+    const ids = availableIncludeResults
+      .map((fornecedor) => fornecedor.fornecedor_id)
+      .filter((id) => includeSelectedById[id]);
+    if (ids.length === 0) {
+      toast.error('Selecione ao menos um fornecedor');
+      return;
+    }
+    setIncludeSelecionadosLoading(true);
+    try {
+      const results = await Promise.allSettled(
+        ids.map((id) => representativesService.addFornecedor(selectedRepresentanteId, id)),
+      );
+      const incluidos = results.filter((result) => result.status === 'fulfilled').length;
+      const falhas = results.length - incluidos;
+      if (incluidos > 0) toast.success(`${incluidos} fornecedor(es) incluído(s) na pasta`);
+      if (falhas > 0) toast.error(`Falha ao incluir ${falhas} fornecedor(es)`);
+      setIncludeSelectedById({});
+      await refreshFornecedoresView(selectedRepresentanteId, 1);
+      setIncludeResults((prev) => prev.filter((item) => !ids.includes(item.fornecedor_id)));
+    } finally {
+      setIncludeSelecionadosLoading(false);
     }
   };
 
@@ -492,7 +565,7 @@ export function RepresentantesPastasTab() {
     setDivisoesItems([]);
     setDivisoesCatalog([]);
     setDivisoesTab('pesquisa');
-    setDivisaoFormDivisaoId('');
+    setDivisaoSelectedById({});
     setDivisoesOpen(true);
     loadDivisoesFornecedor(item);
     try {
@@ -509,26 +582,59 @@ export function RepresentantesPastasTab() {
     } catch {}
   };
 
-  const handleAddDivisao = async () => {
-    if (!divisoesFornecedor || !divisaoFormDivisaoId) {
-      toast.error('Selecione a divisão');
+  const handleToggleDivisao = (divisaoId: number, checked: boolean) => {
+    setDivisaoSelectedById((prev) => {
+      const next = { ...prev };
+      if (checked) next[divisaoId] = true;
+      else delete next[divisaoId];
+      return next;
+    });
+  };
+
+  const handleToggleAllDivisoes = (checked: boolean) => {
+    if (!checked) {
+      setDivisaoSelectedById({});
       return;
     }
-    setDivisaoFormLoading(true);
+    const next: Record<number, boolean> = {};
+    availableDivisoesCatalog.forEach((d) => {
+      next[d.divisao_id] = true;
+    });
+    setDivisaoSelectedById(next);
+  };
+
+  const handleAddDivisoesSelecionadas = async () => {
+    if (!divisoesFornecedor) {
+      toast.error('Selecione um fornecedor');
+      return;
+    }
+    const ids = availableDivisoesCatalog
+      .map((d) => d.divisao_id)
+      .filter((id) => divisaoSelectedById[id]);
+    if (ids.length === 0) {
+      toast.error('Selecione ao menos uma divisão');
+      return;
+    }
+    setDivisaoAddSelecionadasLoading(true);
     try {
-      await representativesService.addFornecedorDivisao(
-        divisoesFornecedor.representante.representante_id,
-        divisoesFornecedor.fornecedor.fornecedor_id,
-        Number(divisaoFormDivisaoId),
+      const results = await Promise.allSettled(
+        ids.map((id) =>
+          representativesService.addFornecedorDivisao(
+            divisoesFornecedor.representante.representante_id,
+            divisoesFornecedor.fornecedor.fornecedor_id,
+            id,
+          ),
+        ),
       );
-      toast.success('Divisão adicionada');
-      setDivisaoFormDivisaoId('');
+      const adicionadas = results.filter((result) => result.status === 'fulfilled').length;
+      const falhas = results.length - adicionadas;
+      if (adicionadas > 0) toast.success(`${adicionadas} divisão(ões) adicionada(s)`);
+      if (falhas > 0) toast.error(`Falha ao adicionar ${falhas} divisão(ões)`);
+      setDivisaoSelectedById({});
       setDivisoesTab('pesquisa');
       loadDivisoesFornecedor(divisoesFornecedor);
-    } catch (e: any) {
-      toast.error(e?.message || 'Erro ao adicionar divisão');
     } finally {
-      setDivisaoFormLoading(false);
+      setDivisaoAddSelecionadasLoading(false);
     }
   };
 
@@ -837,11 +943,41 @@ export function RepresentantesPastasTab() {
               </Button>
             </div>
 
+            {availableIncludeResults.length > 0 && (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-muted-foreground">
+                  {totalIncludeSelecionados > 0
+                    ? `${totalIncludeSelecionados} selecionado(s)`
+                    : 'Nenhum selecionado'}
+                </span>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleIncludeSelecionados}
+                  disabled={totalIncludeSelecionados === 0 || includeSelecionadosLoading}
+                >
+                  {includeSelecionadosLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    `Incluir selecionados${totalIncludeSelecionados > 0 ? ` (${totalIncludeSelecionados})` : ''}`
+                  )}
+                </Button>
+              </div>
+            )}
+
             <div className="overflow-hidden rounded-md border">
               <div className="max-h-[50vh] overflow-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10">
+                        <Checkbox
+                          checked={allIncludeSelecionados}
+                          onCheckedChange={(checked) => handleToggleAllIncludeFornecedores(checked === true)}
+                          disabled={availableIncludeResults.length === 0}
+                          aria-label="Selecionar todos os fornecedores disponíveis"
+                        />
+                      </TableHead>
                       <TableHead className="w-32">Código</TableHead>
                       <TableHead>Nome</TableHead>
                       <TableHead className="w-44">CNPJ/CPF</TableHead>
@@ -851,19 +987,28 @@ export function RepresentantesPastasTab() {
                   <TableBody>
                     {includeLoading ? (
                       <TableRow>
-                        <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
+                        <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
                           <Loader2 className="mx-auto h-4 w-4 animate-spin" />
                         </TableCell>
                       </TableRow>
                     ) : availableIncludeResults.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
+                        <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
                           Nenhum fornecedor disponível para inclusão
                         </TableCell>
                       </TableRow>
                     ) : (
                       availableIncludeResults.map((fornecedor) => (
                         <TableRow key={fornecedor.fornecedor_id}>
+                          <TableCell>
+                            <Checkbox
+                              checked={Boolean(includeSelectedById[fornecedor.fornecedor_id])}
+                              onCheckedChange={(checked) =>
+                                handleToggleIncludeFornecedor(fornecedor.fornecedor_id, checked === true)
+                              }
+                              aria-label={`Selecionar fornecedor ${fornecedor.nome_fornecedor}`}
+                            />
+                          </TableCell>
                           <TableCell className="font-mono text-xs">{fornecedor.codigo_fornecedor || '-'}</TableCell>
                           <TableCell className="text-sm">{fornecedor.nome_fornecedor}</TableCell>
                           <TableCell className="font-mono text-xs">{fornecedor.cnpj_cpf || '-'}</TableCell>
@@ -969,7 +1114,7 @@ export function RepresentantesPastasTab() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={divisoesOpen} onOpenChange={(v) => { setDivisoesOpen(v); if (!v) { setDivisoesFornecedor(null); setDivisaoFormDivisaoId(''); } }}>
+      <Dialog open={divisoesOpen} onOpenChange={(v) => { setDivisoesOpen(v); if (!v) { setDivisoesFornecedor(null); setDivisaoSelectedById({}); } }}>
         <DialogContent className="w-[95vw] max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -988,7 +1133,7 @@ export function RepresentantesPastasTab() {
               <button
                 key={tab}
                 type="button"
-                onClick={() => { setDivisoesTab(tab); if (tab === 'dados') setDivisaoFormDivisaoId(''); }}
+                onClick={() => { setDivisoesTab(tab); if (tab === 'dados') setDivisaoSelectedById({}); }}
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                   divisoesTab === tab
                     ? 'border-primary text-primary'
@@ -1046,7 +1191,7 @@ export function RepresentantesPastasTab() {
               </div>
               <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
                 <span>Registros: {divisoesItems.length}</span>
-                <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => { setDivisoesTab('dados'); setDivisaoFormDivisaoId(''); }}>
+                <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => { setDivisoesTab('dados'); setDivisaoSelectedById({}); }}>
                   <Plus className="h-3.5 w-3.5" />
                   Nova divisão
                 </Button>
@@ -1055,19 +1200,54 @@ export function RepresentantesPastasTab() {
           )}
 
           {divisoesTab === 'dados' && (
-            <div className="space-y-4 py-1">
-              <div className="grid grid-cols-[120px_1fr] items-center gap-3">
-                <label className="text-sm font-medium text-right">Divisão</label>
-                <Select value={divisaoFormDivisaoId} onValueChange={setDivisaoFormDivisaoId}>
-                  <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                  <SelectContent position="popper" side="bottom" sideOffset={4}>
-                    {divisoesCatalog.map((d) => (
-                      <SelectItem key={d.divisao_id} value={String(d.divisao_id)}>
-                        {d.descricao_divisao}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div className="space-y-3 py-1">
+              {availableDivisoesCatalog.length > 0 && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    {totalDivisaoSelecionados > 0
+                      ? `${totalDivisaoSelecionados} selecionada(s)`
+                      : 'Nenhuma selecionada'}
+                  </span>
+                  <label className="flex items-center gap-1.5 text-xs">
+                    <Checkbox
+                      checked={allDivisaoSelecionados}
+                      onCheckedChange={(checked) => handleToggleAllDivisoes(checked === true)}
+                      aria-label="Selecionar todas as divisões"
+                    />
+                    Selecionar todas
+                  </label>
+                </div>
+              )}
+              <div className="border rounded-md overflow-hidden">
+                <div className="max-h-[40vh] overflow-auto">
+                  <table className="w-full text-xs">
+                    <tbody>
+                      {availableDivisoesCatalog.length === 0 ? (
+                        <tr>
+                          <td className="text-center py-6 text-muted-foreground">
+                            Nenhuma divisão disponível para inclusão
+                          </td>
+                        </tr>
+                      ) : (
+                        availableDivisoesCatalog.map((d) => (
+                          <tr key={d.divisao_id} className="border-b hover:bg-muted/30 last:border-b-0">
+                            <td className="w-10 px-2 py-1.5">
+                              <Checkbox
+                                checked={Boolean(divisaoSelectedById[d.divisao_id])}
+                                onCheckedChange={(checked) =>
+                                  handleToggleDivisao(d.divisao_id, checked === true)
+                                }
+                                aria-label={`Selecionar divisão ${d.descricao_divisao}`}
+                              />
+                            </td>
+                            <td className="w-24 px-2 py-1.5 font-mono">{d.codigo_divisao || '-'}</td>
+                            <td className="px-2 py-1.5">{d.descricao_divisao}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
@@ -1075,12 +1255,15 @@ export function RepresentantesPastasTab() {
           <DialogFooter>
             {divisoesTab === 'dados' ? (
               <>
-                <Button variant="outline" onClick={() => { setDivisaoFormDivisaoId(''); setDivisoesTab('pesquisa'); }}>
+                <Button variant="outline" onClick={() => { setDivisaoSelectedById({}); setDivisoesTab('pesquisa'); }}>
                   Cancelar
                 </Button>
-                <Button onClick={handleAddDivisao} disabled={divisaoFormLoading}>
-                  {divisaoFormLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                  Adicionar
+                <Button
+                  onClick={handleAddDivisoesSelecionadas}
+                  disabled={totalDivisaoSelecionados === 0 || divisaoAddSelecionadasLoading}
+                >
+                  {divisaoAddSelecionadasLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  {`Adicionar selecionadas${totalDivisaoSelecionados > 0 ? ` (${totalDivisaoSelecionados})` : ''}`}
                 </Button>
               </>
             ) : (

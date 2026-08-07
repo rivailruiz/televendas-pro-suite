@@ -423,7 +423,9 @@ export const ClientesTab = () => {
     const isForcaDeVendas =
       p?.user?.forca_de_vendas === true ||
       Boolean(p?.user?.usuario_empresa_id);
-    if (!isForcaDeVendas && isAdmin) return null;
+    // Trava só vale para força de vendas EXCLUSIVA: quem também é admin
+    // (mesmo sendo força de vendas) tem o campo liberado.
+    if (isAdmin) return null;
     const id =
       p?.user?.usuario_empresa_id ??
       p?.usuario_empresa_id ??

@@ -1096,6 +1096,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                 <TableHead className="w-16">Pedido</TableHead>
                 <TableHead className="hidden md:table-cell w-28">Operação</TableHead>
                 <TableHead className="hidden lg:table-cell w-24">Cód. Cliente</TableHead>
+                <TableHead className="hidden md:table-cell w-40">Vendedor</TableHead>
                 <TableHead>Nome</TableHead>
                 <TableHead className="w-24 text-right">Valor</TableHead>
                 <TableHead className="w-28">Status</TableHead>
@@ -1105,13 +1106,13 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
             <TableBody>
               {isOrdersInitialLoading ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                     <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                   </TableCell>
                 </TableRow>
               ) : orders.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center h-32 text-muted-foreground">
+                  <TableCell colSpan={11} className="text-center h-32 text-muted-foreground">
                     Nenhum pedido encontrado
                   </TableCell>
                 </TableRow>
@@ -1138,11 +1139,15 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                       <TableCell className="w-16 font-medium text-xs">{order.id}</TableCell>
                       <TableCell className="hidden md:table-cell w-28 text-xs">{formatOperacao(order)}</TableCell>
                       <TableCell className="hidden lg:table-cell w-24 text-xs">{formatClienteCodigo(order)}</TableCell>
+                      <TableCell className="hidden md:table-cell w-40 text-xs">
+                        <div className="truncate">
+                          {formatRepresentanteCodigo(order)
+                            ? `${formatRepresentanteCodigo(order)} - ${order.representanteNome ?? ''}`
+                            : (order.representanteNome ?? '')}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-sm max-w-[260px]">
                         <div className="truncate">{order.clienteNome}</div>
-                        {order.representanteNome && (
-                          <div className="truncate text-xs text-muted-foreground">{order.representanteNome}</div>
-                        )}
                       </TableCell>
                       <TableCell className="w-24 text-right font-medium text-xs">{formatCurrency(order.valor)}</TableCell>
                       <TableCell className="w-28">
@@ -1271,7 +1276,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
               )}
               {isOrdersLoadingMore && (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center py-4 text-muted-foreground">
+                  <TableCell colSpan={11} className="text-center py-4 text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin mx-auto" />
                   </TableCell>
                 </TableRow>
@@ -1344,6 +1349,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
           {previewOrder && (
             <div className="space-y-4">
               <div className="text-sm text-muted-foreground">
+                {nomeEmpresa && <div className="font-medium text-foreground">{nomeEmpresa}</div>}
                 <div>Data: {formatDate(previewOrder.data)}</div>
                 <div>Cliente: {previewOrder.clienteNome}{previewClienteCodigo ? ` (Cód.: ${previewClienteCodigo})` : ''}</div>
                 <div>Operação: {formatOperacao(previewOrder)}</div>

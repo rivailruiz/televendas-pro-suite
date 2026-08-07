@@ -50,6 +50,7 @@ export function AdminTab() {
   const [selectedEmpresa, setSelectedEmpresa] = useState<AdminEmpresa | null>(null);
 
   const [usuarios, setUsuarios] = useState<EmpresaUsuario[]>([]);
+  const [usuarioSearch, setUsuarioSearch] = useState('');
   const [loadingUsuarios, setLoadingUsuarios] = useState(false);
   const [togglingId, setTogglingId] = useState<number | null>(null);
   const [togglingMasterId, setTogglingMasterId] = useState<number | null>(null);
@@ -305,7 +306,18 @@ export function AdminTab() {
 
   const handleEmpresaSelect = (e: AdminEmpresa) => {
     setSelectedEmpresa(e);
+    setUsuarioSearch('');
   };
+
+  const filteredUsuarios = usuarios.filter((u) => {
+    const q = usuarioSearch.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      (u.nome || '').toLowerCase().includes(q) ||
+      (u.email || '').toLowerCase().includes(q) ||
+      (u.usuario || '').toLowerCase().includes(q)
+    );
+  });
 
   const handleEmpresaSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -543,6 +555,17 @@ export function AdminTab() {
               </div>
             )}
           </div>
+          {selectedEmpresa && usuarios.length > 0 && (
+            <div className="relative mt-2">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome, e-mail ou usuário..."
+                value={usuarioSearch}
+                onChange={(e) => setUsuarioSearch(e.target.value)}
+                className="h-8 text-xs pl-8"
+              />
+            </div>
+          )}
         </CardHeader>
         <CardContent className="px-4 pb-4 overflow-x-auto">
           {!selectedEmpresa ? (
@@ -559,6 +582,11 @@ export function AdminTab() {
               <Users className="h-10 w-10 opacity-20" />
               <p className="text-sm">Nenhum usuário vinculado</p>
             </div>
+          ) : filteredUsuarios.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
+              <Search className="h-10 w-10 opacity-20" />
+              <p className="text-sm">Nenhum usuário encontrado para "{usuarioSearch}"</p>
+            </div>
           ) : (
             <Table>
               <TableHeader>
@@ -573,7 +601,7 @@ export function AdminTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {usuarios.map((u) => {
+                {filteredUsuarios.map((u) => {
                   const busy = togglingId === u.usuario_empresa_id || deletingId === u.usuario_empresa_id;
                   const masterBusy = togglingMasterId === u.usuario_id;
                   return (
