@@ -52,6 +52,8 @@ export interface Order {
   rede: string;
   especial: boolean;
   situacao: string;
+  numeroPedidoErp?: string;
+  dataEnvioErp?: string;
   valor: number;
   pedidoOrigem?: string;
   cancelado?: boolean;
@@ -446,6 +448,8 @@ export const ordersService = {
           rede: p?.rede ?? '',
           especial: Boolean(p?.especial ?? false),
           situacao: p?.situacao ?? p?.status ?? 'Pendentes',
+          numeroPedidoErp: p?.numeroPedidoErp ?? undefined,
+          dataEnvioErp: p?.dataEnvioErp ?? undefined,
           valor: typeof p?.valor === 'number' ? p.valor : Number(p?.valor ?? p?.total ?? 0) || 0,
           cancelado: Boolean(p?.cancelado ?? false),
           faturado: Boolean(p?.faturado ?? false),
@@ -573,6 +577,8 @@ export const ordersService = {
         rede: p?.rede ?? '',
         especial: Boolean(p?.especial ?? false),
         situacao: p?.situacao ?? p?.status ?? 'Pendentes',
+        numeroPedidoErp: p?.numeroPedidoErp ?? undefined,
+        dataEnvioErp: p?.dataEnvioErp ?? undefined,
         valor: typeof p?.valor === 'number' ? p.valor : Number(p?.valor ?? p?.total ?? 0) || 0,
         cancelado: Boolean(p?.cancelado ?? false),
         faturado: Boolean(p?.faturado ?? false),
@@ -933,6 +939,24 @@ export const ordersService = {
     }
     const data = await res.json();
     return Number(data?.atualizados ?? ids.length);
+  },
+
+  // Envia o pedido pendente para o ADS (ERP). Ao concluir, o pedido volta
+  // com situacao "Em processamento" e numeroPedidoErp preenchido.
+  enviarAds: async (id: number): Promise<Order> => {
+    const empresa = authService.getEmpresa();
+    if (!empresa) return Promise.reject('Empresa não selecionada');
+    const url = `${API_BASE}/api/pedidos/${encodeURIComponent(id)}/enviar-ads?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
+    const res = await apiClient.fetch(url, {
+      method: 'POST',
+      headers: { accept: 'application/json' },
+    });
+    if (!res.ok) {
+      let message = 'Falha ao enviar pedido para o ADS';
+      try { const err = await res.json(); message = err?.message || err?.error?.message || err?.error || message; } catch {}
+      return Promise.reject(message);
+    }
+    return ordersService.getById(id);
   },
 
   sendEmail: async (id: number, payload: { to: string; cc?: string[] }): Promise<void> => {

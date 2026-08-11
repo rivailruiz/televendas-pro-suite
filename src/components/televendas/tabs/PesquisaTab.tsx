@@ -19,7 +19,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { Search, X, FileEdit, Trash2, Mail, Download, Printer, File, Eye, Loader2, Copy } from 'lucide-react';
+import { Search, X, FileEdit, Trash2, Mail, Download, Printer, File, Eye, Loader2, Copy, Send } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ordersService, type Order, type OrderParcela } from '@/services/ordersService';
 import { clientsService, type Client } from '@/services/clientsService';
@@ -398,12 +398,14 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   const situacaoLabel = (situacao?: string) => {
     if (situacao === 'Faturados') return 'Faturado';
     if (situacao === 'Cancelados') return 'Cancelado';
+    if (situacao === 'Em processamento') return 'Em processamento';
     return 'Pendente';
   };
 
   const situacaoBadgeClasses = (situacao?: string) => {
     if (situacao === 'Faturados') return 'border-transparent bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300';
     if (situacao === 'Cancelados') return 'border-transparent bg-destructive/15 text-destructive';
+    if (situacao === 'Em processamento') return 'border-transparent bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300';
     return 'border-transparent bg-success/15 text-success';
   };
 
@@ -416,6 +418,10 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
       toast.error('Pedido cancelado não pode ser editado. Volte o status para pendente antes de editar.');
       return;
     }
+    if (order.situacao === 'Em processamento') {
+      toast.error('Pedido em processamento no ADS não pode ser editado.');
+      return;
+    }
     setCurrentOrder(order);
     if (onNavigateToDigitacao) onNavigateToDigitacao();
   };
@@ -423,6 +429,10 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   const attemptExcluir = (order: Order) => {
     if (order.situacao === 'Faturados') {
       toast.error('Pedido já faturado não pode ser excluído. Volte o status para pendente antes de excluir.');
+      return;
+    }
+    if (order.situacao === 'Em processamento') {
+      toast.error('Pedido em processamento no ADS não pode ser excluído.');
       return;
     }
     setOrderToDelete(order);
@@ -497,6 +507,29 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
       return;
     }
     attemptExcluir(order);
+  };
+
+  const [enviandoAdsId, setEnviandoAdsId] = useState<number | null>(null);
+
+  const attemptEnviarAds = async (order: Order) => {
+    if (order.situacao !== 'Pendentes') {
+      toast.error('Somente pedidos pendentes podem ser enviados para o ADS.');
+      return;
+    }
+    setEnviandoAdsId(order.id);
+    try {
+      const updated = await ordersService.enviarAds(order.id);
+      toast.success(
+        updated.numeroPedidoErp
+          ? `Pedido enviado para o ADS. Nº no ERP: ${updated.numeroPedidoErp}`
+          : 'Pedido enviado para o ADS.',
+      );
+      loadOrders(true);
+    } catch (error: any) {
+      toast.error(error?.message || String(error) || 'Erro ao enviar pedido para o ADS');
+    } finally {
+      setEnviandoAdsId(null);
+    }
   };
 
   // Exporta o pedido para Excel com as mesmas colunas exibidas na modal
@@ -723,6 +756,9 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
           <div>Cliente: ${order.clienteNome ?? ''}${clienteCodigoLabel}</div>
           <div>Operação: ${opLabel ?? ''}</div>
           <div>Força de Vendas: ${representanteLabel}</div>
+          <div>Endereço: ${formatEnderecoCliente(order) || '-'}</div>
+          <div>Forma de pagamento: ${order.formaPagamento || '-'}</div>
+          <div>Prazo: ${order.prazo || '-'}</div>
         </div>
         <table>
           <thead>
@@ -1100,19 +1136,20 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                 <TableHead>Nome</TableHead>
                 <TableHead className="w-24 text-right">Valor</TableHead>
                 <TableHead className="w-28">Status</TableHead>
+                <TableHead className="hidden lg:table-cell w-24">Nº ADS</TableHead>
                 <TableHead className="w-32 text-center">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isOrdersInitialLoading ? (
                 <TableRow>
-                  <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
                     <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                   </TableCell>
                 </TableRow>
               ) : orders.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={11} className="text-center h-32 text-muted-foreground">
+                  <TableCell colSpan={12} className="text-center h-32 text-muted-foreground">
                     Nenhum pedido encontrado
                   </TableCell>
                 </TableRow>
@@ -1155,6 +1192,9 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                           {situacaoLabel(order.situacao)}
                         </Badge>
                       </TableCell>
+                      <TableCell className="hidden lg:table-cell w-24 text-xs">
+                        {order.numeroPedidoErp || '-'}
+                      </TableCell>
                       <TableCell className="w-32">
                         <TooltipProvider>
                           <div className="flex items-center justify-center gap-0.5">
@@ -1170,6 +1210,23 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent>Alterar</TooltipContent>
+                            </Tooltip>
+
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 hidden sm:flex"
+                                  disabled={order.situacao !== 'Pendentes' || enviandoAdsId === order.id}
+                                  onClick={() => attemptEnviarAds(order)}
+                                >
+                                  {enviandoAdsId === order.id
+                                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    : <Send className="h-3.5 w-3.5" />}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Enviar pro ADS</TooltipContent>
                             </Tooltip>
 
                             <Tooltip>
@@ -1276,7 +1333,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
               )}
               {isOrdersLoadingMore && (
                 <TableRow>
-                  <TableCell colSpan={11} className="text-center py-4 text-muted-foreground">
+                  <TableCell colSpan={12} className="text-center py-4 text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin mx-auto" />
                   </TableCell>
                 </TableRow>

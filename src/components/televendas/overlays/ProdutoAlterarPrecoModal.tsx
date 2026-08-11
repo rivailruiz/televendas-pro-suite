@@ -203,7 +203,7 @@ export const ProdutoAlterarPrecoModal = ({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="w-[98vw] max-w-6xl max-h-[92vh] overflow-hidden flex flex-col gap-0 p-0">
         {/* Header */}
-        <DialogHeader className="px-5 pt-4 pb-3 border-b shrink-0">
+        <DialogHeader className="pl-5 pr-12 pt-4 pb-3 border-b shrink-0">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <DialogTitle className="text-base">Alterar preços de venda</DialogTitle>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Loader2, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -63,6 +64,7 @@ const initialFormData: UsuarioCadastroFormData = {
 };
 
 export function PerfilTab() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<UsuarioCadastroFormData>(initialFormData);
@@ -277,6 +279,13 @@ export function PerfilTab() {
         senha_atual: hasPasswordChange ? senhaAtual : undefined,
         senha: hasPasswordChange ? senhaNova : undefined,
       });
+
+      if (hasPasswordChange) {
+        authService.logout();
+        toast.success('Senha alterada com sucesso. Faça login novamente.');
+        navigate('/login');
+        return;
+      }
 
       const session = authService.getSession();
       if (session) {

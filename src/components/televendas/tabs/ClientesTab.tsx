@@ -126,9 +126,20 @@ const formatGridNumber = (value: number | string | null | undefined) => {
 };
 const getLoggedCompanyUf = () => toUpperTrimValue(authService.getEmpresa()?.uf || '');
 
+type ClientSearchField =
+  | 'todos'
+  | 'nome'
+  | 'fantasia'
+  | 'cnpjCpf'
+  | 'codigoCliente'
+  | 'email'
+  | 'telefone'
+  | 'bairro';
+
 type ClientListFilters = {
   status: 'ativos' | 'inativos' | 'todos';
   searchMode: 'inicial' | 'contido';
+  searchField: ClientSearchField;
   search: string;
   todos: boolean;
   clientesB2b: boolean;
@@ -152,6 +163,7 @@ type ClientListFilters = {
 const defaultClientFilters: ClientListFilters = {
   status: 'ativos',
   searchMode: 'contido',
+  searchField: 'todos',
   search: '',
   todos: false,
   clientesB2b: false,
@@ -1101,8 +1113,18 @@ export const ClientesTab = () => {
       active.filtrarCidades && active.cidade !== 'all'
         ? filterCidades.find((c) => c.nome_cidade === active.cidade)?.cidade_id
         : undefined;
+    // Campo de busca segue o mesmo padrão da busca de cliente na digitação
+    // do pedido (DigitacaoTab/PesquisaTab): "todos" e "cnpjCpf" usam a busca
+    // geral (query), os demais viram filtro exato de um campo.
+    const searchField = active.searchField;
+    const useGeneralQuery = searchField === 'todos' || searchField === 'cnpjCpf';
     return {
-      query: trimmedSearch || undefined,
+      query: useGeneralQuery ? trimmedSearch || undefined : undefined,
+      nome: searchField === 'nome' ? trimmedSearch || undefined : undefined,
+      fantasia: searchField === 'fantasia' ? trimmedSearch || undefined : undefined,
+      codigoCliente: searchField === 'codigoCliente' ? trimmedSearch || undefined : undefined,
+      email: searchField === 'email' ? trimmedSearch || undefined : undefined,
+      fone: searchField === 'telefone' ? trimmedSearch || undefined : undefined,
       tipoBusca: active.searchMode,
       buscarEmTodos: true,
       clientesB2b: active.clientesB2b ? true : undefined,
@@ -1110,7 +1132,10 @@ export const ClientesTab = () => {
       uf: active.filtrarCidades && active.uf !== 'all' ? active.uf : undefined,
       cidade: active.filtrarCidades && active.cidade !== 'all' ? active.cidade : undefined,
       cidadeId,
-      bairro: active.bairro ? active.bairro.trim() : undefined,
+      bairro:
+        (active.bairro ? active.bairro.trim() : '') ||
+        (searchField === 'bairro' ? trimmedSearch || undefined : undefined) ||
+        undefined,
       classeId: active.classe !== 'all' ? Number(active.classe) : undefined,
       formaPagtoId: active.formaPagto !== 'all' ? Number(active.formaPagto) : undefined,
       prazoPagtoId: active.prazoPagto !== 'all' ? Number(active.prazoPagto) : undefined,
@@ -1969,7 +1994,26 @@ const validateFormData = (data: ClientFormData): string[] => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="md:col-span-6">
+            <div className="md:col-span-2">
+              <label className="text-sm font-medium mb-1 block">Campo</label>
+              <Select
+                value={filters.searchField}
+                onValueChange={(v: ClientSearchField) => setFilters({ ...filters, searchField: v })}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os campos</SelectItem>
+                  <SelectItem value="nome">Nome</SelectItem>
+                  <SelectItem value="fantasia">Fantasia</SelectItem>
+                  <SelectItem value="cnpjCpf">CNPJ/CPF</SelectItem>
+                  <SelectItem value="codigoCliente">Código</SelectItem>
+                  <SelectItem value="email">E-mail</SelectItem>
+                  <SelectItem value="telefone">Telefone</SelectItem>
+                  <SelectItem value="bairro">Bairro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="md:col-span-4">
               <label className="text-sm font-medium mb-1 block">Pesquisa</label>
               <Input
                 placeholder="Digite para pesquisar..."

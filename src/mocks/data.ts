@@ -41,7 +41,7 @@ export const operacoes = [
   'DEVOLUCAO DE MERCADORIA'
 ];
 
-export const situacoes = ['Pendentes', 'Faturados', 'Cancelados'];
+export const situacoes = ['Pendentes', 'Em processamento', 'Faturados', 'Cancelados'];
 
 export const formasPagamento = [
   'A VISTA',
