@@ -40,7 +40,7 @@ const COL_WIDTHS = {
 const TABLE_MIN_WIDTH = Object.values(COL_WIDTHS).reduce((a, b) => a + b, 0);
 
 function toRow(p: PrecoPorProduto): RowDraft {
-  const precoVenda = p.pvs > 0 ? p.pvs : p.preco;
+  const precoVenda = p.preco_aplicado;
   return {
     ...p,
     _precoVenda:      precoVenda.toFixed(2).replace('.', ','),
