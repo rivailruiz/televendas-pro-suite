@@ -1025,6 +1025,7 @@ export const clientsService = {
     bairro?: string;
     page?: number;
     limit?: number;
+    status?: 'ativos' | 'inativos' | 'todos';
   }): Promise<{ data: Client[]; total: number }> => {
     const empresa = authService.getEmpresa();
     if (!empresa) return Promise.reject('Empresa não selecionada');
@@ -1046,6 +1047,7 @@ export const clientsService = {
     if (params.bairro) qs.set('bairro', params.bairro);
     if (params.page) qs.set('page', String(params.page));
     if (params.limit) qs.set('limit', String(params.limit));
+    if (params.status) qs.set('status', params.status);
 
     try {
       const url = `${API_BASE}/api/clientes/por-forca-de-vendas?${qs.toString()}`;

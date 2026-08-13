@@ -187,6 +187,12 @@ export function ClientesPorRepresentanteTab() {
         bairro: f.bairro || undefined,
         page: 1,
         limit: PAGE_LIMIT,
+        // 'todos' (nao so ativos, default do endpoint) - a importacao busca
+        // clientes com status 'todos', entao vinculos com cliente inativo
+        // sao criados normalmente; sem isso aqui essa lista/contagem
+        // escondia os inativos vinculados, dando a impressao de que
+        // "selecionar todos" na importacao nao importava tudo.
+        status: 'todos',
       });
       setClients(result.data);
       setClientsTotal(result.total);
@@ -213,6 +219,7 @@ export function ClientesPorRepresentanteTab() {
         bairro: f.bairro || undefined,
         page: clientsPage,
         limit: PAGE_LIMIT,
+        status: 'todos',
       });
       setClients(prev => [...prev, ...result.data]);
       setClientsPage(prev => prev + 1);

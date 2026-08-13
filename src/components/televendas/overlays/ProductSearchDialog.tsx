@@ -224,15 +224,6 @@ export const ProductSearchDialog = ({
     loadMetadata();
   }, [availableTabelas, representanteId, onlyRevendaFornecedores]);
 
-  // Reset multi-selection and pre-fill tabela when dialog opens
-  useEffect(() => {
-    if (!open) return;
-    setSelectedIds(new Set());
-    if (selectedTabelaId) {
-      setFilters((prev) => ({ ...prev, tabela: selectedTabelaId }));
-    }
-  }, [open, selectedTabelaId]);
-
   // Carrega as divisões permitidas do representante quando o fornecedor muda
   useEffect(() => {
     if (!representanteId || !filters.fornecedor || filters.fornecedor === '_all') {
@@ -330,43 +321,47 @@ export const ProductSearchDialog = ({
     return () => { active = false; };
   }, [filters.tabela]);
 
-  // Build filters object for API
-  const buildFiltersParams = useCallback((): ProductFiltersParams => {
+  // Build filters object for API. Aceita overrides pra permitir chamar com um
+  // valor recem-calculado (ex.: tabela pre-selecionada ao abrir o dialog) sem
+  // esperar o setFilters correspondente assentar - setState e assincrono, e
+  // ler `filters` direto nesse instante ainda pegaria o valor antigo.
+  const buildFiltersParams = useCallback((overrides?: Partial<ProductFilters>): ProductFiltersParams => {
+    const f = overrides ? { ...filters, ...overrides } : filters;
     const params: ProductFiltersParams = {};
-    if (filters.codigoProduto.trim()) params.codigoProduto = filters.codigoProduto.trim();
-    if (filters.descricao.trim()) params.descricao = filters.descricao.trim();
-    if (filters.marca.trim()) params.marca = filters.marca.trim();
-    if (filters.tabela) params.tabela = filters.tabela;
-    if (filters.codFabrica.trim()) params.codFabrica = filters.codFabrica.trim();
-    if (filters.fornecedor) {
-      params.fornecedor = filters.fornecedor;
+    if (f.codigoProduto.trim()) params.codigoProduto = f.codigoProduto.trim();
+    if (f.descricao.trim()) params.descricao = f.descricao.trim();
+    if (f.marca.trim()) params.marca = f.marca.trim();
+    if (f.tabela) params.tabela = f.tabela;
+    if (f.codFabrica.trim()) params.codFabrica = f.codFabrica.trim();
+    if (f.fornecedor) {
+      params.fornecedor = f.fornecedor;
     } else if (pastaFornecedorIds && pastaFornecedorIds.size === 1) {
       params.fornecedor = String([...pastaFornecedorIds][0]);
     }
-    if (filters.ean13.trim()) params.ean13 = filters.ean13.trim();
-    if (filters.divisao) params.divisao = filters.divisao;
-    if (filters.dun14.trim()) params.dun14 = filters.dun14.trim();
-    if (filters.principioAtivo.trim()) params.principioAtivo = filters.principioAtivo.trim();
-    if (filters.comEstoque) params.comEstoque = true;
-    if (filters.estoqueZerado) params.estoqueZerado = true;
-    if (filters.lancamentos) params.lancamentos = true;
-    if (filters.ultimasComprasDesde) {
-      params.ultimasComprasDesde = format(filters.ultimasComprasDesde, 'yyyy-MM-dd');
+    if (f.ean13.trim()) params.ean13 = f.ean13.trim();
+    if (f.divisao) params.divisao = f.divisao;
+    if (f.dun14.trim()) params.dun14 = f.dun14.trim();
+    if (f.principioAtivo.trim()) params.principioAtivo = f.principioAtivo.trim();
+    if (f.comEstoque) params.comEstoque = true;
+    if (f.estoqueZerado) params.estoqueZerado = true;
+    if (f.lancamentos) params.lancamentos = true;
+    if (f.ultimasComprasDesde) {
+      params.ultimasComprasDesde = format(f.ultimasComprasDesde, 'yyyy-MM-dd');
     }
     if (hideProductsWithoutPrice) params.ocultarSemPreco = true;
     return params;
   }, [filters, pastaFornecedorIds, hideProductsWithoutPrice]);
 
-  const loadProducts = useCallback(async (reset = false) => {
+  const loadProducts = useCallback(async (reset = false, overrides?: Partial<ProductFilters>) => {
     if (loading) return;
     setLoading(true);
     setError(null);
     if (reset) setTotalProducts(0);
     try {
       const nextPage = reset ? 1 : page + 1;
-      const filtersParams = buildFiltersParams();
+      const filtersParams = buildFiltersParams(overrides);
       const result = await productsService.findPaged(filtersParams, nextPage, PRODUCT_LIMIT);
-      
+
       const combined = reset ? result.data : [...products, ...result.data];
       const seen = new Set<number>();
       const nextProducts = combined.filter((p) => (seen.has(p.id) ? false : (seen.add(p.id), true)));
@@ -381,12 +376,24 @@ export const ProductSearchDialog = ({
     }
   }, [loading, page, products, buildFiltersParams]);
 
-  // Load products when dialog opens
+  // Reset multi-selection, pre-fill tabela e carrega produtos quando o dialog
+  // abre - tudo num unico efeito. Antes eram dois useEffect separados (um
+  // setando filters.tabela, outro chamando loadProducts) que disparavam no
+  // mesmo ciclo: como setFilters e assincrono, o loadProducts do outro efeito
+  // ainda lia o filters.tabela antigo (vazio ou da busca anterior), entao a
+  // primeira listagem ao abrir sempre saia sem considerar a tabela do pedido
+  // - so corrigia depois que o usuario clicava em "Filtrar" manualmente.
+  // Passar a tabela via overrides pro loadProducts evita depender do
+  // setFilters ter assentado.
   useEffect(() => {
     if (!open) return;
-    loadProducts(true);
+    setSelectedIds(new Set());
+    if (selectedTabelaId) {
+      setFilters((prev) => ({ ...prev, tabela: selectedTabelaId }));
+    }
+    loadProducts(true, selectedTabelaId ? { tabela: selectedTabelaId } : undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, selectedTabelaId]);
 
   const handleSearch = () => {
     loadProducts(true);

@@ -353,6 +353,82 @@ const extractRepresentanteCodigo = (raw: any): string | undefined => {
   return undefined;
 };
 
+// Normaliza a resposta crua da API (campos em snake_case/variantes) pro
+// formato Order usado pela UI. Usado por get/create/update para garantir que
+// os três retornem exatamente a mesma forma — antes create/update devolviam
+// o JSON cru da API direto pro chamador (sem passar por extractClienteCodigo
+// etc.), então um pedido recém-criado entrava na grade sem clienteCodigo (a
+// API manda `codigo_cliente`, a grade lê `order.clienteCodigo`) até a tela
+// ser recarregada via list(), que já fazia essa normalização.
+const mapOrderFromApi = (p: any, fallbackId?: number | string): Order => {
+  const opFields = resolveOperacaoFields(p);
+  const formaPagtoId = extractFormaPagtoId(p);
+  const prazoPagtoId = extractPrazoPagtoId(p);
+  const representanteId =
+    p?.representanteId ??
+    p?.representante_id ??
+    p?.forcaDeVendasId ??
+    p?.forca_de_venda_id ??
+    p?.forca_de_vendas_id ??
+    '';
+  const representanteCodigo = extractRepresentanteCodigo(p);
+  const clienteId = p?.clienteId ?? p?.cliente_id ?? p?.cliente ?? 0;
+  const clienteCodigo = extractClienteCodigo(p);
+  return {
+    id: p?.id ?? p?.pedido_id ?? fallbackId ?? 0,
+    data: p?.data ?? new Date().toISOString().split('T')[0],
+    operacao: opFields.descricao || opFields.codigo || '',
+    operacaoId: opFields.id,
+    operacaoCodigo: opFields.codigo,
+    operacaoDescricao: opFields.descricao,
+    clienteId: clienteId ?? 0,
+    clienteCodigo,
+    clienteNome: p?.clienteNome ?? p?.cliente_nome ?? '',
+    representanteId: representanteId ?? '',
+    representanteCodigo,
+    representanteNome:
+      p?.representanteNome ??
+      p?.representante_nome ??
+      p?.nome_representante ??
+      p?.forcaDeVendasNome ??
+      p?.forca_de_vendas_nome ??
+      p?.nome_forca_de_vendas ??
+      '',
+    tabela: p?.tabela ?? p?.tabela_preco ?? '',
+    formaPagamento: extractFormaPagtoDescricao(p) ?? '',
+    formaPagtoId,
+    prazo: extractPrazoDescricao(p) ?? '',
+    prazoPagtoId,
+    boleto: Boolean(p?.boleto ?? false),
+    rede: p?.rede ?? '',
+    especial: Boolean(p?.especial ?? false),
+    situacao: p?.situacao ?? p?.status ?? 'Pendentes',
+    numeroPedidoErp: p?.numeroPedidoErp ?? undefined,
+    dataEnvioErp: p?.dataEnvioErp ?? undefined,
+    valor: typeof p?.valor === 'number' ? p.valor : Number(p?.valor ?? p?.total ?? 0) || 0,
+    cancelado: Boolean(p?.cancelado ?? false),
+    faturado: Boolean(p?.faturado ?? false),
+    itens: normalizeItens(p),
+    totais: p?.totais ?? {
+      bruto: Number(p?.bruto ?? 0) || 0,
+      descontos: Number(p?.descontos ?? 0) || 0,
+      descontosPerc: Number(p?.descontosPerc ?? 0) || 0,
+      icmsRepasse: Number(p?.icmsRepasse ?? 0) || 0,
+      liquido: typeof p?.valor === 'number' ? p.valor : Number(p?.valor ?? p?.total ?? 0) || 0,
+    },
+    observacaoCliente: p?.observacaoCliente ?? '',
+    observacaoPedido: p?.observacaoPedido ?? '',
+    observacaoNF: p?.observacaoNF ?? '',
+    transmitido: Boolean(p?.transmitido ?? false),
+    clienteEndereco: textOrUndefined(p?.clienteEndereco ?? p?.cliente_endereco),
+    clienteNumero: textOrUndefined(p?.clienteNumero ?? p?.cliente_numero),
+    clienteComplemento: textOrUndefined(p?.clienteComplemento ?? p?.cliente_complemento),
+    clienteBairro: textOrUndefined(p?.clienteBairro ?? p?.cliente_bairro),
+    clienteCidade: textOrUndefined(p?.clienteCidade ?? p?.cliente_cidade),
+    clienteUf: textOrUndefined(p?.clienteUf ?? p?.cliente_uf ?? p?.clienteUF),
+    clienteCep: textOrUndefined(p?.clienteCep ?? p?.cliente_cep),
+  };
+};
 
 export const ordersService = {
   list: async (filters?: any, page: number = 1, limit: number = 100) => {
@@ -535,74 +611,7 @@ export const ordersService = {
         return Promise.reject(message);
       }
       const p: any = await res.json();
-      const opFields = resolveOperacaoFields(p);
-      const formaPagtoId = extractFormaPagtoId(p);
-      const prazoPagtoId = extractPrazoPagtoId(p);
-      const representanteId =
-        p?.representanteId ??
-        p?.representante_id ??
-        p?.forcaDeVendasId ??
-        p?.forca_de_venda_id ??
-        p?.forca_de_vendas_id ??
-        '';
-      const representanteCodigo = extractRepresentanteCodigo(p);
-      const clienteId = p?.clienteId ?? p?.cliente_id ?? p?.cliente ?? 0;
-      const clienteCodigo = extractClienteCodigo(p);
-      const order: Order = {
-        id: p?.id ?? p?.pedido_id ?? id,
-        data: p?.data ?? new Date().toISOString().split('T')[0],
-        operacao: opFields.descricao || opFields.codigo || '',
-        operacaoId: opFields.id,
-        operacaoCodigo: opFields.codigo,
-        operacaoDescricao: opFields.descricao,
-        clienteId: clienteId ?? 0,
-        clienteCodigo,
-        clienteNome: p?.clienteNome ?? p?.cliente_nome ?? '',
-        representanteId: representanteId ?? '',
-        representanteCodigo,
-        representanteNome:
-          p?.representanteNome ??
-          p?.representante_nome ??
-          p?.nome_representante ??
-          p?.forcaDeVendasNome ??
-          p?.forca_de_vendas_nome ??
-          p?.nome_forca_de_vendas ??
-          '',
-        tabela: p?.tabela ?? p?.tabela_preco ?? '',
-        formaPagamento: extractFormaPagtoDescricao(p) ?? '',
-        formaPagtoId,
-        prazo: extractPrazoDescricao(p) ?? '',
-        prazoPagtoId,
-        boleto: Boolean(p?.boleto ?? false),
-        rede: p?.rede ?? '',
-        especial: Boolean(p?.especial ?? false),
-        situacao: p?.situacao ?? p?.status ?? 'Pendentes',
-        numeroPedidoErp: p?.numeroPedidoErp ?? undefined,
-        dataEnvioErp: p?.dataEnvioErp ?? undefined,
-        valor: typeof p?.valor === 'number' ? p.valor : Number(p?.valor ?? p?.total ?? 0) || 0,
-        cancelado: Boolean(p?.cancelado ?? false),
-        faturado: Boolean(p?.faturado ?? false),
-        itens: normalizeItens(p),
-        totais: p?.totais ?? {
-          bruto: Number(p?.bruto ?? 0) || 0,
-          descontos: Number(p?.descontos ?? 0) || 0,
-          descontosPerc: Number(p?.descontosPerc ?? 0) || 0,
-          icmsRepasse: Number(p?.icmsRepasse ?? 0) || 0,
-          liquido: typeof p?.valor === 'number' ? p.valor : Number(p?.valor ?? p?.total ?? 0) || 0,
-        },
-        observacaoCliente: p?.observacaoCliente ?? '',
-        observacaoPedido: p?.observacaoPedido ?? '',
-        observacaoNF: p?.observacaoNF ?? '',
-        transmitido: Boolean(p?.transmitido ?? false),
-        clienteEndereco: textOrUndefined(p?.clienteEndereco ?? p?.cliente_endereco),
-        clienteNumero: textOrUndefined(p?.clienteNumero ?? p?.cliente_numero),
-        clienteComplemento: textOrUndefined(p?.clienteComplemento ?? p?.cliente_complemento),
-        clienteBairro: textOrUndefined(p?.clienteBairro ?? p?.cliente_bairro),
-        clienteCidade: textOrUndefined(p?.clienteCidade ?? p?.cliente_cidade),
-        clienteUf: textOrUndefined(p?.clienteUf ?? p?.cliente_uf ?? p?.clienteUF),
-        clienteCep: textOrUndefined(p?.clienteCep ?? p?.cliente_cep),
-      };
-      return order;
+      return mapOrderFromApi(p, id);
     } catch (e) {
       return Promise.reject('Erro de conexão com o servidor');
     }
@@ -736,7 +745,11 @@ export const ordersService = {
       } catch (e) {
         console.error('Falha ao reservar estoque para o pedido criado:', e);
       }
-      return created;
+      // Normaliza igual list()/getById() - a API devolve campos em
+      // snake_case (ex.: codigo_cliente) que o front espera em camelCase
+      // (clienteCodigo); sem isso, o pedido recém-criado entrava na grade
+      // sem código do cliente até a tela recarregar a lista completa.
+      return mapOrderFromApi(created);
     } catch (e) {
       // Fallback para mock em caso de ambiente offline
       const newOrder: Order = {
@@ -866,7 +879,8 @@ export const ordersService = {
         try { const err = await res.json(); message = err?.message || err?.error?.message || err?.error || message; } catch {}
         return Promise.reject(message);
       }
-      return res.json();
+      const updated = await res.json();
+      return mapOrderFromApi(updated, id);
     } catch (e) {
       // Fallback: atualiza mock local
       const index = pedidos.findIndex(p => p.id === id);

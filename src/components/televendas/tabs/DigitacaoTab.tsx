@@ -275,11 +275,10 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   }, []);
   const clampDesconto = useCallback(
     (valor: number, max?: number) => {
-      // Never allow negative discounts
-      if (valor < 0) {
-        toast.error('Desconto não pode ser negativo.');
-        return 0;
-      }
+      // Desconto negativo aumenta o preço acima do preço de tabela (preco =
+      // precoTabela * (1 - desconto/100)) — permitido a pedido de Alexander
+      // (antes bloqueava com "Desconto não pode ser negativo", impedindo
+      // digitar um preço maior que o da tabela).
       // Validação do desconto máximo (tabela de preço/escalonado) roda sempre
       // no formulário, além de ser reforçada pelo backend ao salvar — não
       // depende do parâmetro `bloqueia_desconto_acima_tabela`, que hoje não
