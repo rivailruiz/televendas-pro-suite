@@ -4,6 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MultiSelect } from '@/components/ui/multi-select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
@@ -311,7 +312,7 @@ const createEmptyAjusteGeralForm = () => ({
   b2bTabelaChecked: false,
   b2bTabelaId: '',
   tabelaPrecoChecked: false,
-  tabelaPrecoId: '',
+  tabelaPrecoIds: [] as string[],
   tabelaPrecoAcao: 'vincular' as 'vincular' | 'desvincular',
 });
 
@@ -1360,9 +1361,13 @@ export const ClientesTab = () => {
       if (id) data.b2bTabelaId = id;
     }
     if (ajusteGeralForm.tabelaPrecoChecked) {
-      const id = parseId(ajusteGeralForm.tabelaPrecoId, 'uma tabela de preços');
-      if (id) {
-        data.tabelaPrecoId = id;
+      const ids = ajusteGeralForm.tabelaPrecoIds
+        .map((value) => Number(value))
+        .filter((value) => Number.isFinite(value) && value > 0);
+      if (!ids.length) {
+        errors.push('Selecione ao menos uma tabela de preços.');
+      } else {
+        data.tabelaPrecoIds = ids;
         data.tabelaPrecoAcao = ajusteGeralForm.tabelaPrecoAcao;
       }
     }
@@ -3311,28 +3316,22 @@ const validateFormData = (data: ClientFormData): string[] => {
                     <SelectItem value="desvincular">Desvincular</SelectItem>
                   </SelectContent>
                 </Select>
-                <Select
-                  value={ajusteGeralForm.tabelaPrecoId || 'none'}
-                  onValueChange={(value) =>
+                <MultiSelect
+                  options={tabelas.map((tabela) => ({
+                    value: String(tabela.id),
+                    label: getTabelaLabel(tabela),
+                  }))}
+                  selected={ajusteGeralForm.tabelaPrecoIds}
+                  onChange={(values) =>
                     setAjusteGeralForm((prev) => ({
                       ...prev,
-                      tabelaPrecoId: value === 'none' ? '' : value,
+                      tabelaPrecoIds: values,
                     }))
                   }
-                  disabled={!ajusteGeralForm.tabelaPrecoChecked}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a tabela" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Selecione</SelectItem>
-                    {tabelas.map((tabela) => (
-                      <SelectItem key={String(tabela.id)} value={String(tabela.id)}>
-                        {getTabelaLabel(tabela)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder="Selecione a(s) tabela(s)"
+                  searchPlaceholder="Buscar tabela..."
+                  className={!ajusteGeralForm.tabelaPrecoChecked ? 'pointer-events-none opacity-50' : ''}
+                />
               </div>
             </div>
           </div>

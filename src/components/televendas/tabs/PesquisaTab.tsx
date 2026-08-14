@@ -443,6 +443,15 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
     setEmailOrder(order);
     setEmailTo('');
     setEmailCc('');
+    clientsService
+      .getById(order.clienteId)
+      .then((client) => {
+        const email = client?.email || client?.emailDanfe;
+        if (email) setEmailTo(email);
+      })
+      .catch(() => {
+        // sem email cadastrado ou falha ao buscar: input continua vazio, usuário digita manualmente
+      });
   };
 
   const handleSendEmail = async () => {
@@ -458,7 +467,13 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
       .filter(Boolean);
     setSendingEmail(true);
     try {
-      await ordersService.sendEmail(emailOrder.id, { to, cc: cc.length ? cc : undefined });
+      // Mesmo HTML/dados da impressao (printOrder mais abaixo) - o backend
+      // renderiza esse HTML com Puppeteer, entao o PDF anexado no email
+      // fica identico ao gerado pelo botao Imprimir, nao uma segunda
+      // implementacao separada.
+      const parcelas = await ordersService.getParcelas(emailOrder.id).catch(() => [] as OrderParcela[]);
+      const html = buildPrintableHtml(emailOrder, parcelas);
+      await ordersService.sendEmail(emailOrder.id, { to, cc: cc.length ? cc : undefined, html });
       toast.success(`Pedido ${emailOrder.id} enviado por e-mail para ${to}`);
       setEmailOrder(null);
     } catch (error: any) {
@@ -757,6 +772,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
           <div>Operação: ${opLabel ?? ''}</div>
           <div>Força de Vendas: ${representanteLabel}</div>
           <div>Endereço: ${formatEnderecoCliente(order) || '-'}</div>
+          <div>Telefone: ${order.clienteTelefone || '-'}</div>
           <div>Forma de pagamento: ${order.formaPagamento || '-'}</div>
           <div>Prazo: ${order.prazo || '-'}</div>
         </div>
@@ -1412,6 +1428,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                 <div>Operação: {formatOperacao(previewOrder)}</div>
                 <div>Força de Vendas: {previewRepresentanteCodigo ? `${previewRepresentanteCodigo} - ` : ''}{previewOrder.representanteNome}</div>
                 <div>Endereço: {formatEnderecoCliente(previewOrder) || '-'}</div>
+                <div>Telefone: {previewOrder.clienteTelefone || '-'}</div>
                 <div>Forma de pagamento: {previewOrder.formaPagamento || '-'}</div>
                 <div>Prazo: {previewOrder.prazo || '-'}</div>
               </div>

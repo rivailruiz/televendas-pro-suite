@@ -77,6 +77,7 @@ export interface Order {
   clienteCidade?: string;
   clienteUf?: string;
   clienteCep?: string;
+  clienteTelefone?: string;
 }
 
 const firstNonEmpty = (...values: any[]): string | null => {
@@ -427,6 +428,7 @@ const mapOrderFromApi = (p: any, fallbackId?: number | string): Order => {
     clienteCidade: textOrUndefined(p?.clienteCidade ?? p?.cliente_cidade),
     clienteUf: textOrUndefined(p?.clienteUf ?? p?.cliente_uf ?? p?.clienteUF),
     clienteCep: textOrUndefined(p?.clienteCep ?? p?.cliente_cep),
+    clienteTelefone: textOrUndefined(p?.clienteTelefone ?? p?.cliente_telefone),
   };
 };
 
@@ -548,6 +550,7 @@ export const ordersService = {
           clienteCidade: textOrUndefined(p?.clienteCidade ?? p?.cliente_cidade),
           clienteUf: textOrUndefined(p?.clienteUf ?? p?.cliente_uf ?? p?.clienteUF),
           clienteCep: textOrUndefined(p?.clienteCep ?? p?.cliente_cep),
+          clienteTelefone: textOrUndefined(p?.clienteTelefone ?? p?.cliente_telefone),
         };
       });
 
@@ -973,7 +976,14 @@ export const ordersService = {
     return ordersService.getById(id);
   },
 
-  sendEmail: async (id: number, payload: { to: string; cc?: string[] }): Promise<void> => {
+  sendEmail: async (
+    id: number,
+    // html: mesmo HTML gerado por buildPrintableHtml (PesquisaTab.tsx) -
+    // o backend renderiza ele com Puppeteer pra anexar exatamente o mesmo
+    // PDF que o botao Imprimir produziria, em vez de montar um PDF
+    // separado (ver mail.service.ts).
+    payload: { to: string; cc?: string[]; html: string },
+  ): Promise<void> => {
     const empresa = authService.getEmpresa();
     if (!empresa) return Promise.reject('Empresa não selecionada');
     const url = `${API_BASE}/api/pedidos/${encodeURIComponent(id)}/email?empresaId=${encodeURIComponent(empresa.empresa_id)}`;

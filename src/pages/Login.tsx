@@ -377,9 +377,6 @@ const Login = () => {
                     Registre-se
                   </Link>
                 </div>
-                <div className="text-xs text-center text-muted-foreground">
-                  Exemplo: usuário <strong>vend1@tecdisa.com</strong> / senha <strong>admin123</strong>
-                </div>
               </div>
             )}
           </form>

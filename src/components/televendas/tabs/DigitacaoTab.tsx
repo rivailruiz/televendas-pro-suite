@@ -203,6 +203,27 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   const [prazos, setPrazos] = useState<PrazoPagto[]>([]);
   const [loadingPrazos, setLoadingPrazos] = useState(false);
   const [prazosError, setPrazosError] = useState<string | null>(null);
+  // Prazo de pagamento cadastrado no cliente selecionado (não o prazo do
+  // pedido em digitação, que pode ser trocado pelo usuário) — usado como
+  // teto pra liberar só prazos com prazo médio menor ou igual ao dele.
+  const [clientePrazoPagtoId, setClientePrazoPagtoId] = useState<string | number | null>(null);
+  const clientePrazoMedioMax = useMemo(() => {
+    if (clientePrazoPagtoId == null) return undefined;
+    const prazoCliente = prazos.find((p) => String(p.id) === String(clientePrazoPagtoId));
+    return prazoCliente && typeof prazoCliente.prazoMedio === 'number' && prazoCliente.prazoMedio > 0
+      ? prazoCliente.prazoMedio
+      : undefined;
+  }, [prazos, clientePrazoPagtoId]);
+  const prazosDisponiveis = useMemo(() => {
+    if (typeof clientePrazoMedioMax !== 'number') return prazos;
+    return prazos.filter(
+      (p) =>
+        // prazoMedio 0/ausente = sem limite definido pra esse prazo, não trava
+        !p.prazoMedio ||
+        p.prazoMedio <= clientePrazoMedioMax ||
+        String(p.descricao) === String(formData.prazo),
+    );
+  }, [prazos, clientePrazoMedioMax, formData.prazo]);
 
   const [clientSearchOpen, setClientSearchOpen] = useState(false);
   const [clientInfoOpen, setClientInfoOpen] = useState(false);
@@ -239,10 +260,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   const sessionRepresentante = useMemo(() => {
     const session = authService.getSession();
     const p = session?.payload;
-    const isForcaDeVendas =
-      p?.user?.forca_de_vendas === true ||
-      Boolean(p?.user?.usuario_empresa_id);
-    if (!isForcaDeVendas && isAdmin) return null;
+    if (isAdmin) return null;
     const id =
       p?.user?.usuario_empresa_id ??
       p?.usuario_empresa_id ??
@@ -1073,6 +1091,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       prazo: '',
       prazoPagtoId: client.prazoPagtoId ?? '',
     }));
+    setClientePrazoPagtoId(client.prazoPagtoId ?? null);
     // Se o cliente não trouxe representante, tenta buscar detalhes para preencher automaticamente
     if (!repIdFromClient) {
       clientsService.getDetail(client.id).then((detail) => {
@@ -2120,6 +2139,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                                     clienteId: 0,
                                     clienteNome: '',
                                   });
+                                  setClientePrazoPagtoId(null);
                                   setRepSearchOpen(false);
                                   setRepSearch('');
                                 }}
@@ -2379,7 +2399,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                   <SelectValue placeholder={loadingPrazos ? 'Carregando...' : prazosError ? 'Erro ao carregar' : 'Selecione'} />
                 </SelectTrigger>
                 <SelectContent>
-                  {prazos?.map((p) => (
+                  {prazosDisponiveis?.map((p) => (
                     <SelectItem key={`${p.id}-${p.codigo || p.descricao}`} value={String(p.descricao)}>
                       {p.descricao}
                     </SelectItem>
@@ -2388,6 +2408,9 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
               </Select>
               {typeof prazoMax === 'number' && (
                 <p className="text-xs text-muted-foreground mt-1">Prazo máximo permitido pela tabela: {prazoMax} dias</p>
+              )}
+              {typeof clientePrazoMedioMax === 'number' && (
+                <p className="text-xs text-muted-foreground mt-1">Prazo médio liberado para o cliente: {clientePrazoMedioMax} dias</p>
               )}
               {selectedPrazoPagamento?.prazoNegociado && (
                 <div className="mt-1 flex items-center gap-2">
@@ -2579,8 +2602,12 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
             <div>
               <label className="text-sm font-medium mb-2 flex items-center gap-1.5">
                 %Desc
-                {newItem.hasEscala && newItem.escalaTiers && newItem.escalaTiers.length > 0 && (
+                {newItem.hasEscala && newItem.escalaTiers && newItem.escalaTiers.length > 0 ? (
                   <EscalaBadge tiers={newItem.escalaTiers} />
+                ) : (
+                  <span className="text-xs font-normal text-muted-foreground">
+                    (Máx: {formatMoneyInput(resolveEffectiveMaxDesconto(newItem, newItem.quant || 0), 2)}%)
+                  </span>
                 )}
               </label>
               <Input
@@ -2773,6 +2800,14 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                         }}
                       />
                       <span className="text-xs text-muted-foreground">%</span>
+                      {!item.hasEscala && (
+                        <span
+                          className="text-xs text-muted-foreground whitespace-nowrap"
+                          title="Desconto máximo permitido para este item nesta tabela"
+                        >
+                          (Máx: {formatMoneyInput(resolveEffectiveMaxDesconto(item, item.quant || 0), 2)}%)
+                        </span>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
