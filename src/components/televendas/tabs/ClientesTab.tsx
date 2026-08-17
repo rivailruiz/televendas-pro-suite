@@ -2979,7 +2979,7 @@ const validateFormData = (data: ClientFormData): string[] => {
                     <SelectItem value="none">Selecione</SelectItem>
                     {prazos.map((prazo) => (
                       <SelectItem key={String(prazo.id)} value={String(prazo.id)}>
-                        {prazo.codigo ? `${prazo.codigo} - ${prazo.descricao}` : prazo.descricao}
+                        {prazo.descricao}
                       </SelectItem>
                     ))}
                   </SelectContent>

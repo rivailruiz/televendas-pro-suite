@@ -20,6 +20,7 @@ import {
   LayoutDashboard,
   UserRoundCog,
   ShieldCheck,
+  Workflow,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -66,6 +67,7 @@ const baseNavGroups: NavGroup[] = [
       { title: 'Fornecedores', tab: 'fornecedores', icon: Truck },
       { title: 'Força de Vendas', tab: 'representantes', icon: UserCheck },
       { title: 'Usuarios', tab: 'usuarios', icon: UserRoundCog },
+      { title: 'Operações', tab: 'operacoes', icon: Workflow },
       {
         title: 'Produtos',
         icon: Package,

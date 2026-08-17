@@ -1,6 +1,7 @@
 import { authService } from '@/services/authService';
 import { API_BASE } from '@/utils/env';
 import { apiClient } from '@/utils/apiClient';
+import { calcularPrazoMedio } from '@/utils/format';
 
 export interface Operacao {
   id: number | string;
@@ -407,7 +408,15 @@ export const metadataService = {
         const descricao = raw?.descricao_prazo_pagto ?? raw?.descricao ?? '';
         const pedidoMinimo = Number(raw?.pedido_minimo ?? 0) || 0;
         const comissao = Number(raw?.comissao ?? 0) || 0;
-        const prazoMedio = Number(raw?.prazo_medio ?? 0) || 0;
+        const numeroParcelas = Number(raw?.numero_de_parcelas ?? 0) || 0;
+        // prazo_medio (coluna no banco) quase nunca vem preenchido - dado
+        // legado/import. O que o usuário vê e cadastra de fato em Cadastro
+        // de Prazos é calculado a partir de prazos_em_dias/numero_de_parcelas
+        // (ver calcularPrazoMedio em utils/format.ts), então esse calculado
+        // é a fonte usada aqui - senão o filtro por prazo médio na Digitação
+        // de Pedido nunca bate com o que a tela de Cadastro de Prazos mostra.
+        const prazoMedioCalculado = calcularPrazoMedio(raw?.prazos_em_dias, numeroParcelas);
+        const prazoMedio = prazoMedioCalculado || Number(raw?.prazo_medio ?? 0) || 0;
         const dias = Array.isArray(raw?.prazos_em_dias) ? raw.prazos_em_dias.map((n: any) => Number(n)).filter((n: any) => Number.isFinite(n)) : undefined;
         return {
           id: typeof id === 'number' ? id : String(id || '').trim(),
@@ -417,7 +426,7 @@ export const metadataService = {
           somenteCartao: Boolean(raw?.somente_cartao ?? false),
           prazoNegociado: Boolean(raw?.prazo_negociado ?? false),
           formaPagtoId: raw?.forma_pagto_id ?? null,
-          numeroParcelas: Number(raw?.numero_de_parcelas ?? 0) || 0,
+          numeroParcelas,
           prazosEmDias: dias,
           pedidoMinimo,
           prazoMedio,
@@ -426,6 +435,10 @@ export const metadataService = {
         };
       };
       const mapped = arr.map(normalize).filter((p) => String(p.descricao || '').trim().length > 0 && !p.inativo);
+      // Ordenado por descricao (igual ao Cadastro de Prazos) - usado tambem
+      // na Digitacao de Pedido, Editar Cliente e Ajuste Geral, que hoje
+      // mostram os prazos na ordem crua do banco.
+      mapped.sort((a, b) => a.descricao.localeCompare(b.descricao, 'pt-BR', { sensitivity: 'base' }));
       return mapped;
     } catch (e) {
       return Promise.reject('Erro de conexão com o servidor');

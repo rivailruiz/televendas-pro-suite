@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { authService, getEmpresaDisplayName } from '@/services/authService';
 import { usersService, type UsuarioPermissao } from '@/services/usersService';
 import { Button } from '@/components/ui/button';
-import { LogOut, Search, FileText, Route, ClipboardList, Users, Truck, Layers, Grid3X3, UserCheck, Network, Clock, Target, CreditCard, Menu, LayoutDashboard, Package, MapPinned, Building2, UserRoundCog, User, ShieldCheck, FileBarChart2 } from 'lucide-react';
+import { LogOut, Search, FileText, Route, ClipboardList, Users, Truck, Layers, Grid3X3, UserCheck, Network, Clock, Target, CreditCard, Menu, LayoutDashboard, Package, MapPinned, Building2, UserRoundCog, User, ShieldCheck, FileBarChart2, Workflow } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import {
   DashboardTab,
@@ -34,6 +34,7 @@ import {
   ListaConfiguravelTab,
   AdminTab,
   RelatorioEscalaTab,
+  OperacoesTab,
 } from '@/components/televendas/tabs';
 import { DigitacaoModal } from '@/components/televendas/overlays';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -54,6 +55,7 @@ const pageTitles: Record<string, { title: string; icon: React.ComponentType<{ cl
   fornecedores: { title: 'Cadastro de Fornecedores', icon: Truck },
   representantes: { title: 'Cadastro de Força de Vendas', icon: UserCheck },
   usuarios: { title: 'Cadastro de Usuarios', icon: UserRoundCog },
+  operacoes: { title: 'Operações', icon: Workflow },
   cidades: { title: 'Cadastro de Cidades', icon: MapPinned },
   grupos: { title: 'Grupos de Produtos', icon: Layers },
   divisoes: { title: 'Divisões de Produtos', icon: Grid3X3 },
@@ -86,6 +88,7 @@ const TAB_TO_FUNCAO: Record<string, string | null> = {
   fornecedores: 'FORNECEDORES',
   representantes: 'FORCA_DE_VENDAS',
   usuarios: 'USUARIOS',
+  operacoes: 'OPERACOES',
   cidades: 'CIDADES',
   grupos: 'GRUPOS',
   divisoes: 'DIVISOES',
@@ -263,6 +266,8 @@ const Televendas = () => {
         return <ErrorBoundary><RepresentantesTab /></ErrorBoundary>;
       case 'usuarios':
         return <ErrorBoundary><UsuariosTab /></ErrorBoundary>;
+      case 'operacoes':
+        return <ErrorBoundary><OperacoesTab /></ErrorBoundary>;
       case 'cidades':
         return <ErrorBoundary><CidadesTab /></ErrorBoundary>;
       case 'grupos':

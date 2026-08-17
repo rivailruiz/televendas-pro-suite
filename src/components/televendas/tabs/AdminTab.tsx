@@ -48,6 +48,10 @@ export function AdminTab() {
   const [empresaSearch, setEmpresaSearch] = useState('');
   const [loadingEmpresas, setLoadingEmpresas] = useState(false);
   const [selectedEmpresa, setSelectedEmpresa] = useState<AdminEmpresa | null>(null);
+  // Filtra a lista de empresas pra mostrar so a matriz escolhida + suas
+  // filiais - resolve a reclamacao de nao dar pra saber quem e matriz/filial
+  // de quem sem abrir empresa por empresa pra editar e conferir.
+  const [filtroMasterId, setFiltroMasterId] = useState<number | null>(null);
 
   const [usuarios, setUsuarios] = useState<EmpresaUsuario[]>([]);
   const [usuarioSearch, setUsuarioSearch] = useState('');
@@ -321,6 +325,7 @@ export function AdminTab() {
 
   const handleEmpresaSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    setFiltroMasterId(null);
     loadEmpresas();
   };
 
@@ -428,6 +433,25 @@ export function AdminTab() {
     }
   };
 
+  const empresaById = new Map(empresas.map((e) => [e.empresa_id, e]));
+  const filiaisPorMaster = new Map<number, AdminEmpresa[]>();
+  for (const e of empresas) {
+    // empresa_master_id apontando pra si mesma e um padrao existente no
+    // banco (equivalente a "sem master" - resolveEmpresaCadastroId no
+    // backend trata os dois casos igual), nao uma filial de si mesma.
+    if (!e.empresa_master_id || e.empresa_master_id === e.empresa_id) continue;
+    const arr = filiaisPorMaster.get(e.empresa_master_id) ?? [];
+    arr.push(e);
+    filiaisPorMaster.set(e.empresa_master_id, arr);
+  }
+
+  const empresaFiltrada = filtroMasterId != null ? empresaById.get(filtroMasterId) : null;
+  const visibleEmpresas = filtroMasterId == null
+    ? empresas
+    : empresas.filter(
+        (e) => e.empresa_id === filtroMasterId || e.empresa_master_id === filtroMasterId,
+      );
+
   return (
     <div className="flex flex-col lg:flex-row gap-4 items-start">
       {/* Left panel: empresa list */}
@@ -459,17 +483,36 @@ export function AdminTab() {
               {loadingEmpresas ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
             </Button>
           </form>
+          {empresaFiltrada && (
+            <div className="flex items-center justify-between gap-1 mt-1.5 px-1.5 py-1 rounded-md bg-primary/10 text-primary text-[10px]">
+              <span className="truncate">
+                Filiais de <strong>{empresaFiltrada.fantasia || empresaFiltrada.razao_social}</strong>
+              </span>
+              <button
+                type="button"
+                className="shrink-0 underline"
+                onClick={() => setFiltroMasterId(null)}
+              >
+                Limpar
+              </button>
+            </div>
+          )}
         </CardHeader>
         <CardContent className="px-2 pb-2 max-h-[60vh] lg:max-h-[calc(100vh-260px)] overflow-y-auto">
           {loadingEmpresas && !empresas.length ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
-          ) : empresas.length === 0 ? (
+          ) : visibleEmpresas.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-8">Nenhuma empresa encontrada</p>
           ) : (
             <ul className="space-y-0.5">
-              {empresas.map((e) => (
+              {visibleEmpresas.map((e) => {
+                const filiais = filiaisPorMaster.get(e.empresa_id) ?? [];
+                const master = e.empresa_master_id && e.empresa_master_id !== e.empresa_id
+                  ? empresaById.get(e.empresa_master_id)
+                  : null;
+                return (
                 <li key={e.empresa_id}>
                   <div className={cn(
                     'flex items-center gap-1 px-2 py-1.5 rounded-md text-xs transition-colors',
@@ -477,6 +520,7 @@ export function AdminTab() {
                       ? 'bg-primary/10 text-primary'
                       : 'hover:bg-muted text-foreground',
                     e.inativo && 'opacity-60',
+                    Boolean(e.empresa_master_id) && e.empresa_master_id !== e.empresa_id && filtroMasterId != null && 'ml-3',
                   )}>
                     <button onClick={() => handleEmpresaSelect(e)} className="flex-1 text-left min-w-0">
                       <div className="flex items-center gap-1.5 min-w-0">
@@ -485,16 +529,32 @@ export function AdminTab() {
                           <Badge variant="destructive" className="text-[9px] px-1 py-0 h-3.5 shrink-0">Inativa</Badge>
                         )}
                       </div>
-                      <div className="flex items-center justify-between mt-0.5">
+                      <div className="flex items-center justify-between mt-0.5 gap-1">
                         <span className="text-muted-foreground truncate text-[10px]">
                           #{e.empresa_id} · {e.uf} · {e.cnpj_cpf}
                         </span>
-                        {!e.inativo && (
-                          <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 ml-1 shrink-0">
-                            {e.total_usuarios}
-                          </Badge>
-                        )}
+                        <div className="flex items-center gap-1 shrink-0">
+                          {master && (
+                            <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5">
+                              Filial de {master.fantasia || master.razao_social}
+                            </Badge>
+                          )}
+                          {!e.inativo && (
+                            <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 shrink-0">
+                              {e.total_usuarios}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
+                      {filiais.length > 0 && (
+                        <button
+                          type="button"
+                          className="mt-0.5 text-[10px] text-primary underline"
+                          onClick={(ev) => { ev.stopPropagation(); setFiltroMasterId(e.empresa_id); }}
+                        >
+                          Matriz · ver {filiais.length} {filiais.length === 1 ? 'filial' : 'filiais'}
+                        </button>
+                      )}
                     </button>
                     <Button
                       variant="ghost" size="icon"
@@ -514,7 +574,8 @@ export function AdminTab() {
                     </Button>
                   </div>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           )}
         </CardContent>

@@ -43,6 +43,8 @@ export interface Order {
   representanteId: string;
   representanteCodigo?: string;
   representanteNome: string;
+  representanteTelefone?: string;
+  representanteWhatsapp?: string;
   tabela: string;
   formaPagamento: string;
   formaPagtoId?: number | string;
@@ -395,6 +397,8 @@ const mapOrderFromApi = (p: any, fallbackId?: number | string): Order => {
       p?.forca_de_vendas_nome ??
       p?.nome_forca_de_vendas ??
       '',
+    representanteTelefone: textOrUndefined(p?.representanteTelefone ?? p?.representante_telefone),
+    representanteWhatsapp: textOrUndefined(p?.representanteWhatsapp ?? p?.representante_whatsapp),
     tabela: p?.tabela ?? p?.tabela_preco ?? '',
     formaPagamento: extractFormaPagtoDescricao(p) ?? '',
     formaPagtoId,
@@ -517,6 +521,8 @@ export const ordersService = {
             p?.forca_de_vendas_nome ??
             p?.nome_forca_de_vendas ??
             'FORÇA DE VENDAS',
+          representanteTelefone: textOrUndefined(p?.representanteTelefone ?? p?.representante_telefone),
+          representanteWhatsapp: textOrUndefined(p?.representanteWhatsapp ?? p?.representante_whatsapp),
           tabela: p?.tabela ?? p?.tabela_preco ?? 'TABELA 01',
           formaPagamento: extractFormaPagtoDescricao(p) ?? 'BOLETO BANCARIO',
           formaPagtoId,

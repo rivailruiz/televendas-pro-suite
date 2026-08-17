@@ -48,7 +48,10 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   const ORDER_LIMIT = 100;
   const { orders, selectedOrders, setOrders, toggleOrderSelection, clearSelection, setCurrentOrder, setOrderToDuplicate } = useStore();
   
-  // Recupera filtros de data salvos ou usa data de hoje
+  // Recupera o inicio do periodo salvo, mas o fim sempre volta pro dia
+  // atual - o usuario pode ter deixado salvo um "ate" antigo numa busca
+  // anterior (ex: pesquisando um pedido velho) e isso escondia pedidos
+  // recentes na proxima vez que abria a tela.
   const getSavedDateFilters = () => {
     try {
       const saved = localStorage.getItem('pesquisa-date-filters');
@@ -56,7 +59,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
         const parsed = JSON.parse(saved);
         return {
           dataInicio: parsed.dataInicio || today,
-          dataFim: parsed.dataFim || today,
+          dataFim: today,
         };
       }
     } catch (e) {
@@ -693,9 +696,16 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
     const codigoCliente = formatClienteCodigo(order);
     const clienteCodigoLabel = codigoCliente ? ` (Cód.: ${codigoCliente})` : '';
     const repCodigo = formatRepresentanteCodigo(order);
-    const representanteLabel = repCodigo
+    const representanteContato = [
+      order.representanteTelefone ? `Tel: ${order.representanteTelefone}` : '',
+      order.representanteWhatsapp ? `WhatsApp: ${order.representanteWhatsapp}` : '',
+    ].filter(Boolean).join(' / ');
+    const representanteLabelBase = repCodigo
       ? `${repCodigo} - ${order.representanteNome ?? ''}`
       : (order.representanteNome ?? '');
+    const representanteLabel = representanteContato
+      ? `${representanteLabelBase} (${representanteContato})`
+      : representanteLabelBase;
     const formatCodigoProduto = (it: any) =>
       it?.codigoProduto ?? it?.codigo_produto ?? it?.produto_codigo ?? '';
     const formatCodigoTabela = (it: any) =>
@@ -845,10 +855,10 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
               onChange={(e) => {
                 const newFilters = { ...filters, dataInicio: e.target.value };
                 setFilters(newFilters);
-                // Salva filtros de data no localStorage
+                // So o inicio do periodo e lembrado entre sessoes - o fim
+                // sempre volta pro dia atual no proximo carregamento.
                 localStorage.setItem('pesquisa-date-filters', JSON.stringify({
                   dataInicio: newFilters.dataInicio,
-                  dataFim: newFilters.dataFim,
                 }));
               }}
             />
@@ -860,11 +870,6 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
               onChange={(e) => {
                 const newFilters = { ...filters, dataFim: e.target.value };
                 setFilters(newFilters);
-                // Salva filtros de data no localStorage
-                localStorage.setItem('pesquisa-date-filters', JSON.stringify({
-                  dataInicio: newFilters.dataInicio,
-                  dataFim: newFilters.dataFim,
-                }));
               }}
             />
           </div>
@@ -1426,7 +1431,17 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                 <div>Data: {formatDate(previewOrder.data)}</div>
                 <div>Cliente: {previewOrder.clienteNome}{previewClienteCodigo ? ` (Cód.: ${previewClienteCodigo})` : ''}</div>
                 <div>Operação: {formatOperacao(previewOrder)}</div>
-                <div>Força de Vendas: {previewRepresentanteCodigo ? `${previewRepresentanteCodigo} - ` : ''}{previewOrder.representanteNome}</div>
+                <div>
+                  Força de Vendas: {previewRepresentanteCodigo ? `${previewRepresentanteCodigo} - ` : ''}{previewOrder.representanteNome}
+                  {(previewOrder.representanteTelefone || previewOrder.representanteWhatsapp) && (
+                    <span className="text-muted-foreground">
+                      {' '}({[
+                        previewOrder.representanteTelefone ? `Tel: ${previewOrder.representanteTelefone}` : '',
+                        previewOrder.representanteWhatsapp ? `WhatsApp: ${previewOrder.representanteWhatsapp}` : '',
+                      ].filter(Boolean).join(' / ')})
+                    </span>
+                  )}
+                </div>
                 <div>Endereço: {formatEnderecoCliente(previewOrder) || '-'}</div>
                 <div>Telefone: {previewOrder.clienteTelefone || '-'}</div>
                 <div>Forma de pagamento: {previewOrder.formaPagamento || '-'}</div>

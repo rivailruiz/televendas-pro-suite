@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { prazosPagamentosService, PrazoPagamento, PrazoPagamentoFormData } from '@/services/prazosPagamentosService';
 import { metadataService, type FormaPagamento as MetadataFormaPagamento } from '@/services/metadataService';
 import { useModuleCrudPermission } from '@/hooks/use-module-crud-permission';
+import { calcularPrazoMedio } from '@/utils/format';
 
 const toUpperValue = (value: string | number | null | undefined) => String(value ?? '').toUpperCase();
 
@@ -275,18 +276,6 @@ export function PrazosPagamentosTab() {
 
   const isInitialLoading = loading && prazos.length === 0;
   const isLoadingMore = loading && prazos.length > 0;
-
-  const calcularPrazoMedio = (prazosEmDias?: string | number | null, numParcelas?: number | null): string => {
-    if (prazosEmDias == null || !numParcelas || numParcelas <= 0) return '-';
-    const prazosStr = String(prazosEmDias);
-    const dias = prazosStr
-      .split(/[,;/\s]+/)
-      .map((d) => parseInt(d.trim(), 10))
-      .filter((n) => !isNaN(n) && n >= 0);
-    if (dias.length === 0) return '-';
-    const soma = dias.reduce((acc, d) => acc + d, 0);
-    return String(Math.round(soma / numParcelas));
-  };
 
   const handleListScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const el = e.currentTarget;
@@ -552,7 +541,7 @@ export function PrazosPagamentosTab() {
                         <TableCell className="font-medium">{p.descricao_prazo_pagto}</TableCell>
                         <TableCell className="hidden md:table-cell">{p.numero_de_parcelas || '-'}</TableCell>
                         <TableCell className="hidden lg:table-cell text-xs">{p.prazos_em_dias || '-'}</TableCell>
-                        <TableCell className="hidden md:table-cell text-xs">{calcularPrazoMedio(p.prazos_em_dias, p.numero_de_parcelas)}</TableCell>
+                        <TableCell className="hidden md:table-cell text-xs">{calcularPrazoMedio(p.prazos_em_dias, p.numero_de_parcelas) || '-'}</TableCell>
                         <TableCell className="hidden xl:table-cell">{p.avista ? 'Sim' : 'Não'}</TableCell>
                         <TableCell>
                           <span className={`text-xs px-2 py-0.5 rounded ${p.inativo ? 'bg-destructive/10 text-destructive' : 'bg-green-500/10 text-green-600'}`}>

@@ -24,6 +24,7 @@ const Register = () => {
   const [nome, setNome] = useState('');
   const [usuario, setUsuario] = useState('');
   const [email, setEmail] = useState('');
+  const [confirmarEmail, setConfirmarEmail] = useState('');
   const [telefone, setTelefone] = useState('');
   const [cnpjCpf, setCnpjCpf] = useState('');
   const [senha, setSenha] = useState('');
@@ -33,6 +34,10 @@ const Register = () => {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
+    if (email.trim().toLowerCase() !== confirmarEmail.trim().toLowerCase()) {
+      toast.error('Os e-mails nao conferem');
+      return;
+    }
     if (senha !== confirmarSenha) {
       toast.error('As senhas nao conferem');
       return;
@@ -122,6 +127,18 @@ const Register = () => {
                 placeholder="Digite seu e-mail"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmarEmail">Confirmar e-mail</Label>
+              <Input
+                id="confirmarEmail"
+                type="email"
+                placeholder="Repita seu e-mail"
+                value={confirmarEmail}
+                onChange={(e) => setConfirmarEmail(e.target.value)}
                 required
               />
             </div>

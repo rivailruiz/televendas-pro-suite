@@ -12,6 +12,7 @@ export { CidadesTab } from './CidadesTab';
 export { GruposTab } from './GruposTab';
 export { DivisoesTab } from './DivisoesTab';
 export { RedesTab } from './RedesTab';
+export { OperacoesTab } from './OperacoesTab';
 export { PrazosPagamentosTab } from './PrazosPagamentosTab';
 export { FormasPagamentoTab } from './FormasPagamentoTab';
 export { SegmentosVendasTab } from './SegmentosVendasTab';
