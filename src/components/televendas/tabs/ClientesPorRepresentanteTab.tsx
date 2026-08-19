@@ -337,7 +337,12 @@ export function ClientesPorRepresentanteTab() {
       let currentPage = 1;
       const all: Client[] = [];
       while (true) {
-        const batch = await clientsService.search(searchFilters, undefined, currentPage, PAGE_SIZE);
+        // searchCadastro (nao search): a busca de importacao precisa enxergar todos
+        // os clientes da empresa pra poder atribui-los a um representante, mesmo
+        // quando quem esta importando e o proprio um representante (forca de vendas
+        // nao-admin) — usar `search` aqui restringia a busca a carteira do usuario
+        // logado, fazendo a importacao nunca trazer clientes fora da propria carteira.
+        const batch = await clientsService.searchCadastro(searchFilters, undefined, currentPage, PAGE_SIZE);
         all.push(...batch);
         if (batch.length < PAGE_SIZE) break;
         currentPage++;
