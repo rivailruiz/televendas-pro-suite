@@ -99,13 +99,13 @@ const TAB_TO_FUNCAO: Record<string, string | null> = {
   rotas: 'ROTAS_CLIENTES',
   produtos: 'PRODUTOS',
   estoques: 'ESTOQUES',
-  'tabelas-preco': null,
-  'ajuste-linear-preco': null,
-  'lista-tabela-preco': null,
-  'lista-configuravel': null,
-  'comparacao-tabelas': null,
+  'tabelas-preco': 'TABELAS_PRECO',
+  'ajuste-linear-preco': 'TABELAS_PRECO',
+  'lista-tabela-preco': 'TABELAS_PRECO',
+  'lista-configuravel': 'TABELAS_PRECO',
+  'comparacao-tabelas': 'TABELAS_PRECO',
   'admin': null,
-  'relatorio-escala': null,
+  'relatorio-escala': 'TABELAS_PRECO',
 };
 
 function normalizeFuncaoKey(value: string | null | undefined): string {
