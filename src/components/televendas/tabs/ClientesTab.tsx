@@ -465,7 +465,6 @@ export const ClientesTab = () => {
   const clientsRequestId = useRef(0);
   const [filters, setFilters] = useState<ClientListFilters>(() => ({
     ...defaultClientFilters,
-    representanteId: sessionRepresentante?.id || defaultClientFilters.representanteId,
   }));
   const [dialogOpen, setDialogOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(() => {
@@ -1141,13 +1140,10 @@ export const ClientesTab = () => {
       formaPagtoId: active.formaPagto !== 'all' ? Number(active.formaPagto) : undefined,
       prazoPagtoId: active.prazoPagto !== 'all' ? Number(active.prazoPagto) : undefined,
       tabelaPrecoId: active.tabelaPreco !== 'all' ? String(active.tabelaPreco) : undefined,
-      // Representante (não-admin) sempre travado no próprio, mesmo que o
-      // filtro em memória tenha sido alterado por algum outro fluxo.
-      representanteId: sessionRepresentante
-        ? sessionRepresentante.id
-        : active.representanteId !== 'all'
-        ? active.representanteId
-        : undefined,
+      // Cadastro de Clientes é tela administrativa: mostra todos os clientes
+      // da empresa mesmo pra usuario que também é força de vendas (a trava
+      // "só meus clientes" fica só na Digitação de Pedido).
+      representanteId: active.representanteId !== 'all' ? active.representanteId : undefined,
       rotaId: active.rota !== 'all' ? Number(active.rota) : undefined,
       redeId: active.rede !== 'all' ? Number(active.rede) : undefined,
       naoPositivadoDesde: active.naoPositivadoDesde || undefined,
@@ -2037,10 +2033,7 @@ const validateFormData = (data: ClientFormData): string[] => {
                 variant="outline"
                 className="w-full min-h-11 rounded-lg md:min-h-10 md:rounded-md"
                 onClick={() => {
-                  const next = {
-                    ...defaultClientFilters,
-                    representanteId: sessionRepresentante?.id || defaultClientFilters.representanteId,
-                  };
+                  const next = { ...defaultClientFilters };
                   setFilters(next);
                   setFilterCidades([]);
                   loadClients(next, true);
@@ -2260,7 +2253,6 @@ const validateFormData = (data: ClientFormData): string[] => {
               <Select
                 value={filters.representanteId}
                 onValueChange={(v) => setFilters({ ...filters, representanteId: v })}
-                disabled={!!sessionRepresentante}
               >
                 <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
                 <SelectContent>
