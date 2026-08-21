@@ -185,6 +185,9 @@ export function OperacoesTab() {
   const tipoDescricao = (tipoOperacaoId: string) =>
     tiposAdsErp.find((t) => t.tipo_operacao_id === tipoOperacaoId)?.descricao_tipo_operacao || tipoOperacaoId;
 
+  const tipoLabel = (tipo: string) =>
+    tipo === 'E' ? 'E - Entrada' : tipo === 'S' ? 'S - Saída' : tipo || '-';
+
   const formContent = (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
@@ -209,12 +212,19 @@ export function OperacoesTab() {
       <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
         <div className="col-span-1 md:col-span-4">
           <label className="text-xs font-medium text-muted-foreground mb-1 block">Tipo *</label>
-          <Input
-            className="h-8 text-sm"
-            placeholder="Ex.: ENTRADA, SAIDA"
-            value={formData.tipo}
-            onChange={(e) => setFormData({ ...formData, tipo: toUpperValue(e.target.value) })}
-          />
+          <Select
+            value={formData.tipo || 'none'}
+            onValueChange={(v) => setFormData({ ...formData, tipo: v === 'none' ? '' : v })}
+          >
+            <SelectTrigger className="h-8 text-sm">
+              <SelectValue placeholder="Selecione" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Selecione</SelectItem>
+              <SelectItem value="E">E - Entrada</SelectItem>
+              <SelectItem value="S">S - Saída</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="col-span-1 md:col-span-8">
           <label className="text-xs font-medium text-muted-foreground mb-1 block">Tipo de operação (ADS/ERP) *</label>
@@ -312,7 +322,7 @@ export function OperacoesTab() {
                       <TableRow key={o.operacao_id}>
                         <TableCell className="font-mono text-xs">{o.codigo_operacao || '-'}</TableCell>
                         <TableCell className="font-medium">{o.descricao_operacao}</TableCell>
-                        <TableCell className="hidden md:table-cell">{o.tipo || '-'}</TableCell>
+                        <TableCell className="hidden md:table-cell">{tipoLabel(o.tipo)}</TableCell>
                         <TableCell className="hidden lg:table-cell text-xs">{tipoDescricao(o.tipo_operacao_id)}</TableCell>
                         <TableCell className="text-center">
                           <TooltipProvider>

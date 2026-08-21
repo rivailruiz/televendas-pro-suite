@@ -43,6 +43,8 @@ export interface AdminEmpresaDetalhe {
   usuario_master_id: number | null;
   inativo: boolean;
   obs: string | null;
+  x_api_key: string | null;
+  user_agent: string | null;
 }
 
 export interface AdminUsuario {
@@ -190,6 +192,8 @@ export const adminService = {
     inativo: boolean;
     obs: string;
     empresa_master_id: number | null;
+    x_api_key: string;
+    user_agent: string;
   }>): Promise<AdminEmpresaDetalhe> {
     const headers = await authHeaders();
     const res = await apiClient.fetch(`${API_BASE}/api/empresas/${id}`, {
@@ -228,6 +232,9 @@ export const adminService = {
     tecdisa_id?: string;
     empresa_master_id?: number | null;
     master?: boolean;
+    inativo?: boolean;
+    x_api_key?: string;
+    user_agent?: string;
   }): Promise<{ empresa_id: number; razao_social: string; fantasia: string; cnpj_cpf: string; empresa_master_id: number | null; uf: string; inativo: boolean }> {
     const headers = await authHeaders();
     const res = await apiClient.fetch(`${API_BASE}/api/empresas`, {

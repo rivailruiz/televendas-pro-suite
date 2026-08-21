@@ -1,8 +1,15 @@
 export const getApiBase = (): string => {
   const protocol = typeof window !== 'undefined' ? window.location.protocol || '' : '';
   const host = typeof window !== 'undefined' ? window.location.hostname || '' : '';
-  const isDev = Boolean((import.meta as any)?.env?.DEV);
-  const envBaseRaw = (import.meta as any)?.env?.VITE_API_BASE;
+  // Acesso direto (sem `(import.meta as any)?.`) é obrigatorio aqui: o
+  // scanner do Vite que injeta `import.meta.env` em dev so reconhece o
+  // padrao literal `import.meta.env`, e o cast+optional-chaining anterior
+  // escondia esse padrao dele - VITE_API_BASE (e DEV) ficavam sempre
+  // undefined em dev, independente do .env, e o app sempre caia no
+  // fallback hardcoded 'http://localhost:3000' (mesmo problema descrito
+  // em ORIENTACAO_PROJETO.md "Pontos de atencao").
+  const isDev = Boolean(import.meta.env?.DEV);
+  const envBaseRaw = import.meta.env?.VITE_API_BASE;
   const envBase = typeof envBaseRaw === 'string' ? envBaseRaw.trim() : '';
   const isLocalHost =
     host === 'localhost' ||

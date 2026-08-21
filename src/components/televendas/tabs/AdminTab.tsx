@@ -41,6 +41,8 @@ const EMPTY_EMPRESA_FORM = {
   empresa_master_id: '',
   master: false,
   inativo: false,
+  x_api_key: '',
+  user_agent: '',
 };
 
 export function AdminTab() {
@@ -166,6 +168,9 @@ export function AdminTab() {
         tecdisa_id: criarForm.tecdisa_id.trim() || undefined,
         empresa_master_id: criarForm.empresa_master_id ? Number(criarForm.empresa_master_id) : null,
         master: criarForm.master,
+        inativo: criarForm.inativo,
+        x_api_key: criarForm.x_api_key.trim() || undefined,
+        user_agent: criarForm.user_agent.trim() || undefined,
       });
       toast.success(`Empresa ${created.razao_social} criada com sucesso`);
       setCriarOpen(false);
@@ -223,6 +228,8 @@ export function AdminTab() {
         empresa_master_id: d.empresa_master_id ? String(d.empresa_master_id) : '',
         master: false,
         inativo: d.inativo,
+        x_api_key: d.x_api_key ?? '',
+        user_agent: d.user_agent ?? '',
       });
     } catch (e: any) {
       toast.error(e?.message || 'Erro ao carregar empresa');
@@ -254,6 +261,8 @@ export function AdminTab() {
         tecdisa_id: editForm.tecdisa_id,
         inativo: editForm.inativo,
         empresa_master_id: editForm.empresa_master_id ? Number(editForm.empresa_master_id) : null,
+        x_api_key: editForm.x_api_key || undefined,
+        user_agent: editForm.user_agent || undefined,
       });
       toast.success('Empresa atualizada');
       setEditOpen(false);
@@ -942,6 +951,44 @@ export function AdminTab() {
               />
               <Label className="text-xs cursor-pointer">Esta empresa é uma matriz (master)</Label>
             </div>
+
+            {/* Integração com ERP (ADS) — so faz sentido pra empresa master */}
+            {criarForm.master && (
+              <div className="space-y-3 pt-1">
+                <Label className="text-xs font-medium">Integração com ERP (ADS)</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">x-api-key</Label>
+                    <Input
+                      value={criarForm.x_api_key}
+                      onChange={(e) => setCriarForm((f) => ({ ...f, x_api_key: e.target.value }))}
+                      placeholder="Chave de API fornecida pela ADS"
+                      className="text-sm font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">User-Agent</Label>
+                    <Input
+                      value={criarForm.user_agent}
+                      onChange={(e) => setCriarForm((f) => ({ ...f, user_agent: e.target.value }))}
+                      placeholder="Identificador enviado no header User-Agent"
+                      className="text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Ativo/Inativo */}
+            <div className="flex items-center gap-2 pt-1 border-t">
+              <Switch
+                checked={!criarForm.inativo}
+                onCheckedChange={(v) => setCriarForm((f) => ({ ...f, inativo: !v }))}
+              />
+              <Label className="text-xs cursor-pointer">
+                {criarForm.inativo ? 'Empresa inativa' : 'Empresa ativa'}
+              </Label>
+            </div>
           </div>
 
           <DialogFooter>
@@ -1096,6 +1143,38 @@ export function AdminTab() {
                   onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
                   className="text-sm" />
               </div>
+
+              {/* Integração com ERP (ADS) — só faz sentido na empresa master, que é
+                  quem concentra a credencial usada em POST /{cnpjDistribuidora}/...
+                  "Sem master" no banco tanto pode ser empresa_master_id vazio quanto
+                  apontando pra si mesma (padrão já usado na filtragem de filiais
+                  logo acima, ~linha 451) — testado ao vivo e sem esse segundo caso
+                  a empresa master de verdade (ex.: empresa_master_id="5" apontando
+                  pra ela mesma) não mostrava os campos. */}
+              {(!editForm.empresa_master_id ||
+                Number(editForm.empresa_master_id) === editEmpresaId) && (
+                <div className="space-y-3 pt-2 border-t">
+                  <Label className="text-xs font-medium">Integração com ERP (ADS)</Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs">x-api-key</Label>
+                    <Input
+                      value={editForm.x_api_key}
+                      onChange={(e) => setEditForm((f) => ({ ...f, x_api_key: e.target.value }))}
+                      placeholder="Chave de API fornecida pela ADS"
+                      className="text-sm font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">User-Agent</Label>
+                    <Input
+                      value={editForm.user_agent}
+                      onChange={(e) => setEditForm((f) => ({ ...f, user_agent: e.target.value }))}
+                      placeholder="Identificador enviado no header User-Agent"
+                      className="text-sm"
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Ativo/Inativo */}
               <div className="flex items-center gap-3 pt-1 border-t">
