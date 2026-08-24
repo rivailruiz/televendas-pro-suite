@@ -219,7 +219,7 @@ const CLIENTS_GRID_COLUMNS = [
   { key: 'consumidorFinal', label: 'Consum. Final', width: 96, pinnable: true },
   { key: 'inativo', label: 'Inativo', width: 80, pinnable: true },
   { key: 'tabelasPreco', label: 'Tab. Preço', width: 140, pinnable: true },
-  { key: 'acoes', label: 'Ações', width: 112, pinnable: false },
+  { key: 'acoes', label: 'Ações', width: 144, pinnable: false },
 ] as const;
 
 type ClientsGridColumnKey = typeof CLIENTS_GRID_COLUMNS[number]['key'];
@@ -527,7 +527,8 @@ export const ClientesTab = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
-  const [enviandoErp, setEnviandoErp] = useState(false);
+  const [enviandoErpId, setEnviandoErpId] = useState<number | null>(null);
+  const [enviandoErpSelecionados, setEnviandoErpSelecionados] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const [cnpjLookupLoading, setCnpjLookupLoading] = useState(false);
@@ -1847,16 +1848,44 @@ const validateFormData = (data: ClientFormData): string[] => {
     }
   };
 
-  const handleEnviarErp = async () => {
-    if (!editId) return;
-    setEnviandoErp(true);
+  const handleEnviarErp = async (clienteId: number) => {
+    setEnviandoErpId(clienteId);
     try {
-      await clientsService.enviarErp(editId);
+      await clientsService.enviarErp(clienteId);
       toast.success('Cliente enviado para o ERP.');
     } catch (error: any) {
       toast.error(error?.message || String(error) || 'Erro ao enviar cliente para o ERP');
     } finally {
-      setEnviandoErp(false);
+      setEnviandoErpId(null);
+    }
+  };
+
+  const handleEnviarErpSelecionados = async () => {
+    if (selectedClients.length === 0) {
+      toast.error('Selecione pelo menos um cliente');
+      return;
+    }
+    setEnviandoErpSelecionados(true);
+    try {
+      if (selectedClients.length === 1) {
+        await clientsService.enviarErp(selectedClients[0]);
+        toast.success('Cliente enviado para o ERP.');
+      } else {
+        const { enviados, erros } = await clientsService.enviarErpBulk(selectedClients);
+        if (erros.length === 0) {
+          toast.success(`${enviados} cliente(s) enviado(s) para o ERP.`);
+        } else {
+          toast.error(
+            `${enviados} enviado(s), ${erros.length} falharam: ${erros
+              .map((e) => `#${e.id} (${e.message})`)
+              .join('; ')}`,
+          );
+        }
+      }
+    } catch (error: any) {
+      toast.error(error?.message || String(error) || 'Erro ao enviar clientes para o ERP');
+    } finally {
+      setEnviandoErpSelecionados(false);
     }
   };
 
@@ -2361,6 +2390,22 @@ const validateFormData = (data: ClientFormData): string[] => {
                 </PopoverContent>
               </Popover>
               <Button
+                variant="outline"
+                size="sm"
+                onClick={handleEnviarErpSelecionados}
+                disabled={selectedClients.length === 0 || enviandoErpSelecionados}
+                className="flex-1 sm:flex-none"
+              >
+                {enviandoErpSelecionados ? (
+                  <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4 sm:mr-2" />
+                )}
+                <span className="hidden sm:inline">
+                  Enviar pro ERP{selectedClients.length > 0 ? ` (${selectedClients.length})` : ''}
+                </span>
+              </Button>
+              <Button
                 variant="secondary"
                 size="sm"
                 onClick={openAjusteGeralDialog}
@@ -2578,7 +2623,7 @@ const validateFormData = (data: ClientFormData): string[] => {
                   </TableHead>
                   <TableHead
                     style={getStickyStyle('acoes')}
-                    className={cn('text-center w-28 min-w-[112px]', getStickyHeadClass('acoes'))}
+                    className={cn('text-center w-36 min-w-[144px]', getStickyHeadClass('acoes'))}
                   >
                     Ações
                   </TableHead>
@@ -2817,7 +2862,7 @@ const validateFormData = (data: ClientFormData): string[] => {
                         </TableCell>
                         <TableCell
                           style={getStickyStyle('acoes')}
-                          className={cn('w-28 min-w-[112px] text-center', getStickyCellClass('acoes'))}
+                          className={cn('w-36 min-w-[144px] text-center', getStickyCellClass('acoes'))}
                         >
                           <TooltipProvider>
                             <div className="flex items-center justify-center gap-0.5">
@@ -2841,6 +2886,24 @@ const validateFormData = (data: ClientFormData): string[] => {
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>Editar</TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    disabled={enviandoErpId === client.id}
+                                    onClick={() => handleEnviarErp(client.id)}
+                                  >
+                                    {enviandoErpId === client.id ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <Send className="h-3.5 w-3.5" />
+                                    )}
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Enviar pro ERP</TooltipContent>
                               </Tooltip>
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -5052,10 +5115,6 @@ const validateFormData = (data: ClientFormData): string[] => {
             </div>
           )}
           <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={handleEnviarErp} disabled={enviandoErp || formLoading}>
-              {enviandoErp ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-              Enviar pro ERP
-            </Button>
             <Button variant="outline" onClick={() => requestCloseDialog('edit')} disabled={formLoading}>Cancelar</Button>
             <Button variant="default" onClick={submitEdit} disabled={formLoading}>{formLoading ? 'Salvando...' : 'Salvar'}</Button>
           </DialogFooter>
