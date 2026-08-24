@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { ShoppingCart, Plus, Pencil, Trash2, Info, Search, Loader2, ChevronDown, ChevronUp, Columns3, FileSpreadsheet, Upload, Download } from 'lucide-react';
+import { ShoppingCart, Plus, Pencil, Trash2, Info, Search, Loader2, ChevronDown, ChevronUp, Columns3, FileSpreadsheet, Upload, Download, Send } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -527,6 +527,7 @@ export const ClientesTab = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
+  const [enviandoErp, setEnviandoErp] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const [cnpjLookupLoading, setCnpjLookupLoading] = useState(false);
@@ -1846,6 +1847,19 @@ const validateFormData = (data: ClientFormData): string[] => {
     }
   };
 
+  const handleEnviarErp = async () => {
+    if (!editId) return;
+    setEnviandoErp(true);
+    try {
+      await clientsService.enviarErp(editId);
+      toast.success('Cliente enviado para o ERP.');
+    } catch (error: any) {
+      toast.error(error?.message || String(error) || 'Erro ao enviar cliente para o ERP');
+    } finally {
+      setEnviandoErp(false);
+    }
+  };
+
   const handleDelete = (clientId?: number) => {
     if (clientId && Number.isFinite(clientId) && clientId > 0) {
       setDeleteConfirmClientId(clientId);
@@ -2259,7 +2273,7 @@ const validateFormData = (data: ClientFormData): string[] => {
                   <SelectItem value="all">Todos</SelectItem>
                   {filterReps.map((r) => (
                     <SelectItem key={r.id} value={r.id}>
-                      {r.codigoRepresentante ? `${r.codigoRepresentante} - ${r.nome}` : r.nome}
+                      {r.codigoRepresentante ? `${r.nome} - ${r.codigoRepresentante}` : r.nome}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -5038,6 +5052,10 @@ const validateFormData = (data: ClientFormData): string[] => {
             </div>
           )}
           <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={handleEnviarErp} disabled={enviandoErp || formLoading}>
+              {enviandoErp ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+              Enviar pro ERP
+            </Button>
             <Button variant="outline" onClick={() => requestCloseDialog('edit')} disabled={formLoading}>Cancelar</Button>
             <Button variant="default" onClick={submitEdit} disabled={formLoading}>{formLoading ? 'Salvando...' : 'Salvar'}</Button>
           </DialogFooter>

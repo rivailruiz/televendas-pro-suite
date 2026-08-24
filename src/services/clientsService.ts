@@ -988,6 +988,30 @@ export const clientsService = {
     }
   },
 
+  // Enviar cliente pro ERP (ADS) - POST /api/clientes/:id/enviar-erp?empresaId=5
+  enviarErp: async (id: number): Promise<{ cliente_id: number; clienteIdErp: number }> => {
+    const empresa = authService.getEmpresa();
+    if (!empresa) return Promise.reject('Empresa não selecionada');
+    const token = authService.getToken();
+    if (!token) return Promise.reject('Token ausente');
+    try {
+      const url = `${API_BASE}/api/clientes/${encodeURIComponent(id)}/enviar-erp?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
+      const headers: Record<string, string> = { accept: 'application/json' };
+      const res = await apiClient.fetch(url, {
+        method: 'POST',
+        headers,
+      });
+      if (!res.ok) {
+        let message = 'Falha ao enviar cliente para o ERP';
+        try { const err = await res.json(); message = extractErrorMessage(err, message); } catch {}
+        return Promise.reject(message);
+      }
+      return res.json();
+    } catch (e) {
+      return Promise.reject('Erro de conexão com o servidor');
+    }
+  },
+
   // Get price tables for client - GET /api/clientes/:id/tabelas-precos?empresaId=5
   getTabelasPrecos: async (id: number): Promise<any[]> => {
     const empresa = authService.getEmpresa();

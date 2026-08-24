@@ -528,6 +528,50 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   };
 
   const [enviandoAdsId, setEnviandoAdsId] = useState<number | null>(null);
+  const [enviandoAdsSelecionados, setEnviandoAdsSelecionados] = useState(false);
+
+  const handleEnviarAdsSelecionados = async () => {
+    if (selectedOrders.length === 0) {
+      toast.error('Selecione pelo menos um pedido');
+      return;
+    }
+    const elegiveis = orders.filter(
+      (o) => selectedOrders.includes(o.id) && o.situacao === 'Pendentes',
+    );
+    if (elegiveis.length === 0) {
+      toast.error('Somente pedidos pendentes podem ser enviados para o ADS.');
+      return;
+    }
+    setEnviandoAdsSelecionados(true);
+    try {
+      if (elegiveis.length === 1) {
+        const updated = await ordersService.enviarAds(elegiveis[0].id);
+        toast.success(
+          updated.numeroPedidoErp
+            ? `Pedido enviado para o ADS. Nº no ERP: ${updated.numeroPedidoErp}`
+            : 'Pedido enviado para o ADS.',
+        );
+      } else {
+        const { enviados, erros } = await ordersService.enviarAdsBulk(
+          elegiveis.map((o) => o.id),
+        );
+        if (erros.length === 0) {
+          toast.success(`${enviados} pedido(s) enviado(s) para o ADS.`);
+        } else {
+          toast.error(
+            `${enviados} enviado(s), ${erros.length} falharam: ${erros
+              .map((e) => `#${e.id} (${e.message})`)
+              .join('; ')}`,
+          );
+        }
+      }
+      loadOrders(true);
+    } catch (error: any) {
+      toast.error(error?.message || String(error) || 'Erro ao enviar pedidos para o ADS');
+    } finally {
+      setEnviandoAdsSelecionados(false);
+    }
+  };
 
   const attemptEnviarAds = async (order: Order) => {
     if (order.situacao !== 'Pendentes') {
@@ -1395,6 +1439,19 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                 <SelectItem value="Cancelados">Cancelado</SelectItem>
               </SelectContent>
             </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleEnviarAdsSelecionados}
+              disabled={enviandoAdsSelecionados}
+            >
+              {enviandoAdsSelecionados ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4 mr-2" />
+              )}
+              Enviar selecionados pro ADS
+            </Button>
             <Button
               variant="outline"
               size="sm"

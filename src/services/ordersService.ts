@@ -718,6 +718,7 @@ export const ordersService = {
       observacaoPedido: order?.observacoes?.pedido || undefined,
       observacaoNF: order?.observacoes?.nf || undefined,
       itens: buildItens(order?.itens),
+      descontoArredondamento: order?.descontoArredondamento || undefined,
     };
 
     const reserveItens = async (itens: any[]) => {
@@ -863,6 +864,7 @@ export const ordersService = {
       observacaoPedido: order?.observacoes?.pedido || undefined,
       observacaoNF: order?.observacoes?.nf || undefined,
       itens: buildItens(order?.itens),
+      descontoArredondamento: order?.descontoArredondamento || undefined,
       // Parcelas do prazo negociado que serão gravadas logo em seguida (ver
       // ordersService.saveParcelas) — enviadas junto para o backend validar
       // a divergência contra a negociação NOVA em vez da já salva no banco
@@ -980,6 +982,28 @@ export const ordersService = {
       return Promise.reject(message);
     }
     return ordersService.getById(id);
+  },
+
+  // Envia varios pedidos pendentes pro ADS de uma vez (mesma regra do
+  // enviarAds individual, aplicada pedido a pedido no backend). Retorna
+  // quantos foram enviados e o erro de cada um que falhou.
+  enviarAdsBulk: async (
+    ids: number[],
+  ): Promise<{ enviados: number; erros: Array<{ id: number; message: string }> }> => {
+    const empresa = authService.getEmpresa();
+    if (!empresa) return Promise.reject('Empresa não selecionada');
+    const url = `${API_BASE}/api/pedidos/enviar-ads-em-massa?empresaId=${encodeURIComponent(empresa.empresa_id)}`;
+    const res = await apiClient.fetch(url, {
+      method: 'POST',
+      headers: { accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    });
+    if (!res.ok) {
+      let message = 'Falha ao enviar pedidos para o ADS';
+      try { const err = await res.json(); message = err?.message || err?.error?.message || err?.error || message; } catch {}
+      return Promise.reject(message);
+    }
+    return res.json();
   },
 
   sendEmail: async (

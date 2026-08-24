@@ -501,7 +501,7 @@ export function ClientesPorRepresentanteTab() {
             ) : (
               filteredReps.map(r => (
                 <SelectItem key={r.representante_id} value={String(r.representante_id)}>
-                  {r.codigo_representante} - {r.nome_representante}
+                  {r.nome_representante} - {r.codigo_representante}
                 </SelectItem>
               ))
             )}

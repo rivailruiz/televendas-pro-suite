@@ -9,7 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Save, Undo, Search, Plus, Trash2, Info, DollarSign, History, Package, Percent } from 'lucide-react';
+import { Save, Search, Plus, Trash2, Info, DollarSign, History, Package, Percent } from 'lucide-react';
 import { toast } from 'sonner';
 import { metadataService, type Operacao, type Tabela, type FormaPagamento, type PrazoPagto } from '@/services/metadataService';
 import { authService } from '@/services/authService';
@@ -194,11 +194,13 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     return selectedTabela || '';
   };
 
+  const isAdmin = useMemo(() => authService.isAdmin(), []);
+
   // Formas de pagamento (metadata)
   const [formas, setFormas] = useState<FormaPagamento[]>([]);
   const [loadingFormas, setLoadingFormas] = useState(false);
   const [formasError, setFormasError] = useState<string | null>(null);
-  
+
   // Prazos de pagamento (metadata)
   const [prazos, setPrazos] = useState<PrazoPagto[]>([]);
   const [loadingPrazos, setLoadingPrazos] = useState(false);
@@ -215,6 +217,9 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       : undefined;
   }, [prazos, clientePrazoPagtoId]);
   const prazosDisponiveis = useMemo(() => {
+    // Administrador ignora o teto de prazo médio do cliente e enxerga todos
+    // os prazos cadastrados (pedido explícito de Marcelo em 24/08/2026).
+    if (isAdmin) return prazos;
     if (typeof clientePrazoMedioMax !== 'number') return prazos;
     return prazos.filter(
       (p) =>
@@ -223,7 +228,14 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
         p.prazoMedio <= clientePrazoMedioMax ||
         String(p.descricao) === String(formData.prazo),
     );
-  }, [prazos, clientePrazoMedioMax, formData.prazo]);
+  }, [prazos, clientePrazoMedioMax, formData.prazo, isAdmin]);
+
+  // Desconto de arredondamento: valor extra em R$ (não percentual) digitado
+  // pelo vendedor pra fechar o total num valor redondo. Limitado pelo campo
+  // "% Desconto máximo na nota fiscal" do cliente selecionado
+  // (client.descontoFinanceiroBoleto) — 0/ausente = não pode dar nenhum.
+  const [descontoArredondamento, setDescontoArredondamento] = useState(0);
+  const [clienteDescontoMaximoNotaPerc, setClienteDescontoMaximoNotaPerc] = useState(0);
 
   const [clientSearchOpen, setClientSearchOpen] = useState(false);
   const [clientInfoOpen, setClientInfoOpen] = useState(false);
@@ -256,7 +268,6 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   const [preferredPrazoId, setPreferredPrazoId] = useState<string | number | null>(null);
   const prevOrderIdRef = useRef<number | null>(null);
 
-  const isAdmin = useMemo(() => authService.isAdmin(), []);
   const sessionRepresentante = useMemo(() => {
     const session = authService.getSession();
     const p = session?.payload;
@@ -304,6 +315,15 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       const maxValue = normalizeMaxDesconto(max);
       if (maxValue == null) return valor;
       if (valor > maxValue) {
+        // Administrador pode dar desconto acima do limite — a regra vira só
+        // um alerta, sem travar o valor digitado (pedido de Marcelo em
+        // 24/08/2026).
+        if (isAdmin) {
+          toast.warning(
+            `Desconto acima do limite permitido (${maxValue.toFixed(2)}%). Liberado por você ser administrador.`,
+          );
+          return valor;
+        }
         toast.error(
           `Desconto acima do limite permitido (${maxValue.toFixed(2)}%). Política da empresa bloqueia descontos acima da tabela.`,
         );
@@ -311,7 +331,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       }
       return valor;
     },
-    [normalizeMaxDesconto],
+    [normalizeMaxDesconto, isAdmin],
   );
 
   // Quando o produto tem desconto escalonado, a regra do escalonado prevalece
@@ -423,6 +443,9 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     setProductCodeInput('');
     setNewItemTabelaId('');
     setNewItemPreco(null);
+    setClientePrazoPagtoId(null);
+    setClienteDescontoMaximoNotaPerc(0);
+    setDescontoArredondamento(0);
     clearDraft();
   }, [sessionRepresentante, clearDraft]);
 
@@ -1092,6 +1115,10 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       prazoPagtoId: client.prazoPagtoId ?? '',
     }));
     setClientePrazoPagtoId(client.prazoPagtoId ?? null);
+    setClienteDescontoMaximoNotaPerc(
+      typeof client.descontoFinanceiroBoleto === 'number' ? client.descontoFinanceiroBoleto : 0,
+    );
+    setDescontoArredondamento(0);
     // Se o cliente não trouxe representante, tenta buscar detalhes para preencher automaticamente
     if (!repIdFromClient) {
       clientsService.getDetail(client.id).then((detail) => {
@@ -1851,6 +1878,29 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     };
   }, { bruto: 0, descontos: 0, liquido: 0 });
 
+  // Teto do desconto de arredondamento: % do "desconto máximo nota fiscal"
+  // do cliente sobre o total líquido do pedido. 0/ausente = não libera nada.
+  const descontoArredondamentoMax = Math.max(
+    0,
+    (totals.liquido * (clienteDescontoMaximoNotaPerc || 0)) / 100,
+  );
+  const totalComArredondamento = Math.max(0, totals.liquido - (descontoArredondamento || 0));
+
+  const handleDescontoArredondamentoChange = (raw: string) => {
+    const parsed = parseFloat(raw);
+    const valor = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+    if (valor > descontoArredondamentoMax) {
+      toast.error(
+        descontoArredondamentoMax > 0
+          ? `Desconto de arredondamento acima do limite deste cliente (máx. ${formatCurrency(descontoArredondamentoMax)}).`
+          : 'Este cliente não tem desconto de arredondamento liberado (% desconto máximo nota fiscal do cadastro está zerado).',
+      );
+      setDescontoArredondamento(descontoArredondamentoMax);
+      return;
+    }
+    setDescontoArredondamento(valor);
+  };
+
   const selectedPrazoPagamento = prazos.find((p) => String(p.id) === String(formData.prazoPagtoId));
 
   const caixasModalFatorVenda =
@@ -1920,9 +1970,9 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     // save por engano (reportado em 30/07/2026).
     if (selectedPrazoPagamento?.prazoNegociado && parcelasNegociadas.length > 0) {
       const totalParcelas = parcelasNegociadas.reduce((sum, p) => sum + (Number(p.valor) || 0), 0);
-      if (Math.abs(totalParcelas - totals.liquido) > 0.01) {
+      if (Math.abs(totalParcelas - totalComArredondamento) > 0.01) {
         toast.error(
-          `A soma das parcelas do prazo negociado (${formatCurrency(totalParcelas)}) não bate com o total do pedido (${formatCurrency(totals.liquido)}). Ajuste o prazo negociado antes de salvar.`,
+          `A soma das parcelas do prazo negociado (${formatCurrency(totalParcelas)}) não bate com o total do pedido (${formatCurrency(totalComArredondamento)}). Ajuste o prazo negociado antes de salvar.`,
         );
         setPrazoNegociadoAutoSave(true);
         setPrazoNegociadoOpen(true);
@@ -1953,7 +2003,8 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       prazoPagtoId: formData.prazoPagtoId ? Number(formData.prazoPagtoId) || undefined : undefined,
       boleto: false,
       rede: formData.rede,
-      valor: totals.liquido,
+      valor: totalComArredondamento,
+      descontoArredondamento: descontoArredondamento || undefined,
       itens: itensParaSalvar.map((item, idx) => ({
         produtoId: item.produtoId,
         descricao: item.descricao,
@@ -1972,10 +2023,10 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       })),
       totais: {
         bruto: totals.bruto,
-        descontos: totals.descontos,
-        descontosPerc: totals.bruto > 0 ? (totals.descontos / totals.bruto) * 100 : 0,
+        descontos: totals.descontos + (descontoArredondamento || 0),
+        descontosPerc: totals.bruto > 0 ? ((totals.descontos + (descontoArredondamento || 0)) / totals.bruto) * 100 : 0,
         icmsRepasse: 0,
-        liquido: totals.liquido
+        liquido: totalComArredondamento
       },
       observacoes,
       // Vai junto com o update do pedido para o backend validar a
@@ -2140,6 +2191,8 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
                                     clienteNome: '',
                                   });
                                   setClientePrazoPagtoId(null);
+                                  setClienteDescontoMaximoNotaPerc(0);
+                                  setDescontoArredondamento(0);
                                   setRepSearchOpen(false);
                                   setRepSearch('');
                                 }}
@@ -2889,9 +2942,28 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
               <span>Descontos:</span>
               <span>{formatCurrency(totals.descontos)} ({totals.bruto > 0 ? ((totals.descontos / totals.bruto) * 100).toFixed(2) : 0}%)</span>
             </div>
+            <div className="flex justify-between items-center text-sm gap-2">
+              <span>
+                Desconto de arredondamento
+                {descontoArredondamentoMax > 0 && (
+                  <span className="text-muted-foreground"> (máx. {formatCurrency(descontoArredondamentoMax)})</span>
+                )}
+                :
+              </span>
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                className="h-8 w-28 text-right"
+                value={descontoArredondamento || ''}
+                placeholder="0,00"
+                disabled={descontoArredondamentoMax <= 0}
+                onChange={(e) => handleDescontoArredondamentoChange(e.target.value)}
+              />
+            </div>
             <div className="flex justify-between text-lg font-bold">
               <span>Total Líquido:</span>
-              <span>{formatCurrency(totals.liquido)}</span>
+              <span>{formatCurrency(totalComArredondamento)}</span>
             </div>
           </div>
         </CardContent>
@@ -2934,10 +3006,6 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       </Card>
 
       <div className="flex flex-col sm:flex-row gap-2 justify-end">
-        <Button variant="outline" onClick={() => toast.info('Desfazer não implementado')} size="sm" className="w-full sm:w-auto">
-          <Undo className="h-4 w-4 sm:mr-2" />
-          <span>Desfazer</span>
-        </Button>
         <Button variant="default" onClick={handleSave} size="sm" className="w-full sm:w-auto" disabled={!!(currentOrder && currentOrder.transmitido)}>
           <Save className="h-4 w-4 sm:mr-2" />
           <span>Salvar Pedido</span>
@@ -2975,7 +3043,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       <PrazoNegociadoModal
         open={prazoNegociadoOpen}
         onOpenChange={setPrazoNegociadoOpen}
-        totalPedido={totals.liquido}
+        totalPedido={totalComArredondamento}
         dataPedido={new Date().toISOString().split('T')[0]}
         numeroParcelasSugerido={selectedPrazoPagamento?.numeroParcelas}
         prazosEmDiasSugerido={selectedPrazoPagamento?.prazosEmDias}
