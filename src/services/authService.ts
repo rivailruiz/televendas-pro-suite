@@ -3,6 +3,7 @@ export interface Empresa {
   razao_social: string;
   fantasia: string | null;
   uf: string;
+  cnpj_cpf?: string | null;
   empresa_master_id?: number | null;
   empresa_master_razao_social?: string | null;
   empresa_master_fantasia?: string | null;
