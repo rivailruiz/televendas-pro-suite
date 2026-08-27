@@ -89,6 +89,25 @@ function fmt(value: number, digits = 2): string {
   return value.toFixed(digits);
 }
 
+const BATCH_FIELD_LABELS: Record<string, string> = {
+  despesa: '% Despesa',
+  comissao: '% Comissão',
+  majoracao: '% Majoração',
+  markup: '% Markup',
+  lucro: '% Lucro',
+  frete: '% Frete',
+  desconto_maximo: '% Desconto',
+  permite_bonificacao: 'Permite bonificação',
+  permite_debito_credito: 'Gera Débito/Crédito',
+  permite_venda_especial: 'Venda especial',
+  produto_em_promocao: 'Produto em Promoção',
+};
+
+function formatBatchValue(valor: number | boolean): string {
+  if (typeof valor === 'boolean') return valor ? 'Sim' : 'Não';
+  return `${valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+}
+
 function formatDate(iso: string | null): string {
   if (!iso) return '-';
   const d = new Date(iso);
@@ -276,6 +295,21 @@ export function TabelasPrecoTab() {
   const itensTabelaRef = useRef(itensTabela);
   const itensPageRef = useRef(itensPage);
   const itensLoadingRef = useRef(false);
+  // Filtros efetivamente aplicados na última busca (podem divergir dos campos
+  // acima, que mudam a cada digitação/seleção antes de clicar em "Buscar")
+  const appliedItensFiltersRef = useRef<{
+    status: 'ativos' | 'inativos' | 'todos';
+    fornecedorId?: number;
+    divisaoId?: number;
+    marca?: string;
+    lancamento?: boolean;
+    possuiFoto?: boolean;
+    permiteVendaB2b?: boolean;
+    permiteVendaB2c?: boolean;
+    escala?: 'com' | 'sem';
+    campoBusca: string;
+    q?: string;
+  }>({ status: 'ativos', campoBusca: 'descricao' });
 
   // Sync refs — roda durante o render (antes de qualquer handler)
   itensStatusRef.current = itensStatus;
@@ -372,6 +406,8 @@ export function TabelasPrecoTab() {
   const [batchDebitoCredito, setBatchDebitoCredito] = useState(false);
   const [batchVendaEspecial, setBatchVendaEspecial] = useState(false);
   const [batchPromocao, setBatchPromocao] = useState(false);
+  const [batchApplyDialog, setBatchApplyDialog] = useState<{ campo: NumericItemField | BooleanItemField; valor: number | boolean } | null>(null);
+  const [batchApplyLoading, setBatchApplyLoading] = useState(false);
 
   // ── Excel import/export ─────────────────────────────────────────────────
   const [xlsxExporting, setXlsxExporting] = useState(false);
@@ -563,6 +599,7 @@ export function TabelasPrecoTab() {
         escala: itensEscalaRef.current !== 'all' ? itensEscalaRef.current : undefined,
         campoBusca: itensCampoBuscaRef.current,
       };
+      appliedItensFiltersRef.current = { ...filters, q: itensSearchRef.current || undefined };
       console.debug('[loadItens] tabelaId=%d page=%d filters=%o', itensTabelaRef.current.tabela_preco_id, nextPage, filters);
       const result = await tabelasPrecoService.getItens(
         itensTabelaRef.current.tabela_preco_id,
@@ -718,32 +755,70 @@ export function TabelasPrecoTab() {
     else setSelectedRows(new Set(visibleItens.map((i) => i.produto_id)));
   };
 
-  const targetIds = selectedRows.size > 0
-    ? Array.from(selectedRows)
-    : visibleItens.map((i) => i.produto_id);
-
   // ── Batch apply ─────────────────────────────────────────────────────────
   const applyBatchField = (field: NumericItemField, rawVal: string) => {
     const val = parseFloat(rawVal.replace(',', '.'));
     if (isNaN(val)) { toast.error('Valor inválido'); return; }
-    setPendingChanges((prev) => {
-      const next = { ...prev };
-      for (const id of targetIds) {
-        next[id] = { ...next[id], [field]: val };
-      }
-      return next;
-    });
-    toast.info(`${field} aplicado em ${targetIds.length} item(s)`);
+    setBatchApplyDialog({ campo: field, valor: val });
   };
 
   const applyBatchBool = (field: BooleanItemField, val: boolean) => {
-    setPendingChanges((prev) => {
-      const next = { ...prev };
-      for (const id of targetIds) {
-        next[id] = { ...next[id], [field]: val };
-      }
-      return next;
-    });
+    setBatchApplyDialog({ campo: field, valor: val });
+  };
+
+  // Fecha a modal sem aplicar — desmarca o checkbox para não sugerir que o
+  // valor foi aplicado a algum item quando o usuário apenas cancelou
+  const cancelBatchApplyDialog = () => {
+    if (batchApplyDialog) {
+      const resetCheckbox: Partial<Record<BooleanItemField, () => void>> = {
+        permite_bonificacao: () => setBatchBonificacao(false),
+        permite_debito_credito: () => setBatchDebitoCredito(false),
+        permite_venda_especial: () => setBatchVendaEspecial(false),
+        produto_em_promocao: () => setBatchPromocao(false),
+      };
+      resetCheckbox[batchApplyDialog.campo as BooleanItemField]?.();
+    }
+    setBatchApplyDialog(null);
+  };
+
+  const executeBatchApply = async (escopo: 'todos' | 'selecionados' | 'filtro') => {
+    if (!itensTabela || !batchApplyDialog || batchApplyLoading) return;
+    const { campo, valor } = batchApplyDialog;
+    setBatchApplyLoading(true);
+    try {
+      // usa os filtros da última busca executada (não os campos ainda não aplicados
+      // via "Buscar"), para que "todos do filtro atual" bata com o que está na tela
+      const filtros = escopo === 'filtro' ? {
+        ...appliedItensFiltersRef.current,
+        promocao: filterPromocao || undefined,
+        comissaoZerada: filterComissaoZerada || undefined,
+        semPreco: filterSemPreco || undefined,
+      } : undefined;
+      const produtoIds = escopo === 'selecionados' ? Array.from(selectedRows) : undefined;
+
+      const result = await tabelasPrecoService.ajusteLote(itensTabela.tabela_preco_id, {
+        campo, valor, escopo, produtoIds, filtros,
+      });
+
+      // remove pendências locais desse campo — o valor no servidor já foi sobrescrito
+      setPendingChanges((prev) => {
+        const next: Record<number, PendingChange> = {};
+        for (const [idStr, changes] of Object.entries(prev)) {
+          const rest = { ...changes };
+          delete (rest as any)[campo];
+          if (Object.keys(rest).length > 0) next[Number(idStr)] = rest;
+        }
+        return next;
+      });
+
+      toast.success(`${result.atualizados} item(s) atualizado(s)`);
+      setBatchApplyDialog(null);
+      await loadItens(true);
+    } catch (e: any) {
+      toast.error(e?.message || 'Erro ao aplicar ajuste em lote');
+    } finally {
+      setBatchApplyLoading(false);
+    }
   };
 
   // ── Delete item ─────────────────────────────────────────────────────────
@@ -1915,7 +1990,7 @@ export function TabelasPrecoTab() {
             <BatchField label="% Desconto" value={batchDesconto} onChange={setBatchDesconto} onApply={() => applyBatchField('desconto_maximo', batchDesconto)} />
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <span className="text-xs text-muted-foreground">Aplicar em {selectedRows.size > 0 ? `${selectedRows.size} selecionado(s)` : 'todos'}:</span>
+            <span className="text-xs text-muted-foreground">Ajustar em lote:</span>
             <div className="flex items-center gap-1.5">
               <Checkbox id="b-bon" checked={batchBonificacao} onCheckedChange={(c) => {
                 setBatchBonificacao(c === true);
@@ -1946,6 +2021,42 @@ export function TabelasPrecoTab() {
             </div>
           </div>
         </div>
+
+        {/* Ajuste em lote — confirmação de escopo */}
+        <Dialog open={batchApplyDialog !== null} onOpenChange={(open) => { if (!open && !batchApplyLoading) cancelBatchApplyDialog(); }}>
+          <DialogContent className="w-[95vw] max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Aplicar ajuste em lote</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 py-1">
+              <p className="text-sm text-muted-foreground">
+                Definir <span className="font-medium text-foreground">{batchApplyDialog ? BATCH_FIELD_LABELS[batchApplyDialog.campo] : ''}</span>
+                {' = '}
+                <span className="font-medium text-foreground">{batchApplyDialog ? formatBatchValue(batchApplyDialog.valor) : ''}</span>
+                {' em:'}
+              </p>
+              <div className="flex flex-col gap-2">
+                <Button variant="outline" className="justify-start" disabled={batchApplyLoading} onClick={() => executeBatchApply('todos')}>
+                  {batchApplyLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  Todos os itens da tabela
+                </Button>
+                {selectedRows.size > 0 && (
+                  <Button variant="outline" className="justify-start" disabled={batchApplyLoading} onClick={() => executeBatchApply('selecionados')}>
+                    {batchApplyLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                    Apenas selecionados ({selectedRows.size})
+                  </Button>
+                )}
+                <Button variant="outline" className="justify-start" disabled={batchApplyLoading} onClick={() => executeBatchApply('filtro')}>
+                  {batchApplyLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  Todos os itens do filtro atual
+                </Button>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={cancelBatchApplyDialog} disabled={batchApplyLoading}>Cancelar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Copiar itens dialog */}
         <Dialog open={copiarOpen} onOpenChange={(v) => {

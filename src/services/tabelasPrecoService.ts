@@ -514,6 +514,35 @@ export const tabelasPrecoService = {
     return normalizeTabelaPrecoItem(await response.json());
   },
 
+  async ajusteLote(
+    tabelaId: number,
+    data: {
+      campo: string;
+      valor: number | boolean;
+      escopo: 'todos' | 'selecionados' | 'filtro';
+      produtoIds?: number[];
+      filtros?: Record<string, unknown>;
+    },
+  ): Promise<{ atualizados: number }> {
+    const empresa = authService.getEmpresa();
+    const empresaId = empresa?.empresa_id;
+    if (!empresaId) throw new Error('Empresa não selecionada');
+
+    const response = await apiClient.fetch(
+      `${API_BASE}/api/tabelas-precos/${tabelaId}/itens/ajuste-lote`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ empresaId, ...data }),
+      },
+    );
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err?.message || err?.error?.message || err?.error || 'Erro ao aplicar ajuste em lote');
+    }
+    return response.json();
+  },
+
   async copiarItens(
     origemId: number,
     destinoTabelaId: number,
