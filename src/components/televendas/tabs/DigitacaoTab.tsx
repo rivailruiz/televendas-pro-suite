@@ -9,8 +9,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Save, Search, Plus, Trash2, Info, DollarSign, History, Package, Percent } from 'lucide-react';
+import { Save, Search, Plus, Trash2, Info, DollarSign, History, Package, Percent, Upload } from 'lucide-react';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 import { metadataService, type Operacao, type Tabela, type FormaPagamento, type PrazoPagto } from '@/services/metadataService';
 import { authService } from '@/services/authService';
 import { clientsService, type Client } from '@/services/clientsService';
@@ -258,6 +259,8 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   const [newItemTabelaId, setNewItemTabelaId] = useState<string>('');
   const [newItemPreco, setNewItemPreco] = useState<number | null>(null);
   const [loadingNewItemPreco, setLoadingNewItemPreco] = useState(false);
+  const [importingItens, setImportingItens] = useState(false);
+  const importFileRef = useRef<HTMLInputElement>(null);
   const [clientSearch, setClientSearch] = useState('');
   const [clientSearchField, setClientSearchField] = useState<'nome' | 'fantasia' | 'cnpjCpf' | 'codigoCliente' | 'telefone' | 'bairro'>('nome');
 
@@ -653,6 +656,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           boleto: '',
           rede: detail.rede || '',
         }));
+        applyClienteDescontoMaximoNota(detail.clienteId || 0);
         if (detailFormaId != null) setPreferredFormaId(detailFormaId);
         if (detailPrazoId != null) setPreferredPrazoId(detailPrazoId);
         const detailItens = Array.isArray(detail.itens) ? detail.itens : [];
@@ -715,6 +719,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           boleto: '',
           rede: currentOrder.rede || '',
         }));
+        applyClienteDescontoMaximoNota(currentOrder.clienteId || 0);
         if (fallbackFormaId != null) setPreferredFormaId(fallbackFormaId);
         if (fallbackPrazoId != null) setPreferredPrazoId(fallbackPrazoId);
         const mapped = (currentOrder.itens || []).map((it: any) => ({
@@ -810,6 +815,7 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
           boleto: '',
           rede: detail.rede || '',
         }));
+        applyClienteDescontoMaximoNota(detail.clienteId || 0);
         if (detailFormaId != null) setPreferredFormaId(detailFormaId);
         if (detailPrazoId != null) setPreferredPrazoId(detailPrazoId);
         const detailItens = Array.isArray(detail.itens) ? detail.itens : [];
@@ -1102,6 +1108,23 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   }, [items.length, formData.tabela]);
 
   const filteredRepresentatives = representatives; // server already filters by q
+
+  // Busca o % desconto máximo na nota fiscal do cliente e libera (ou não) o
+  // campo de desconto de arredondamento. Usado ao editar/duplicar um pedido,
+  // já que o detalhe do pedido não traz esse dado do cliente — só o id.
+  const applyClienteDescontoMaximoNota = (clienteId?: number | null) => {
+    if (!clienteId) {
+      setClienteDescontoMaximoNotaPerc(0);
+      return;
+    }
+    clientsService
+      .getDetail(clienteId)
+      .then((detail) => {
+        const perc = detail?.desconto_financeiro_boleto ?? detail?.descontoFinanceiroBoleto;
+        setClienteDescontoMaximoNotaPerc(Number.isFinite(Number(perc)) ? Number(perc) : 0);
+      })
+      .catch(() => setClienteDescontoMaximoNotaPerc(0));
+  };
 
   const handleSelectClient = (client: Client) => {
     const firstRep = Array.isArray(client.representantes) ? client.representantes[0] : null;
@@ -1711,6 +1734,121 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     
     // Se já tem produto selecionado, adiciona normalmente
     await handleAddItemWithProduct();
+  };
+
+  // Importa itens a partir da planilha gerada pelo "Exportar" do pedido em
+  // Pesquisa de Pedidos (colunas: Produto, Descrição, UN, Cód. Tabela,
+  // Cód. Fábrica, Quant., %Desc, Preço, Total). Só os campos Cód. Tabela,
+  // Quant. e %Desc são de fato aplicados ao item — a coluna Produto só
+  // identifica a linha, e o preço é sempre recalculado na tabela vigente
+  // (nunca importado da planilha) pelo mesmo fluxo do handleAddItemWithProduct.
+  const handleImportPedidoFile = async (file: File) => {
+    if (!formData.operacao || !formData.clienteId || !formData.representanteId) {
+      toast.error('Preencha operação, cliente e representante antes de importar itens');
+      return;
+    }
+
+    setImportingItens(true);
+    try {
+      const fileData = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => resolve(ev.target?.result as string);
+        reader.onerror = () => reject(new Error('Erro ao ler o arquivo'));
+        reader.readAsBinaryString(file);
+      });
+
+      const wb = XLSX.read(fileData, { type: 'binary' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: '' });
+      if (!rows.length) {
+        toast.error('Planilha vazia');
+        return;
+      }
+
+      const normKey = (s: string) =>
+        s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+      const parsedRows = rows
+        .map((row, idx) => {
+          const byKey: Record<string, any> = {};
+          for (const key of Object.keys(row)) byKey[normKey(key)] = row[key];
+          return {
+            linha: idx + 2,
+            codigoProduto: String(byKey['produto'] ?? '').trim(),
+            codTabela: String(byKey['codtabela'] ?? '').trim(),
+            quant: Number(byKey['quant']) || 0,
+            descontoPerc: Number(byKey['desc']) || 0,
+          };
+        })
+        .filter((r) => r.codigoProduto);
+
+      if (!parsedRows.length) {
+        toast.error('Nenhuma linha com produto (coluna "Produto") encontrada na planilha');
+        return;
+      }
+
+      const codigosUnicos = [...new Set(parsedRows.map((r) => r.codigoProduto))];
+      const produtoPorCodigo = new Map<string, Product>();
+      await Promise.all(
+        codigosUnicos.map(async (codigo) => {
+          try {
+            const produtos = await productsService.search({ codigoProduto: codigo, tipoBusca: 'exata' }, 1, 1);
+            if (produtos.length > 0) produtoPorCodigo.set(codigo, produtos[0]);
+          } catch {
+            // sem produto encontrado — tratado abaixo como falha da linha
+          }
+        }),
+      );
+
+      const tabelaPorCodigo = new Map<string, string>(
+        tabelas.filter((t) => t.codigo).map((t) => [normKey(String(t.codigo)), String(t.id)]),
+      );
+
+      let adicionados = 0;
+      const falhas: string[] = [];
+      for (const row of parsedRows) {
+        const produto = produtoPorCodigo.get(row.codigoProduto);
+        if (!produto) {
+          falhas.push(`Linha ${row.linha}: produto "${row.codigoProduto}" não encontrado`);
+          continue;
+        }
+        if (!row.quant || row.quant <= 0) {
+          falhas.push(`Linha ${row.linha}: quantidade inválida`);
+          continue;
+        }
+        const tabelaId = row.codTabela ? tabelaPorCodigo.get(normKey(row.codTabela)) : undefined;
+        if (row.codTabela && !tabelaId) {
+          falhas.push(`Linha ${row.linha}: cód. tabela "${row.codTabela}" não encontrada — usando tabela padrão`);
+        }
+        await handleAddItemWithProduct({
+          produtoId: produto.id,
+          codigoProduto: produto.codigoProduto ?? row.codigoProduto,
+          descricao: produto.descricao,
+          un: produto.un,
+          estoque: typeof produto.estoque === 'number' ? produto.estoque : undefined,
+          tabelaId,
+          quant: row.quant,
+          descontoPerc: row.descontoPerc,
+        });
+        adicionados += 1;
+      }
+
+      if (adicionados > 0) {
+        toast.success(`${adicionados} item(ns) importado(s) do pedido`);
+      }
+      if (falhas.length > 0) {
+        console.warn('Importação de pedido — linhas com problema:', falhas);
+        toast.warning(
+          falhas.length === 1
+            ? falhas[0]
+            : `${falhas.length} linha(s) com problema na importação — veja o console para detalhes`,
+        );
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Erro ao processar a planilha');
+    } finally {
+      setImportingItens(false);
+    }
   };
 
   const handleUpdateItem = (index: number, patch: Partial<OrderItem>) => {
@@ -2520,8 +2658,38 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
           <CardTitle>Itens do Pedido</CardTitle>
+          <div>
+            <input
+              ref={importFileRef}
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = '';
+                if (file) handleImportPedidoFile(file);
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!formData.clienteId || importingItens}
+              onClick={() => importFileRef.current?.click()}
+              title="Importar itens de uma planilha de pedido exportada (Cód. Tabela, Quant., %Desc)"
+            >
+              {importingItens ? (
+                <span className="animate-pulse">Importando...</span>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Importar planilha
+                </>
+              )}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-10 gap-2 sm:gap-3 items-end">
