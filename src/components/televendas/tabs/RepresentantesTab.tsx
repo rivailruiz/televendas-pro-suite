@@ -98,6 +98,7 @@ export function RepresentantesTab() {
   const PAGE_LIMIT = 100;
   const [loading, setLoading] = useState(false);
   const [representantes, setRepresentantes] = useState<Representante[]>([]);
+  const [totalRepresentantes, setTotalRepresentantes] = useState(0);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [search, setSearch] = useState('');
@@ -157,6 +158,7 @@ export function RepresentantesTab() {
       setRepresentantes((prev) => (reset ? result.data : [...prev, ...result.data]));
       setPage(result.page ?? nextPage);
       const total = result.total ?? 0;
+      setTotalRepresentantes(total);
       const nextHasMore = total ? nextPage * PAGE_LIMIT < total : result.data.length === PAGE_LIMIT;
       setHasMore(nextHasMore);
     } catch (error: any) {
@@ -659,7 +661,7 @@ export function RepresentantesTab() {
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2">
                 <UserCheck className="h-5 w-5" />
-                Força de Vendas ({representantes.length})
+                Força de Vendas ({totalRepresentantes > 0 ? `${representantes.length}/${totalRepresentantes}` : representantes.length})
               </CardTitle>
             </CardHeader>
             <CardContent>

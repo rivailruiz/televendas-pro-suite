@@ -458,6 +458,7 @@ export const ClientesTab = () => {
     return { id: String(id), nome: String(nome) };
   }, [isAdmin]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [clientsTotal, setClientsTotal] = useState(0);
   const [selectedClients, setSelectedClients] = useState<number[]>([]);
   const [clientsPage, setClientsPage] = useState(1);
   const [clientsHasMore, setClientsHasMore] = useState(true);
@@ -1168,11 +1169,12 @@ export const ClientesTab = () => {
     setClientsLoading(true);
     const requestId = ++clientsRequestId.current;
     try {
-      const data = await clientsService.searchCadastro(
+      const { data, total } = await clientsService.searchCadastro(
         buildClientSearchFilters(active), undefined, nextPage, CLIENT_LIMIT,
       );
       if (requestId !== clientsRequestId.current) return;
       setClients((prev) => (reset ? data : [...prev, ...data]));
+      setClientsTotal(total);
       setClientsPage(nextPage);
       setClientsHasMore(Array.isArray(data) && data.length === CLIENT_LIMIT);
     } catch (e: any) {
@@ -1407,8 +1409,8 @@ export const ClientesTab = () => {
         let page = 1;
         while (true) {
           const batch = await clientsService.searchCadastro(searchFilters, undefined, page, CLIENT_LIMIT);
-          all.push(...batch);
-          if (batch.length < CLIENT_LIMIT) break;
+          all.push(...batch.data);
+          if (batch.data.length < CLIENT_LIMIT) break;
           page++;
         }
         clienteIds = all.map((c) => c.id);
@@ -2347,7 +2349,9 @@ const validateFormData = (data: ClientFormData): string[] => {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <CardTitle className="text-base sm:text-lg">Clientes ({clients.length})</CardTitle>
+            <CardTitle className="text-base sm:text-lg">
+              Clientes ({clientsTotal > 0 ? `${clients.length}/${clientsTotal}` : clients.length})
+            </CardTitle>
             <div className="flex flex-wrap gap-2">
               <Popover>
                 <PopoverTrigger asChild>

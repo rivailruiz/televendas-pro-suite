@@ -242,6 +242,7 @@ export function TabelasPrecoTab() {
   // ── Tabelas list state ──────────────────────────────────────────────────
   const [loading, setLoading] = useState(false);
   const [tabelas, setTabelas] = useState<TabelaPreco[]>([]);
+  const [totalTabelas, setTotalTabelas] = useState(0);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [search, setSearch] = useState('');
@@ -446,6 +447,7 @@ export function TabelasPrecoTab() {
       setTabelas((prev) => (reset ? result.data : [...prev, ...result.data]));
       setPage(nextPage);
       const total = result.total ?? 0;
+      setTotalTabelas(total);
       setHasMore(total ? nextPage * PAGE_LIMIT < total : result.data.length === PAGE_LIMIT);
     } catch {
       toast.error('Erro ao carregar tabelas de preço');
@@ -2397,7 +2399,7 @@ export function TabelasPrecoTab() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <CardTitle className="text-lg flex items-center gap-2">
               <Tag className="h-5 w-5" />
-              Tabelas de Preço ({tabelas.length})
+              Tabelas de Preço ({totalTabelas > 0 ? `${tabelas.length}/${totalTabelas}` : tabelas.length})
             </CardTitle>
             <div className="flex items-center gap-2">
               {tabelasComReferencia.length > 0 && (

@@ -197,6 +197,7 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
   const [clientSearch, setClientSearch] = useState('');
   const [clientSearchField, setClientSearchField] = useState<'nome' | 'fantasia' | 'cnpjCpf' | 'codigoCliente' | 'telefone' | 'bairro'>('nome');
   const [clients, setClients] = useState<Client[]>([]);
+  const [clientTotal, setClientTotal] = useState(0);
   const [loadingClients, setLoadingClients] = useState(false);
   const [clientsError, setClientsError] = useState<string | null>(null);
   const [clientPage, setClientPage] = useState(1);
@@ -343,12 +344,13 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
         else if (clientSearchField === 'telefone') filters.fone = q;
         else if (clientSearchField === 'bairro') filters.bairro = q;
       }
-      const data = await clientsService.find(filters, nextPage, CLIENT_LIMIT);
+      const { data, total } = await clientsService.find(filters, nextPage, CLIENT_LIMIT);
       setClients((prev) => {
         const combined = reset ? data : [...prev, ...data];
         const seen = new Set<number>();
         return combined.filter((c) => (seen.has(c.id) ? false : (seen.add(c.id), true)));
       });
+      setClientTotal(total);
       setClientPage(nextPage);
       setClientHasMore(Array.isArray(data) && data.length === CLIENT_LIMIT);
     } catch (e: any) {
@@ -1064,6 +1066,11 @@ export const PesquisaTab = ({ onNavigateToDigitacao }: PesquisaTabProps) => {
                 <DialogTitle>Buscar Cliente</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
+                {clientTotal > 0 && (
+                  <p className="text-sm text-muted-foreground -mt-2">
+                    Exibindo {clients.length}/{clientTotal}
+                  </p>
+                )}
                 <div className="flex gap-2">
                   <Select
                     value={clientSearchField}

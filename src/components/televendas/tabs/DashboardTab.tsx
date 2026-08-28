@@ -100,7 +100,7 @@ export function DashboardTab() {
 
         const ordersList: Order[] = orders.status === 'fulfilled' ? orders.value : [];
         // For clients/suppliers/reps we just need the count from the API response
-        const clientCount = clients.status === 'fulfilled' ? (clients.value as any)?.length ?? 0 : 0;
+        const clientCount = clients.status === 'fulfilled' ? (clients.value as any)?.total ?? 0 : 0;
         const supplierResult = suppliers.status === 'fulfilled' ? suppliers.value : { data: [], total: 0 };
         const repResult = reps.status === 'fulfilled' ? reps.value : { data: [], total: 0 };
 

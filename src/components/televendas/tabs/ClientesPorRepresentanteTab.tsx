@@ -343,8 +343,8 @@ export function ClientesPorRepresentanteTab() {
         // nao-admin) — usar `search` aqui restringia a busca a carteira do usuario
         // logado, fazendo a importacao nunca trazer clientes fora da propria carteira.
         const batch = await clientsService.searchCadastro(searchFilters, undefined, currentPage, PAGE_SIZE);
-        all.push(...batch);
-        if (batch.length < PAGE_SIZE) break;
+        all.push(...batch.data);
+        if (batch.data.length < PAGE_SIZE) break;
         currentPage++;
       }
       setImportPreview(all);

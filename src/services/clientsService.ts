@@ -492,7 +492,7 @@ async function fetchFromApi({
   page?: number;
   limit?: number;
   endpoint?: 'clientes' | 'clientes/cadastro';
-}): Promise<Client[]> {
+}): Promise<{ data: Client[]; total: number }> {
   const empresa = authService.getEmpresa();
   if (!empresa) return Promise.reject('Empresa não selecionada');
   const token = authService.getToken();
@@ -608,7 +608,8 @@ async function fetchFromApi({
 
     const data = await res.json();
     const arr = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
-    return arr.map(normalizeClient);
+    const total = typeof data?.total === 'number' ? data.total : arr.length;
+    return { data: arr.map(normalizeClient), total };
   } catch (e) {
     return Promise.reject('Erro de conexão com o servidor');
   }
@@ -645,7 +646,7 @@ export const clientsService = {
     const cleaned = normalizeCnpjCpf(cnpjCpf);
     if (!cleaned) return undefined;
 
-    const list = await fetchFromApi({
+    const { data: list } = await fetchFromApi({
       filters: { query: cleaned, status: 'todos' },
       page: 1,
       limit: 10,
@@ -660,7 +661,7 @@ export const clientsService = {
     queryOrFilters?: string | ClientSearchFilters,
     page = 1,
     limit = 100,
-  ): Promise<Client[]> => {
+  ): Promise<{ data: Client[]; total: number }> => {
     const filters =
       typeof queryOrFilters === 'string'
         ? { query: queryOrFilters }
@@ -674,7 +675,7 @@ export const clientsService = {
     _filters?: any,
     page = 1,
     limit = 100,
-  ): Promise<Client[]> => {
+  ): Promise<{ data: Client[]; total: number }> => {
     const filters =
       typeof queryOrFilters === 'string'
         ? { query: queryOrFilters }
@@ -690,7 +691,7 @@ export const clientsService = {
     _filters?: any,
     page = 1,
     limit = 100,
-  ): Promise<Client[]> => {
+  ): Promise<{ data: Client[]; total: number }> => {
     const filters =
       typeof queryOrFilters === 'string'
         ? { query: queryOrFilters }
@@ -700,7 +701,7 @@ export const clientsService = {
 
   // Convenience to get a single client by id using a server search
   getById: async (id: number): Promise<Client | undefined> => {
-    const list = await fetchFromApi({ filters: { query: String(id) }, page: 1, limit: 1 });
+    const { data: list } = await fetchFromApi({ filters: { query: String(id) }, page: 1, limit: 1 });
     return list.find((c) => c.id === id);
   },
 

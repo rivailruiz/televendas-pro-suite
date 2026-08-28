@@ -147,6 +147,7 @@ export function FornecedoresTab() {
   const PAGE_LIMIT = 100;
   const [loading, setLoading] = useState(false);
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
+  const [totalFornecedores, setTotalFornecedores] = useState(0);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [search, setSearch] = useState('');
@@ -276,6 +277,7 @@ export function FornecedoresTab() {
       setFornecedores((prev) => (reset ? result.data : [...prev, ...result.data]));
       setPage(nextPage);
       const total = result.total ?? 0;
+      setTotalFornecedores(total);
       const nextHasMore = total ? nextPage * PAGE_LIMIT < total : result.data.length === PAGE_LIMIT;
       setHasMore(nextHasMore);
     } catch (error) {
@@ -1099,7 +1101,7 @@ export function FornecedoresTab() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <CardTitle className="text-lg flex items-center gap-2">
               <Truck className="h-5 w-5" />
-              Fornecedores ({fornecedores.length})
+              Fornecedores ({totalFornecedores > 0 ? `${fornecedores.length}/${totalFornecedores}` : fornecedores.length})
             </CardTitle>
             <Button variant="default" onClick={openCreate} size="sm" disabled={!canInsert}>
               <Plus className="h-4 w-4 mr-2" />
