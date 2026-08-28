@@ -18,9 +18,10 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Truck, Plus, Pencil, Trash2, Loader2, ChevronsUpDown } from 'lucide-react';
+import { Search, Truck, Plus, Pencil, Trash2, Loader2, ChevronsUpDown, Download } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 import { suppliersService, Fornecedor } from '@/services/suppliersService';
 import { clientsService } from '@/services/clientsService';
 import { metadataService, Uf, Cidade } from '@/services/metadataService';
@@ -164,6 +165,8 @@ export function FornecedoresTab() {
     useState<ExistingFornecedorDuplicate | null>(null);
   const [deleteLoading, setDeleteLoading] = useState<number | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [selectedFornecedores, setSelectedFornecedores] = useState<number[]>([]);
+  const [exportLoading, setExportLoading] = useState(false);
   const [formData, setFormData] = useState(() => createInitialFormData());
   const [empresaGroups, setEmpresaGroups] = useState<EmpresaMasterGroup[]>([]);
   const [empresasLoading, setEmpresasLoading] = useState(false);
@@ -713,6 +716,73 @@ export function FornecedoresTab() {
     }
   };
 
+  const handleSelectAllFornecedores = (checked: boolean) => {
+    setSelectedFornecedores(checked ? fornecedores.map((f) => f.fornecedor_id) : []);
+  };
+
+  const handleSelectFornecedor = (id: number, checked: boolean) => {
+    setSelectedFornecedores((prev) => {
+      if (checked) return prev.includes(id) ? prev : [...prev, id];
+      return prev.filter((fornecedorId) => fornecedorId !== id);
+    });
+  };
+
+  const handleExportExcel = async () => {
+    setExportLoading(true);
+    try {
+      const EXPORT_HEADERS = [
+        'Codigo', 'Cnpj_Cpf', 'Nome_RazaoSocial', 'Fantasia', 'Endereco', 'Numero',
+        'Complemento', 'Bairro', 'UF', 'Cep', 'Telefone', 'Whatsapp', 'Contato',
+        'Email', 'Site', 'Revenda', 'Situacao', 'Observacao',
+      ];
+      let exportList: Fornecedor[];
+      if (selectedFornecedores.length > 0) {
+        exportList = fornecedores.filter((f) => selectedFornecedores.includes(f.fornecedor_id));
+      } else {
+        // Sem seleção: busca todas as páginas com os filtros ativos, não apenas as já carregadas na tela
+        const all: Fornecedor[] = [];
+        let exportPage = 1;
+        while (true) {
+          const batch = await suppliersService.getAll(search, exportPage, PAGE_LIMIT, filtroStatus, filtroRevenda || undefined);
+          all.push(...batch.data);
+          if (batch.data.length < PAGE_LIMIT) break;
+          exportPage++;
+        }
+        exportList = all;
+      }
+      const txt = (v: string | number | null | undefined) => ({ t: 's' as const, v: v != null ? String(v) : '' });
+      const rows = exportList.map((f) => [
+        txt(f.codigo_fornecedor),
+        txt(formatCnpjCpf(f.cnpj_cpf || '')),
+        f.nome_fornecedor ?? '',
+        f.fantasia ?? '',
+        f.endereco ?? '',
+        f.numero ?? '',
+        f.complemento ?? '',
+        f.bairro ?? '',
+        f.uf ?? '',
+        txt(f.cep),
+        txt(f.fone),
+        txt(f.whatsapp),
+        f.contato ?? '',
+        f.email ?? '',
+        f.site ?? '',
+        f.revenda ? 'SIM' : 'NÃO',
+        f.inativo ? 'INATIVO' : 'ATIVO',
+        f.obs ?? '',
+      ]);
+
+      const ws = XLSX.utils.aoa_to_sheet([EXPORT_HEADERS, ...rows]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Fornecedores');
+      XLSX.writeFile(wb, 'fornecedores.xlsx');
+    } catch {
+      toast.error('Erro ao exportar fornecedores');
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   const isInitialLoading = loading && fornecedores.length === 0;
   const isLoadingMore = loading && fornecedores.length > 0;
 
@@ -1103,10 +1173,25 @@ export function FornecedoresTab() {
               <Truck className="h-5 w-5" />
               Fornecedores ({totalFornecedores > 0 ? `${fornecedores.length}/${totalFornecedores}` : fornecedores.length})
             </CardTitle>
-            <Button variant="default" onClick={openCreate} size="sm" disabled={!canInsert}>
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Fornecedor
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportExcel}
+                disabled={exportLoading || fornecedores.length === 0}
+              >
+                {exportLoading ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                {selectedFornecedores.length > 0 ? `Exportar (${selectedFornecedores.length})` : 'Exportar'}
+              </Button>
+              <Button variant="default" onClick={openCreate} size="sm" disabled={!canInsert}>
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Fornecedor
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -1152,6 +1237,12 @@ export function FornecedoresTab() {
                 <Table className="min-w-[600px]">
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-10 px-2">
+                      <Checkbox
+                        checked={selectedFornecedores.length === fornecedores.length && fornecedores.length > 0}
+                        onCheckedChange={handleSelectAllFornecedores}
+                      />
+                    </TableHead>
                     <TableHead className="w-20">Código</TableHead>
                     <TableHead>Nome</TableHead>
                     <TableHead className="hidden md:table-cell">Fantasia</TableHead>
@@ -1162,19 +1253,25 @@ export function FornecedoresTab() {
                 <TableBody>
                   {isInitialLoading ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                         <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                       </TableCell>
                     </TableRow>
                   ) : fornecedores.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                         Nenhum fornecedor encontrado
                       </TableCell>
                     </TableRow>
                   ) : (
                     fornecedores.map((f) => (
                       <TableRow key={f.fornecedor_id} className={f.inativo ? 'opacity-50' : ''}>
+                        <TableCell className="px-2">
+                          <Checkbox
+                            checked={selectedFornecedores.includes(f.fornecedor_id)}
+                            onCheckedChange={(checked) => handleSelectFornecedor(f.fornecedor_id, checked as boolean)}
+                          />
+                        </TableCell>
                         <TableCell className="font-mono text-xs">{f.codigo_fornecedor || '-'}</TableCell>
                         <TableCell className="font-medium">{f.nome_fornecedor}</TableCell>
                         <TableCell className="hidden md:table-cell">{f.fantasia || '-'}</TableCell>
@@ -1216,7 +1313,7 @@ export function FornecedoresTab() {
                   )}
                   {isLoadingMore && (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
                         <Loader2 className="h-4 w-4 animate-spin mx-auto" />
                       </TableCell>
                     </TableRow>
