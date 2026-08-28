@@ -249,6 +249,9 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   // caso, confirmar a negociação já dispara o salvamento do pedido); false
   // quando o vendedor abriu a modal manualmente só para revisar/definir antes.
   const [prazoNegociadoAutoSave, setPrazoNegociadoAutoSave] = useState(false);
+  // Trava o botão "Salvar Pedido" durante a gravação, evitando duplo clique
+  // do usuário disparar o mesmo pedido duas vezes.
+  const [isSaving, setIsSaving] = useState(false);
   const [productSearchOpen, setProductSearchOpen] = useState(false);
   const [productCodeInput, setProductCodeInput] = useState('');
   const [loadingProductByCode, setLoadingProductByCode] = useState(false);
@@ -1984,6 +1987,8 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
   };
 
   const proceedSave = async (parcelasOverride?: OrderParcela[], itemsOverride?: OrderItem[]) => {
+    if (isSaving) return;
+    setIsSaving(true);
     const parcelasToSave = parcelasOverride ?? parcelasNegociadas;
     const itensParaSalvar = itemsOverride ?? items;
     const order = {
@@ -2074,6 +2079,8 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
     } catch (error: any) {
       const message = typeof error === 'string' ? error : error?.message;
       toast.error(message || 'Erro ao criar pedido');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -3006,9 +3013,9 @@ export const DigitacaoTab = ({ onClose, onSaveSuccess }: DigitacaoTabProps) => {
       </Card>
 
       <div className="flex flex-col sm:flex-row gap-2 justify-end">
-        <Button variant="default" onClick={handleSave} size="sm" className="w-full sm:w-auto" disabled={!!(currentOrder && currentOrder.transmitido)}>
+        <Button variant="default" onClick={handleSave} size="sm" className="w-full sm:w-auto" disabled={isSaving || !!(currentOrder && currentOrder.transmitido)}>
           <Save className="h-4 w-4 sm:mr-2" />
-          <span>Salvar Pedido</span>
+          <span>{isSaving ? 'Salvando...' : 'Salvar Pedido'}</span>
         </Button>
       </div>
 
