@@ -396,7 +396,7 @@ export function EstoquesTab() {
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
               <Package className="h-5 w-5" />
-              Estoques ({totalStocks > stocks.length ? `${stocks.length}/${totalStocks}` : totalStocks})
+              Estoques ({stocks.length}/{totalStocks})
             </CardTitle>
             <Button variant="default" size="sm" onClick={openCreate} disabled={!canInsert}>
               <Plus className="h-4 w-4 mr-2" />

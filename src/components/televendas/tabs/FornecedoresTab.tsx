@@ -1171,7 +1171,7 @@ export function FornecedoresTab() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <CardTitle className="text-lg flex items-center gap-2">
               <Truck className="h-5 w-5" />
-              Fornecedores ({totalFornecedores > 0 ? `${fornecedores.length}/${totalFornecedores}` : fornecedores.length})
+              Fornecedores ({fornecedores.length}/{totalFornecedores})
             </CardTitle>
             <div className="flex items-center gap-2">
               <Button

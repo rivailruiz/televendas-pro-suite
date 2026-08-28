@@ -661,7 +661,7 @@ export function RepresentantesTab() {
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2">
                 <UserCheck className="h-5 w-5" />
-                Força de Vendas ({totalRepresentantes > 0 ? `${representantes.length}/${totalRepresentantes}` : representantes.length})
+                Força de Vendas ({representantes.length}/{totalRepresentantes})
               </CardTitle>
             </CardHeader>
             <CardContent>

@@ -2399,7 +2399,7 @@ export function TabelasPrecoTab() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <CardTitle className="text-lg flex items-center gap-2">
               <Tag className="h-5 w-5" />
-              Tabelas de Preço ({totalTabelas > 0 ? `${tabelas.length}/${totalTabelas}` : tabelas.length})
+              Tabelas de Preço ({tabelas.length}/{totalTabelas})
             </CardTitle>
             <div className="flex items-center gap-2">
               {tabelasComReferencia.length > 0 && (

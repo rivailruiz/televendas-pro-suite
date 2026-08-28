@@ -2350,7 +2350,7 @@ const validateFormData = (data: ClientFormData): string[] => {
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <CardTitle className="text-base sm:text-lg">
-              Clientes ({clientsTotal > 0 ? `${clients.length}/${clientsTotal}` : clients.length})
+              Clientes ({clients.length}/{clientsTotal})
             </CardTitle>
             <div className="flex flex-wrap gap-2">
               <Popover>

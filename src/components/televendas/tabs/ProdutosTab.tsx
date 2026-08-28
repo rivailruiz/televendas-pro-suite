@@ -1663,7 +1663,7 @@ export function ProdutosTab() {
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <CardTitle className="text-base sm:text-lg">
-              Produtos ({totalProdutos > produtos.length ? `${produtos.length}/${totalProdutos}` : totalProdutos})
+              Produtos ({produtos.length}/{totalProdutos})
             </CardTitle>
             <div className="flex flex-wrap gap-2">
               <input
