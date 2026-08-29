@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Search, Tag, Plus, Pencil, Trash2, Loader2, List, ArrowLeft, Save, Undo2, X, Copy, Percent, Layers, FileSpreadsheet, Upload, AlertCircle, AlertTriangle, CheckCircle2, Star } from 'lucide-react';
+import { Search, Tag, Plus, Pencil, Trash2, Loader2, List, ArrowLeft, Save, Undo2, X, Copy, Percent, Layers, FileSpreadsheet, Upload, AlertCircle, AlertTriangle, CheckCircle2, Star, SlidersHorizontal } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
@@ -409,6 +409,7 @@ export function TabelasPrecoTab() {
   const [batchPromocao, setBatchPromocao] = useState(false);
   const [batchApplyDialog, setBatchApplyDialog] = useState<{ campo: NumericItemField | BooleanItemField; valor: number | boolean } | null>(null);
   const [batchApplyLoading, setBatchApplyLoading] = useState(false);
+  const [batchAdjustOpen, setBatchAdjustOpen] = useState(false);
 
   // ── Excel import/export ─────────────────────────────────────────────────
   const [xlsxExporting, setXlsxExporting] = useState(false);
@@ -1638,6 +1639,10 @@ export function TabelasPrecoTab() {
               <Copy className="h-3.5 w-3.5" />
               Copiar itens
             </Button>
+            <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => setBatchAdjustOpen(true)}>
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              Ajuste geral
+            </Button>
             {itensTabela?.tabela_referencia_id && (
               <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => setAplicarRefOpen(true)}>
                 <Percent className="h-3.5 w-3.5" />
@@ -1794,7 +1799,7 @@ export function TabelasPrecoTab() {
         </div>
 
         {/* Grid */}
-        <div className="flex-1 overflow-hidden border-x">
+        <div className="flex-1 overflow-hidden border-x border-b rounded-b-md">
           <div className="h-full overflow-auto" onScroll={handleItensScroll}>
             <table className="w-full text-xs border-collapse" style={{ minWidth: 1878 }}>
               <thead className="sticky top-0 z-20 bg-muted/90">
@@ -1980,49 +1985,59 @@ export function TabelasPrecoTab() {
           </div>
         </div>
 
-        {/* Batch bottom bar */}
-        <div className="border rounded-b-md bg-card px-3 py-2 space-y-2">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <BatchField label="% Despesa" value={batchDespesa} onChange={setBatchDespesa} onApply={() => applyBatchField('despesa', batchDespesa)} />
-            <BatchField label="% Comissão" value={batchComissao} onChange={setBatchComissao} onApply={() => applyBatchField('comissao', batchComissao)} />
-            <BatchField label="% Majoração" value={batchMajoracao} onChange={setBatchMajoracao} onApply={() => applyBatchField('majoracao', batchMajoracao)} />
-            <BatchField label="% Markup" value={batchMarkup} onChange={setBatchMarkup} onApply={() => applyBatchField('markup', batchMarkup)} />
-            <BatchField label="% Lucro" value={batchLucro} onChange={setBatchLucro} onApply={() => applyBatchField('lucro', batchLucro)} />
-            <BatchField label="% Frete" value={batchFrete} onChange={setBatchFrete} onApply={() => applyBatchField('frete', batchFrete)} />
-            <BatchField label="% Desconto" value={batchDesconto} onChange={setBatchDesconto} onApply={() => applyBatchField('desconto_maximo', batchDesconto)} />
-          </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <span className="text-xs text-muted-foreground">Ajustar em lote:</span>
-            <div className="flex items-center gap-1.5">
-              <Checkbox id="b-bon" checked={batchBonificacao} onCheckedChange={(c) => {
-                setBatchBonificacao(c === true);
-                applyBatchBool('permite_bonificacao', c === true);
-              }} />
-              <label htmlFor="b-bon" className="text-xs cursor-pointer">Permite bonificação</label>
+        {/* Ajuste geral da tabela */}
+        <Dialog open={batchAdjustOpen} onOpenChange={setBatchAdjustOpen}>
+          <DialogContent className="w-[95vw] max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Ajuste geral da tabela</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 py-1">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                <BatchField label="% Despesa" value={batchDespesa} onChange={setBatchDespesa} onApply={() => applyBatchField('despesa', batchDespesa)} />
+                <BatchField label="% Comissão" value={batchComissao} onChange={setBatchComissao} onApply={() => applyBatchField('comissao', batchComissao)} />
+                <BatchField label="% Majoração" value={batchMajoracao} onChange={setBatchMajoracao} onApply={() => applyBatchField('majoracao', batchMajoracao)} />
+                <BatchField label="% Markup" value={batchMarkup} onChange={setBatchMarkup} onApply={() => applyBatchField('markup', batchMarkup)} />
+                <BatchField label="% Lucro" value={batchLucro} onChange={setBatchLucro} onApply={() => applyBatchField('lucro', batchLucro)} />
+                <BatchField label="% Frete" value={batchFrete} onChange={setBatchFrete} onApply={() => applyBatchField('frete', batchFrete)} />
+                <BatchField label="% Desconto" value={batchDesconto} onChange={setBatchDesconto} onApply={() => applyBatchField('desconto_maximo', batchDesconto)} />
+              </div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                <span className="text-xs text-muted-foreground">Ajustar em lote:</span>
+                <div className="flex items-center gap-1.5">
+                  <Checkbox id="b-bon" checked={batchBonificacao} onCheckedChange={(c) => {
+                    setBatchBonificacao(c === true);
+                    applyBatchBool('permite_bonificacao', c === true);
+                  }} />
+                  <label htmlFor="b-bon" className="text-xs cursor-pointer">Permite bonificação</label>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Checkbox id="b-dc" checked={batchDebitoCredito} onCheckedChange={(c) => {
+                    setBatchDebitoCredito(c === true);
+                    applyBatchBool('permite_debito_credito', c === true);
+                  }} />
+                  <label htmlFor="b-dc" className="text-xs cursor-pointer">Gera Débito/Crédito</label>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Checkbox id="b-ve" checked={batchVendaEspecial} onCheckedChange={(c) => {
+                    setBatchVendaEspecial(c === true);
+                    applyBatchBool('permite_venda_especial', c === true);
+                  }} />
+                  <label htmlFor="b-ve" className="text-xs cursor-pointer">Venda especial</label>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Checkbox id="b-promo" checked={batchPromocao} onCheckedChange={(c) => {
+                    setBatchPromocao(c === true);
+                    applyBatchBool('produto_em_promocao', c === true);
+                  }} />
+                  <label htmlFor="b-promo" className="text-xs cursor-pointer">Produto em Promoção</label>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <Checkbox id="b-dc" checked={batchDebitoCredito} onCheckedChange={(c) => {
-                setBatchDebitoCredito(c === true);
-                applyBatchBool('permite_debito_credito', c === true);
-              }} />
-              <label htmlFor="b-dc" className="text-xs cursor-pointer">Gera Débito/Crédito</label>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Checkbox id="b-ve" checked={batchVendaEspecial} onCheckedChange={(c) => {
-                setBatchVendaEspecial(c === true);
-                applyBatchBool('permite_venda_especial', c === true);
-              }} />
-              <label htmlFor="b-ve" className="text-xs cursor-pointer">Venda especial</label>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Checkbox id="b-promo" checked={batchPromocao} onCheckedChange={(c) => {
-                setBatchPromocao(c === true);
-                applyBatchBool('produto_em_promocao', c === true);
-              }} />
-              <label htmlFor="b-promo" className="text-xs cursor-pointer">Produto em Promoção</label>
-            </div>
-          </div>
-        </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setBatchAdjustOpen(false)}>Fechar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Ajuste em lote — confirmação de escopo */}
         <Dialog open={batchApplyDialog !== null} onOpenChange={(open) => { if (!open && !batchApplyLoading) cancelBatchApplyDialog(); }}>
