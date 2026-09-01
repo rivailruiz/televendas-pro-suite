@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Search, Plus, Trash2, Loader2, Building2, Users, ShieldCheck, UserCheck, RefreshCw, Pencil, PowerOff } from 'lucide-react';
+import { Search, Plus, Trash2, Loader2, Building2, Users, ShieldCheck, UserCheck, RefreshCw, Pencil, PowerOff, Eraser } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { adminService, type AdminEmpresa, type AdminEmpresaDetalhe, type EmpresaUsuario, type AdminUsuario } from '@/services/adminService';
 import { clientsService } from '@/services/clientsService';
 import { normalizeCnpjCpf, formatCnpjCpf, isNumericCnpj } from '@/utils/cnpjCpf';
+import { ZerarBaseDialog } from './ZerarBaseDialog';
 
 const TECDISA_API_KEY = 'HKemZzPV6hpvTR5pVqzomLzLe30rY5Gs4q45b4yHd2uEABXUcf6MQTFKMVgiKJeD';
 
@@ -278,6 +279,10 @@ export function AdminTab() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<AdminEmpresa | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // --- Zerar Base ---
+  const [zerarBaseOpen, setZerarBaseOpen] = useState(false);
+  const [zerarBaseTarget, setZerarBaseTarget] = useState<AdminEmpresa | null>(null);
 
   const handleDeleteEmpresa = async () => {
     if (!deleteTarget) return;
@@ -572,6 +577,14 @@ export function AdminTab() {
                       onClick={(ev) => { ev.stopPropagation(); handleOpenEdit(e); }}
                     >
                       <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost" size="icon"
+                      className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive"
+                      title="Zerar base de dados"
+                      onClick={(ev) => { ev.stopPropagation(); setZerarBaseTarget(e); setZerarBaseOpen(true); }}
+                    >
+                      <Eraser className="h-3 w-3" />
                     </Button>
                     <Button
                       variant="ghost" size="icon"
@@ -1315,6 +1328,20 @@ export function AdminTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Zerar Base dialog */}
+      <ZerarBaseDialog
+        empresa={zerarBaseTarget}
+        empresasTodas={empresas}
+        open={zerarBaseOpen}
+        onOpenChange={setZerarBaseOpen}
+        onExecutado={() => {
+          loadEmpresas();
+          if (selectedEmpresa && zerarBaseTarget?.empresa_id === selectedEmpresa.empresa_id) {
+            loadUsuarios(selectedEmpresa);
+          }
+        }}
+      />
 
       <AlertDialog open={removeConfirmUsuario !== null} onOpenChange={(open) => !open && setRemoveConfirmUsuario(null)}>
         <AlertDialogContent>

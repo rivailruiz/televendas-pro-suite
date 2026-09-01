@@ -80,6 +80,55 @@ export interface EmpresaUsuario {
   usuario_empresa_id: number;
 }
 
+export type ZerarBaseCategoria = 'cadastro' | 'operacional';
+
+export interface ZerarBaseGrupo {
+  chave: string;
+  label: string;
+  categoria: ZerarBaseCategoria;
+}
+
+export interface ZerarBaseOpcoes {
+  empresa: { empresa_id: number; razao_social: string; fantasia: string | null };
+  empresaEhCadastro: boolean;
+  empresaCadastroId: number;
+  empresaMatriz: { empresa_id: number; razao_social: string; fantasia: string | null } | null;
+  empresasCompartilhadasIds: number[];
+  grupos: ZerarBaseGrupo[];
+}
+
+export interface ZerarBasePlano {
+  empresaId: number;
+  empresaCadastroId: number;
+  empresaEhCadastro: boolean;
+  gruposSelecionados: string[];
+  gruposCadastro: string[];
+  gruposOperacionais: string[];
+  gruposForcados: string[];
+  empresasAfetadas: number[];
+  juncoesParaVarrer: string[];
+  nulificacoes: Array<{ tabela: string; coluna: string; valor: null | 0 }>;
+}
+
+export interface ZerarBaseContagem {
+  tabela: string;
+  grupo: string;
+  empresaId: number;
+  quantidade: number;
+}
+
+export interface ZerarBaseNulificacaoContagem {
+  tabela: string;
+  coluna: string;
+  quantidade: number;
+}
+
+export interface ZerarBaseResultado {
+  plano: ZerarBasePlano;
+  contagens: ZerarBaseContagem[];
+  nulificacoes: ZerarBaseNulificacaoContagem[];
+}
+
 async function authHeaders() {
   const token = authService.getToken();
   if (!token) throw new Error('Token ausente');
@@ -243,5 +292,37 @@ export const adminService = {
       body: JSON.stringify(data),
     });
     return handleResponse(res, 'Erro ao criar empresa');
+  },
+
+  async getZerarBaseOpcoes(empresaId: number): Promise<ZerarBaseOpcoes> {
+    const headers = await authHeaders();
+    const res = await apiClient.fetch(
+      `${API_BASE}/api/admin/empresas/${empresaId}/zerar-base/opcoes`,
+      { headers },
+    );
+    return handleResponse<ZerarBaseOpcoes>(res, 'Erro ao carregar opções de zerar base');
+  },
+
+  async previewZerarBase(empresaId: number, grupos: string[]): Promise<ZerarBaseResultado> {
+    const headers = await authHeaders();
+    const res = await apiClient.fetch(
+      `${API_BASE}/api/admin/empresas/${empresaId}/zerar-base/preview`,
+      { method: 'POST', headers, body: JSON.stringify({ grupos }) },
+    );
+    return handleResponse<ZerarBaseResultado>(res, 'Erro ao calcular preview');
+  },
+
+  async executarZerarBase(
+    empresaId: number,
+    grupos: string[],
+    confirmacaoNome: string,
+  ): Promise<ZerarBaseResultado> {
+    const headers = await authHeaders();
+    const res = await apiClient.fetch(`${API_BASE}/api/admin/empresas/${empresaId}/zerar-base`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ grupos, confirmacaoNome }),
+    });
+    return handleResponse<ZerarBaseResultado>(res, 'Erro ao zerar base');
   },
 };
