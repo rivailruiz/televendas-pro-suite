@@ -921,7 +921,7 @@ export const ClientesTab = () => {
 
     const timeoutId = window.setTimeout(async () => {
       try {
-        const existing = await clientsService.findByCnpjCpf(cleaned);
+        const existing = await clientsService.findByCnpjCpf(cleaned, formData.inscEstadual);
         if (cancelled) return;
         setExistingClientByCnpj(
           existing
@@ -944,7 +944,7 @@ export const ClientesTab = () => {
       cancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [createOpen, formData.cnpjCpf]);
+  }, [createOpen, formData.cnpjCpf, formData.inscEstadual]);
 
   // Carregar representantes quando abrir dialog de busca
   const REP_LIMIT = 100;

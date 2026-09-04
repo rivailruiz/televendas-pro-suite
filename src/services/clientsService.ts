@@ -642,7 +642,10 @@ export const clientsService = {
       return Promise.reject('Erro de conexão na consulta de CNPJ');
     }
   },
-  findByCnpjCpf: async (cnpjCpf: string): Promise<Client | undefined> => {
+  findByCnpjCpf: async (
+    cnpjCpf: string,
+    inscricaoEstadual?: string,
+  ): Promise<Client | undefined> => {
     const cleaned = normalizeCnpjCpf(cnpjCpf);
     if (!cleaned) return undefined;
 
@@ -652,9 +655,22 @@ export const clientsService = {
       limit: 10,
     });
 
-    return list.find(
+    const matches = list.filter(
       (client) => normalizeCnpjCpf(client.cnpjCpf) === cleaned,
     );
+    if (!matches.length) return undefined;
+
+    // CPF pode se repetir entre cadastros com inscrição estadual diferente
+    // (ex.: produtor rural com mais de uma propriedade/IE sob o mesmo CPF) -
+    // só conta como duplicado quando a IE também bate (mesma regra do back).
+    const ie = (inscricaoEstadual ?? '').trim().toUpperCase();
+    if (cleaned.length === 11 && ie) {
+      return matches.find(
+        (client) => (client.inscricaoEstadual ?? '').trim().toUpperCase() === ie,
+      );
+    }
+
+    return matches[0];
   },
   // Server-side search with pagination
   find: async (
